@@ -7,17 +7,20 @@
       <div class="row">
         <div class="col-md-12">
           <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-              <div>
-                <div class="card-title">List of Notifications</div>
-              </div>
-
-              <div class="d-flex align-items-center" style="gap:0.5rem;">
-                <input id="searchInput" class="form-control" style="width:260px;" placeholder="Search notifications..." />
-              </div>
+            <div class="card-header">
+              <div class="card-title">List of Notifications</div>
             </div>
 
             <div class="card-body">
+              <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                <input type="month" id="dateFilter" name="date_filter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+                <button type="button" class="btn btn-info" onclick="toggleShowAll()">
+                  Show All Data
+                </button>
+                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                  <i class="la la-times"></i>
+                </button>
+              </div>
               <div class="table-responsive">
                 <table class="table table-striped" id="inventoryTable">
                   <thead>
@@ -79,4 +82,33 @@
       </div>
     </div>
   </div>
+  
+  <script>
+  function toggleShowAll() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('show_all')) {
+      params.delete('show_all');
+    } else {
+      params.set('show_all', '1');
+      params.delete('date_filter');
+    }
+    window.location.href = window.location.pathname + '?' + params.toString();
+  }
+  
+  document.addEventListener('DOMContentLoaded', function() {
+    const dateFilter = document.getElementById('dateFilter');
+    if (dateFilter) {
+      dateFilter.addEventListener('change', function() {
+        const params = new URLSearchParams(window.location.search);
+        if (this.value) {
+          params.set('date_filter', this.value);
+          params.delete('show_all');
+        } else {
+          params.delete('date_filter');
+        }
+        window.location.href = window.location.pathname + '?' + params.toString();
+      });
+    }
+  });
+  </script>
   {% endblock %}

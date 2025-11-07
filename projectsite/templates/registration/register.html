@@ -9,6 +9,32 @@
   <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/login.css' %}">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    .form-wrapper {
+      max-height: 90vh;
+      overflow-y: auto;
+      padding-right: 10px;
+    }
+    
+    /* Custom scrollbar styling */
+    .form-wrapper::-webkit-scrollbar {
+      width: 8px;
+    }
+    
+    .form-wrapper::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    
+    .form-wrapper::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+    
+    .form-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+  </style>
 </head>
 <body>
   <div class="login-container">
@@ -17,7 +43,7 @@
       <div class="brand">
         <img src="{% static 'img/reals.jpg' %}" alt="Logo" class="brand-logo">
         <h1>WELCOME TO REALS!</h1>
-        <p>Create your account below.</p>
+        <p>Create your account here!</p>
       </div>
       <div class="footer-left">
         <p>&copy; Reals Food Products</p>
@@ -30,28 +56,40 @@
         <h2>SIGN UP</h2>
         <form method="post" id="register-form">
           {% csrf_token %}
-          <input type="text" name="username" placeholder="Enter Username" required>
+          <input type="text" name="username" id="username" placeholder="Enter Username" required>
+          <small id="usernameError" class="form-text" style="{% if form.username.errors %}display: block;{% else %}display: none;{% endif %} color: #dc3545; margin-top: -10px; margin-bottom: 10px; font-size: 0.875rem;">
+            {% if form.username.errors %}{{ form.username.errors.0 }}{% endif %}
+          </small>
+          
           <input type="text" name="first_name" placeholder="Enter First Name" required>
           <input type="text" name="last_name" placeholder="Enter Last Name" required>
-          <input type="email" name="email" placeholder="Enter Email" required>
+          
+          <input type="email" name="email" id="email" placeholder="Enter Email" required>
+          <small id="emailError" class="form-text" style="{% if form.email.errors %}display: block;{% else %}display: none;{% endif %} color: #dc3545; margin-top: -10px; margin-bottom: 10px; font-size: 0.875rem;">
+            {% if form.email.errors %}{{ form.email.errors.0 }}{% endif %}
+          </small>
+          
           <input type="password" name="password1" id="password1" placeholder="Enter Password" required>
+          <small id="password1Error" class="form-text" style="{% if form.password1.errors %}display: block;{% else %}display: none;{% endif %} color: #dc3545; margin-top: -10px; margin-bottom: 10px; font-size: 0.875rem;">
+            {% if form.password1.errors %}{{ form.password1.errors.0 }}{% endif %}
+          </small>
+          
           <input type="password" name="password2" id="password2" placeholder="Confirm Password" required>
+          <small id="password2Error" class="form-text" style="{% if form.password2.errors %}display: block;{% else %}display: none;{% endif %} color: #dc3545; margin-top: -10px; margin-bottom: 10px; font-size: 0.875rem;">
+            {% if form.password2.errors %}{{ form.password2.errors.0 }}{% endif %}
+          </small>
 
-      <!-- <div class="form-group">
-        <label for="user_type">User Type:</label>
-        <select name="user_type" id="user_type" class="form-control" required>
-          <option value="">Select User Type</option>
-          <option value="staff">Staff</option>
-          <option value="superuser">Administrator</option>
-        </select>
-      </div> -->
+      <!-- Hidden field: All new users are registered as Staff by default -->
+      <input type="hidden" name="user_type" value="staff">
+      <small class="form-text text-muted" style="display: block; margin-bottom: 15px; color: #6c757d;">
+        📝 All new accounts are registered as <strong>Staff</strong> and require admin approval before activation.
+      </small>
 
-          {% if form.errors %}
-            <div class="alert alert-danger">
-              {% for field, errors in form.errors.items %}
-                {% for error in errors %}
-                  <p>{{ error }}</p>
-                {% endfor %}
+          <!-- Server-side non-field errors only -->
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger" style="margin-bottom: 15px;">
+              {% for error in form.non_field_errors %}
+                <p style="margin: 0;">{{ error }}</p>
               {% endfor %}
             </div>
           {% endif %}
@@ -69,8 +107,14 @@
 
   <!-- JS for password validation -->
   <script>
+    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
     const password1Input = document.getElementById('password1');
     const password2Input = document.getElementById('password2');
+    const usernameError = document.getElementById('usernameError');
+    const emailError = document.getElementById('emailError');
+    const password1Error = document.getElementById('password1Error');
+    const password2Error = document.getElementById('password2Error');
 
     // Check if password meets the requirements
     function checkPasswordRequirements(password) {
@@ -82,16 +126,103 @@
       return lengthValid && numberValid && uppercaseValid && lowercaseValid;
     }
 
+    // Show error message under specific field
+    function showPassword1Error(message) {
+      password1Error.textContent = message;
+      password1Error.style.display = 'block';
+      password1Input.style.borderColor = '#dc3545';
+    }
+
+    function showPassword2Error(message) {
+      password2Error.textContent = message;
+      password2Error.style.display = 'block';
+      password2Input.style.borderColor = '#dc3545';
+    }
+
+    // Show error for username
+    function showUsernameError(message) {
+      usernameError.textContent = message;
+      usernameError.style.display = 'block';
+      usernameInput.style.borderColor = '#dc3545';
+    }
+
+    // Show error for email
+    function showEmailError(message) {
+      emailError.textContent = message;
+      emailError.style.display = 'block';
+      emailInput.style.borderColor = '#dc3545';
+    }
+
+    // Hide error messages
+    function hideUsernameError() {
+      usernameError.style.display = 'none';
+      usernameInput.style.borderColor = '';
+    }
+
+    function hideEmailError() {
+      emailError.style.display = 'none';
+      emailInput.style.borderColor = '';
+    }
+
+    function hidePassword1Error() {
+      password1Error.style.display = 'none';
+      password1Input.style.borderColor = '';
+    }
+
+    function hidePassword2Error() {
+      password2Error.style.display = 'none';
+      password2Input.style.borderColor = '';
+    }
+
     // Listen to submit event to prevent submission if password doesn't meet requirements
     const form = document.getElementById('register-form');
     form.addEventListener('submit', function (e) {
+      // Hide previous errors
+      hideUsernameError();
+      hideEmailError();
+      hidePassword1Error();
+      hidePassword2Error();
+
+      let hasError = false;
+
+      // Check username
+      if (!usernameInput.value.trim()) {
+        e.preventDefault();
+        showUsernameError("Username is required.");
+        hasError = true;
+      }
+
+      // Check email
+      if (!emailInput.value.trim()) {
+        e.preventDefault();
+        showEmailError("Email is required.");
+        hasError = true;
+      }
+
+      // Check password requirements
+      if (!checkPasswordRequirements(password1Input.value)) {
+        e.preventDefault();
+        showPassword1Error("Password must contain at least 8 characters, one number, one uppercase letter, and one lowercase letter.");
+        hasError = true;
+      }
+
       // Check if passwords match
       if (password1Input.value !== password2Input.value) {
         e.preventDefault();
-        alert("Passwords do not match.");
-      } else if (!checkPasswordRequirements(password1Input.value)) {
-        e.preventDefault();
-        alert("Password must contain at least 8 characters, one number, one uppercase letter, and one lowercase letter.");
+        showPassword2Error("Passwords do not match.");
+        hasError = true;
+      }
+    });
+
+    // Hide errors when user starts typing
+    usernameInput.addEventListener('input', hideUsernameError);
+    emailInput.addEventListener('input', hideEmailError);
+    password1Input.addEventListener('input', hidePassword1Error);
+    password2Input.addEventListener('input', function() {
+      hidePassword2Error();
+      // Also check if passwords match while typing
+      if (password1Input.value && password2Input.value && password1Input.value !== password2Input.value) {
+        showPassword2Error("Passwords do not match.");
       }
     });
   </script>

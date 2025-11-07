@@ -20,7 +20,6 @@ from realsproj import views as a
 from django.contrib.auth import views as auth_views
 from django.urls import path, re_path, include
 from django.contrib.auth.forms import AuthenticationForm
-from realsproj.views import profile_view, edit_profile
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -51,12 +50,14 @@ urlpatterns = [
     path('rawmaterials/<int:pk>/unarchive/', a.RawMaterialUnarchiveView.as_view(), name='rawmaterials-unarchive'),
     path('rawmaterials/bulk-delete/', a.rawmaterial_bulk_delete, name='rawmaterial-bulk-delete'),
     path('rawmaterials/bulk-archive/', a.rawmaterial_bulk_archive, name='rawmaterial-bulk-archive'),
+    path('rawmaterials/bulk-restore/', a.rawmaterial_bulk_restore, name='rawmaterials-bulk-restore'),
 
     path('historylog/', a.HistoryLogList.as_view(), name='historylog'),
-    path('history/', a.HistoryLogList.as_view(), name='history_log'),  # Added this line to match template reference
+    path('history/', a.HistoryLogList.as_view(), name='history_log'),  
 
-    path('sales/', a.SalesList.as_view(), name='sales'),
+    path('salesexpenses/', a.SalesExpensesList.as_view(), name='salesexpenses'),
     path('sales/add', a.SalesCreateView.as_view(), name='sales-add'),
+    path('sales/expenses/add', a.SalesExpensesCreateView.as_view(), name='sales-expenses-add'),
     path('sales/<pk>', a.SalesUpdateView.as_view(), name='sales-edit'),
     path('sales/<pk>/delete', a.SalesDeleteView.as_view(), name='sales-delete'),
     path('sales/<int:pk>/archive/', a.SaleArchiveView.as_view(), name='sales-archive'),
@@ -67,8 +68,8 @@ urlpatterns = [
     path('sales/<int:pk>/unarchive/', a.SaleUnarchiveView.as_view(), name='sales-unarchive'),
     path('sales/bulk-restore/', a.SaleBulkRestoreView.as_view(), name='sales-bulk-restore'),
     path('sales/bulk-delete/', a.SaleBulkDeleteView.as_view(), name='sales-bulk-delete'),
+    path('salesexpenses/archive/', a.ArchivedSalesExpensesCombinedView.as_view(), name='salesexpense-archive'),
 
-    path('expenses/', a.ExpensesList.as_view(), name='expenses'),
     path('expenses/add', a.ExpensesCreateView.as_view(), name='expenses-add'),
     path('expenses/<pk>', a.ExpensesUpdateView.as_view(), name='expenses-edit'),
     path('expenses/<pk>/delete', a.ExpensesDeleteView.as_view(), name='expenses-delete'),
@@ -89,6 +90,7 @@ urlpatterns = [
     path('prodbatch/archive-old/', a.ProductBatchArchiveOldView.as_view(), name='product-batch-archive-old'),
     path('prodbatch/bulk-delete/', a.product_batch_bulk_delete, name='product-batch-bulk-delete'),
     path('prodbatch/bulk-archive/', a.product_batch_bulk_archive, name='product-batch-bulk-archive'),
+    path('prodbatch/bulk-restore/', a.product_batch_bulk_restore, name='product-batch-bulk-restore'),
     path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch-list'),
 
     path('product-inventory/', a.ProductInventoryList.as_view(), name='product-inventory'),
@@ -147,6 +149,7 @@ urlpatterns = [
     path('product-attributes/srp-price/<int:pk>/edit/', a.SrpPriceEditView.as_view(), name='srp-price-edit'),
     path('product-attributes/srp-price/<int:pk>/delete/', a.SrpPriceDeleteView.as_view(), name='srp-price-delete'),
 
+    path('withdrawalsales/', a.WithdrawalSalesList.as_view(), name='withdrawalSales'),
     path('withdrawals/', a.WithdrawSuccessView.as_view(), name='withdrawals'),
     path('withdraw/<int:pk>/edit/', a.WithdrawUpdateView.as_view(), name='withdraw-edit'),
     path("withdraw-item/<pk>/delete", a.WithdrawDeleteView.as_view(), name="withdraw-delete"),
@@ -203,8 +206,18 @@ urlpatterns = [
     path("revenue-x-recent_sales", a.HomePageView.as_view(), name="home"),
     path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),    
 
-    path('profile/', profile_view, name='profile'),
+    path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),
+
+    # User Management
+    path('user-management/', a.user_management, name='user-management'),
+    path('user/create-admin/', a.create_admin_user, name='create-admin-user'),
+    path('user/<int:user_id>/approve/', a.approve_user, name='approve-user'),
+    path('user/<int:user_id>/reject/', a.reject_user, name='reject-user'),
+    path('user/<int:user_id>/toggle-role/', a.toggle_user_role, name='toggle-user-role'),
+    path('user/<int:user_id>/deactivate/', a.deactivate_user, name='deactivate-user'),
+    path('user/<int:user_id>/reactivate/', a.reactivate_user, name='reactivate-user'),
+    path('user/<int:user_id>/delete/', a.delete_user, name='delete-user'),
 
     path('products/', a.ProductsList.as_view(), name='product-list'),
     path('products/<int:pk>/archive/', a.ProductArchiveView.as_view(), name='product-archive'),
@@ -213,6 +226,7 @@ urlpatterns = [
     path('products/archive-old/', a.ProductArchiveOldView.as_view(), name='products-archive-old'),
     path('products/bulk-delete/', a.product_bulk_delete, name='product-bulk-delete'),
     path('products/bulk-archive/', a.product_bulk_archive, name='product-bulk-archive'),
+    path('products/bulk-restore/', a.product_bulk_restore, name='products-bulk-restore'),
     path("products/<int:product_id>/recipes/", a.ProductRecipeListView.as_view(), name="recipe-list"),
     path("products/<int:product_id>/recipes/add/", a.ProductRecipeBulkCreateView.as_view(), name="recipe-add"),
     path("recipes/<int:pk>/edit/", a.ProductRecipeUpdateView.as_view(), name="recipe-edit"),
@@ -228,8 +242,6 @@ urlpatterns = [
 
     path('user-activity/', a.UserActivityList.as_view(), name='user-activity'),
 
-    path("check-expirations/", a.check_expirations, name="check-expirations"),
-    
     path('database-backup/', a.database_backup, name='database-backup'),
 
     path('2fa-setup/', a.setup_2fa, name='2fa_setup'),

@@ -45,13 +45,13 @@
 
                             <!-- Other Filters Row -->
                             <div class="row">
-                                <div class="col-md-6">
-                                    <input type="text" name="search" class="form-control"
-                                        style="width:350px;" placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
+                                <div class="col-auto">
+                                    <input type="text" name="search" class="form-control" style="width: 350px;"
+                                        placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
                                 </div>
-                                <div class="col-md-2">
-                                    <input type="date" name="date_created" class="form-control"
-                                           placeholder="Filter by Date"
+                                <div class="col-auto">
+                                    <input type="month" name="date_created" class="form-control"
+                                           placeholder="Filter by Month"
                                            value="{{ request.GET.date_created }}">
                                 </div>
                                 <div class="col-md-3">
@@ -61,7 +61,7 @@
                                     </div>
                                     <small id="barcode-status" class="form-text text-muted">Ready to scan...</small>
                                 </div>
-                                <div class="col-md-1">
+                                <div class="col-auto">
                                     <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                                         <i class="la la-times"></i>
                                     </button>
@@ -103,7 +103,7 @@
                                     <td>{{ object.product_type.name }} - {{ object.variant.name }} ({{ object.size.size_label }} {{ object.size_unit.unit_name }})</td>
                                     <td>{{ object.unit_price.unit_price }}</td>
                                     <td>{{ object.srp_price.srp_price }}</td>
-                                    <td>{{ object.date_created|date:"Y-m-d H:i" }}</td>
+                                    <td>{{ object.date_created|date:"Y-m-d g:i A" }}</td>
                                     <td>
                                         <a href="#" data-toggle="modal" data-target="#viewProductModal{{ object.id }}" class="text-secondary" title="View">
                                             <i class="la la-eye la-lg"></i>
@@ -117,10 +117,12 @@
                                         <a href="#" data-toggle="modal" data-target="#archiveProductModal{{ object.id }}" class="text-warning" title="Archive">
                                             <i class="la la-archive la-lg"></i>
                                         </a>
+                                        {% if user.is_superuser %}
                                         &nbsp;&nbsp;
                                         <a href="#" data-toggle="modal" data-target="#deleteProductModal{{ object.id }}" class="text-danger" title="Delete">
                                             <i class="la la-trash la-lg"></i>
                                         </a>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 {% empty %}
@@ -565,14 +567,21 @@ function bulkDelete() {
         return;
     }
     
-    if (!confirm(`Are you sure you want to delete ${selectedIds.length} product(s)?`)) {
-        return;
-    }
+    // Update modal message and show it
+    document.getElementById('bulkDeleteCount').textContent = selectedIds.length;
+    $('#bulkDeleteModal').modal('show');
+}
+
+function confirmBulkDelete() {
+    const selectedIds = getSelectedIds();
     
     // Create form data
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     formData.append('ids', selectedIds.join(','));
+    
+    // Hide modal
+    $('#bulkDeleteModal').modal('hide');
     
     fetch('{% url "product-bulk-delete" %}', {
         method: 'POST',
@@ -603,14 +612,21 @@ function bulkArchive() {
         return;
     }
     
-    if (!confirm(`Are you sure you want to archive ${selectedIds.length} product(s)?`)) {
-        return;
-    }
+    // Update modal message and show it
+    document.getElementById('bulkArchiveCount').textContent = selectedIds.length;
+    $('#bulkArchiveModal').modal('show');
+}
+
+function confirmBulkArchive() {
+    const selectedIds = getSelectedIds();
     
     // Create form data
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     formData.append('ids', selectedIds.join(','));
+    
+    // Hide modal
+    $('#bulkArchiveModal').modal('hide');
     
     fetch('{% url "product-bulk-archive" %}', {
         method: 'POST',
@@ -633,7 +649,48 @@ function bulkArchive() {
         showToast('An error occurred while archiving products', 'error');
     });
 }
+
 </script>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Delete</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete <strong id="bulkDeleteCount">0</strong> product(s)?
+        <br><br>
+        <strong class="text-danger">⚠️ Warning:</strong> This action cannot be undone.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkDeleteModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="confirmBulkDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Archive Confirmation Modal -->
+<div class="modal fade" id="bulkArchiveModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Archive</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> product(s)?
+        <br><br>
+        <small class="text-muted">You can restore archived products later from the Archive Options menu.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkArchiveModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="confirmBulkArchive()">Archive</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="modal fade" id="archiveOldProductsModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">

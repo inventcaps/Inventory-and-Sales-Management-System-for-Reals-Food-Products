@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+{% block content %}
+<div class="content">
+  <div class="container-fluid">
+    <h4 class="page-title">Withdrawal Sales</h4>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <!-- Header: title + buttons -->
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <div class="card-title">Sales from Withdrawals (Orders, Consignment, Reseller)</div>
+            </div>
+            <!-- <div class="d-flex align-items-center" style="gap:0.5rem;"> -->
+              <!-- Link to Withdrawals Page -->
+              <!-- <a href="{% url 'withdrawals' %}" class="btn btn-info btn-rounded">
+                <i class="la la-box"></i> View Withdrawals
+              </a>
+            </div> -->
+          </div>
+
+          <div class="card-body">
+            <!-- Filters -->
+            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+              <select id="channelFilter" class="form-control" style="width:180px;">
+                <option value="">All Channels</option>
+                {% for channel in channels %}
+                  <option value="{{ channel }}" {% if request.GET.channel == channel %}selected{% endif %}>
+                    {{ channel }}
+                  </option>
+                {% endfor %}
+              </select>
+              <input type="month" id="dateFilter" class="form-control" style="width:180px;" />
+              <button type="button" onclick="window.location.href='?show_all=true'" class="btn btn-info" title="Show all data">
+                <i class="la la-list"></i> Show All
+              </button>
+              <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                <i class="la la-times"></i>
+              </button>
+            </div>
+
+            <!-- Grouped Orders Table -->
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Customer/Store</th>
+                    <th>Sales Channel</th>
+                    <th>Items</th>
+                    <th>Payment Status</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for order in withdrawal_orders %}
+                  <tr>
+                    <td>{{ order.customer_name|default:"N/A" }}</td>
+                    <td>{{ order.sales_channel }}</td>
+                    <td>{{ order.item_count }} Item(s)</td>
+                    <td>
+                      {% if order.payment_status == 'PAID' %}
+                        <span class="badge badge-success">{{ order.payment_status_display }}</span>
+                      {% elif order.payment_status == 'PARTIAL' %}
+                        <span class="badge badge-warning">{{ order.payment_status_display }}</span>
+                      {% elif order.payment_status == 'UNPAID' %}
+                        <span class="badge badge-secondary">{{ order.payment_status_display }}</span>
+                      {% else %}
+                        <span class="badge badge-secondary">N/A</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ order.date|date:"Y-m-d H:i" }}</td>
+                    <td>
+                      {% if order.actual_group_id %}
+                        <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" class="btn btn-sm btn-success">
+                          <i class="la la-eye"></i> View Details
+                        </a>
+                      {% else %}
+                        <span class="text-muted">Single Item</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted">No withdrawal sales found</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportWithdrawalSalesModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="get" action="{% url 'export_sales' %}">
+        <input type="hidden" name="withdrawal_only" value="true">
+        <div class="modal-header">
+          <h5 class="modal-title">Export Withdrawal Sales</h5>
+          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <label>Filter Type</label>
+          <select name="filter" class="form-control mb-3" required>
+            <option value="date">By Date</option>
+            <option value="month">By Month</option>
+            <option value="year">By Year</option>
+            <option value="range">Custom Range</option>
+          </select>
+          <div>
+            <label>Start</label>
+            <input type="date" name="start" class="form-control mb-3" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Export CSV</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// Channel filter
+document.getElementById('channelFilter').addEventListener('change', function() {
+  const url = new URL(window.location);
+  if (this.value) {
+    url.searchParams.set('channel', this.value);
+  } else {
+    url.searchParams.delete('channel');
+  }
+  window.location = url;
+});
+
+// Date filter
+document.getElementById('dateFilter').addEventListener('change', function() {
+  const url = new URL(window.location);
+  if (this.value) {
+    url.searchParams.set('month', this.value);
+  } else {
+    url.searchParams.delete('month');
+  }
+  window.location = url;
+});
+</script>
+{% endblock %}

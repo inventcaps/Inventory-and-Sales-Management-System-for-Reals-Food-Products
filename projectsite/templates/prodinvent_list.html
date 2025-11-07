@@ -17,16 +17,15 @@
             <form method="get" action="" id="filterForm">
               <!-- Search -->
               <div class="row mb-3">
-                <div class="col-md-6">
+                <div class="col-auto">
                   <div class="input-group">
                     <input type="text" id="searchInput" name="search"
-                      class="form-control"
+                      class="form-control" style="width: 350px;"
                       value="{{ request.GET.search }}"
-                      style="width:350px;"
                       placeholder="Search Product Type, Variant, or Size...">
                   </div>
                 </div>
-                <div class="col-md-1">
+                <div class="col-auto">
                   <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                     <i class="la la-times"></i>
                   </button>

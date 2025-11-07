@@ -101,10 +101,22 @@ class ProductsForm(forms.ModelForm):
 
     def clean_size(self):
         name = self.cleaned_data['size'].strip()
-        obj, created = Sizes.objects.get_or_create(
-            size_label=name,
-            defaults={'created_by_admin': self.created_by_admin}
-        )
+        if not name:
+            return None
+        
+        # Try to get existing size (case-insensitive)
+        try:
+            obj = Sizes.objects.get(size_label__iexact=name)
+        except Sizes.DoesNotExist:
+            # Create new if doesn't exist
+            obj = Sizes.objects.create(
+                size_label=name,
+                created_by_admin=self.created_by_admin
+            )
+        except Sizes.MultipleObjectsReturned:
+            # If duplicates exist, use the first one
+            obj = Sizes.objects.filter(size_label__iexact=name).first()
+        
         return obj
 
     def clean_unit_price(self):
@@ -113,6 +125,10 @@ class ProductsForm(forms.ModelForm):
             unit_price=price,
             defaults={'created_by_admin': self.created_by_admin}
         )
+        # If existing record has no created_by_admin, update it
+        if not created and not obj.created_by_admin and self.created_by_admin:
+            obj.created_by_admin = self.created_by_admin
+            obj.save()
         return obj
 
     def clean_srp_price(self):
@@ -121,6 +137,10 @@ class ProductsForm(forms.ModelForm):
             srp_price=price,
             defaults={'created_by_admin': self.created_by_admin}
         )
+        # If existing record has no created_by_admin, update it
+        if not created and not obj.created_by_admin and self.created_by_admin:
+            obj.created_by_admin = self.created_by_admin
+            obj.save()
         return obj
 
 class ProductRecipeForm(forms.ModelForm):
@@ -162,6 +182,53 @@ class ExpensesForm(ModelForm):
             'date': forms.DateInput(attrs={'type': 'date'}),
         }
 
+class SalesExpensesForm(forms.Form):
+    """Combined form for adding sales with expenses"""
+    # Sales fields
+    sales_category = forms.CharField(
+        max_length=255,
+        label='Sales Category',
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter Sales Category'})
+    )
+    sales_amount = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        label='Sales Amount',
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Sales Amount'})
+    )
+    date = forms.DateField(
+        label='Date',
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+    )
+    sales_description = forms.CharField(
+        required=False,
+        label='Sales Description',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter Sales Description', 'rows': 3})
+    )
+    
+    # Expenses field
+    total_expenses = forms.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        label='Total Expenses',
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Enter Total Expenses'})
+    )
+    expenses_description = forms.CharField(
+        required=False,
+        label='Expenses Description',
+        widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter Expenses Description (Optional)', 'rows': 3})
+    )
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        sales_amount = cleaned_data.get('sales_amount')
+        total_expenses = cleaned_data.get('total_expenses')
+        
+        if sales_amount and total_expenses:
+            if total_expenses > sales_amount:
+                self.add_error('total_expenses', 'Expenses cannot exceed sales amount.')
+        
+        return cleaned_data
 
 class ProductBatchForm(ModelForm):
     deduct_raw_material = forms.BooleanField(
@@ -573,6 +640,12 @@ class StockChangesForm(ModelForm):
 class CustomUserCreationForm(forms.ModelForm):
     password1 = forms.CharField(widget=forms.PasswordInput, label="Password")
     password2 = forms.CharField(widget=forms.PasswordInput, label="Confirm Password")
+    user_type = forms.ChoiceField(
+        choices=[('', 'Select User Type'), ('staff', 'Staff')],
+        required=True,
+        label="User Type",
+        help_text="Administrator accounts can only be created by existing admins."
+    )
 
     class Meta:
         model = User
@@ -594,6 +667,17 @@ class CustomUserCreationForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data["password1"])
+
+        user.is_active = False
+        
+        user_type = self.cleaned_data.get('user_type')
+        if user_type == 'staff':
+            user.is_staff = True
+            user.is_superuser = False
+        else:
+            user.is_staff = False
+            user.is_superuser = False
+
         if commit:
             user.save()
         return user

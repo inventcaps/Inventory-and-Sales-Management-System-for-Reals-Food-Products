@@ -216,6 +216,7 @@
                     </div>
                 </li>
 
+                {% if user.is_superuser %}
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#financialMenu" 
                        aria-expanded="{% if request.resolver_match.url_name in 'monthly-report sales expenses financial-loss' %}true{% else %}false{% endif %}">
@@ -226,11 +227,11 @@
                             <li class="{% if request.resolver_match.url_name == 'monthly-report' %}active{% endif %}">
                                <a href="{% url 'monthly-report' %}"><span class="sub-item">Report</span></a>
                             </li>
-                            <li class="{% if request.resolver_match.url_name == 'sales' %}active{% endif %}">
-                                <a href="{% url 'sales' %}"><span class="sub-item">Sales</span></a>
+                            <li class="{% if request.resolver_match.url_name == 'salesexpenses' %}active{% endif %}">
+                                <a href="{% url 'salesexpenses' %}"><span class="sub-item">Sales & Expenses</span></a>
                             </li>
-                            <li class="{% if request.resolver_match.url_name == 'expenses' %}active{% endif %}">
-                                <a href="{% url 'expenses' %}"><span class="sub-item">Expenses</span></a>
+                            <li class="{% if request.resolver_match.url_name == 'withdrawalSales' %}active{% endif %}">
+                                <a href="{% url 'withdrawalSales' %}"><span class="sub-item">Withdrawal Sales</span></a>
                             </li>
                             <li class="{% if request.resolver_match.url_name == 'financial-loss' %}active{% endif %}">
                                 <a href="{% url 'financial-loss' %}"><span class="sub-item">Financial Loss</span></a>
@@ -238,6 +239,7 @@
                         </ul>
                     </div>
                 </li>
+                {% endif %}
 
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#withdrawalsMenu" 
@@ -255,10 +257,14 @@
                         </ul>
                     </div>
                 </li>
-                
+
                 <li class="nav-item"><a href="{% url 'historylog' %}"><i class="la la-history"></i><p>History Log</p></a></li>
                 <li class="nav-item"><a href="{% url 'user-activity' %}"><i class="la la-user"></i><p>User Activity</p></a></li>
+
+                {%if user.is_superuser %}
+                <li class="nav-item"><a href="{% url 'user-management' %}"><i class="la la-users"><p>User Management</p></i></a></li>
                 <li class="nav-item"><a href="#" id="backupBtn"><i class="la la-download"></i><p>Backup Database</p></a></li>
+                {% endif %}
             </ul>
         </div>
     </div>

@@ -23,9 +23,9 @@
           <div class="card-body">
             <!-- Date Filter -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
-              <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="2025-11" />
-              <button type="button" onclick="window.location.href='?show_all=true'" class="btn btn-info" title="Show all data">
-                <i class="la la-list"></i> Show All
+              <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" class="btn btn-info" onclick="toggleShowAll()">
+                Show All Data
               </button>
               <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
@@ -410,6 +410,17 @@ function updateSummaryCards(month) {
   document.getElementById("totalLoss").textContent = "₱" + totalLoss.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   document.getElementById("productLoss").textContent = "₱" + productLossTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
   document.getElementById("rawMaterialLoss").textContent = "₱" + rawMaterialLossTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function toggleShowAll() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('show_all')) {
+    params.delete('show_all');
+  } else {
+    params.set('show_all', '1');
+    params.delete('date_filter');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
 }
 </script>
 {% endblock %}

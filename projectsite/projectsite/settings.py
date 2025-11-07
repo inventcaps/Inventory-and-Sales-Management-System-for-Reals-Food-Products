@@ -1,10 +1,8 @@
 from pathlib import Path
 import os
 
-
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -19,7 +17,6 @@ ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.ngrok-free.app']
 CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok-free.app',
 ]
-
 
 # Application definition
 
@@ -55,6 +52,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'realsproj.middleware.UpdateLastActivityMiddleware',
+    'realsproj.middleware.SetCurrentUserMiddleware',  # Set current user for history logging
 ]
 
 ROOT_URLCONF = 'projectsite.urls'
@@ -76,9 +74,7 @@ TEMPLATES = [
     },
 ]
 
-
 WSGI_APPLICATION = 'projectsite.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
@@ -95,39 +91,28 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 #    }
 # }
 
+#DATABASES = {
+#  'default': {
+#      'ENGINE': 'django.db.backends.postgresql',
+#      'NAME': 'postgres',
+#      'USER': 'postgres',
+#      'PASSWORD': 'Reals_db_123',
+#      'HOST': 'db.rczsumkmhoxjaycvggzt.supabase.co',
+#      'PORT': '5432',
+#      'CONN_MAX_AGE': 600, 
+#  }
+#}
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
+        'NAME': 'reals_local',
         'USER': 'postgres',
-        'PASSWORD': 'Inventcaps_2025',
-        'HOST': 'db.bmpwrztfukjnzdubtjox.supabase.co',
+        'PASSWORD': 'admin',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'reals_local',
-#         'USER': 'postgres',
-#         'PASSWORD': 'admin',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-#     }
-# }
-
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'postgres',
-#         'USER': 'postgres',
-#         'PASSWORD': 'admin',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-#     }
-# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

@@ -13,12 +13,12 @@
                         type="month"
                         id="monthFilter"
                         class="form-control"
-                         style="width:180px;"
+                        style="width:180px;"
                         placeholder="Select month"
-                        value="{% if filter_month_value %}{{ filter_month_value }}{% else %}2025-11{% endif %}"
+                        value="{% if request.GET.month %}{{ request.GET.month }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}"
                     />
-                    <button type="button" onclick="window.location.href='?show_all=true'" class="btn btn-info" title="Show all data">
-                        <i class="la la-list"></i> Show All
+                    <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
+                        Show All Data
                     </button>
                     <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                         <i class="la la-times"></i>

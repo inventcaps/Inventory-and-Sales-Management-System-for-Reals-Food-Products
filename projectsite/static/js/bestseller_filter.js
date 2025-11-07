@@ -1,7 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
   const monthFilter = document.getElementById("monthFilter");
-  const yearFilter = document.getElementById("yearFilter");
-  const resetFilter = document.getElementById("resetFilter");
   const contentContainer = document.getElementById("bestsellerContent");
   const filterInfo = document.getElementById("filterInfo");
 
@@ -11,13 +9,17 @@ document.addEventListener("DOMContentLoaded", function () {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       let url = "/best-seller-products/?";
-      const params = new URLSearchParams();
+      const params = new URLSearchParams(window.location.search);
 
       if (monthFilter && monthFilter.value) {
-        params.append("month", monthFilter.value);
-      } 
-      else if (yearFilter && yearFilter.value) {
-        params.append("year", yearFilter.value);
+        params.set("month", monthFilter.value);
+        params.delete("show_all");
+      } else {
+        params.delete("month");
+      }
+
+      if (!monthFilter.value && params.get('show_all')) {
+        params.set('show_all', '1');
       }
 
       url += params.toString();
@@ -42,27 +44,16 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 300);
   }
 
-  function resetToCurrentMonth() {
-    if (monthFilter) monthFilter.value = "";
-    if (yearFilter) yearFilter.value = "";
-    fetchBestsellers();
-  }
-
-  function handleMonthChange() {
-    if (monthFilter.value && yearFilter) {
-      yearFilter.value = "";
-    }
-    fetchBestsellers();
-  }
-
-  function handleYearChange() {
-    if (yearFilter.value && monthFilter) {
-      monthFilter.value = "";
-    }
-    fetchBestsellers();
-  }
-
-  if (monthFilter) monthFilter.addEventListener("change", handleMonthChange);
-  if (yearFilter) yearFilter.addEventListener("change", handleYearChange);
-  if (resetFilter) resetFilter.addEventListener("click", resetToCurrentMonth);
+  if (monthFilter) monthFilter.addEventListener("change", fetchBestsellers);
 });
+
+function toggleShowAll() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('show_all')) {
+    params.delete('show_all');
+  } else {
+    params.set('show_all', '1');
+    params.delete('month');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
+}

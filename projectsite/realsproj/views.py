@@ -28,6 +28,7 @@ from realsproj.forms import (
     HistoryLogForm,
     SalesForm,
     ExpensesForm,
+    SalesExpensesForm,
     ProductBatchForm,
     ProductInventoryForm,
     RawMaterialBatchForm,
@@ -95,6 +96,30 @@ from django.db.models.functions import Cast
 import re
 from urllib.parse import urlparse, parse_qs
 from django.db.models import Count
+
+
+def get_or_create_auth_user(user):
+    """
+    Get or create AuthUser record from Django User.
+    This handles database sync issues when switching between databases.
+    """
+    try:
+        return AuthUser.objects.get(id=user.id)
+    except AuthUser.DoesNotExist:
+
+        return AuthUser.objects.create(
+            id=user.id,
+            password=user.password,
+            last_login=user.last_login,
+            is_superuser=user.is_superuser,
+            username=user.username,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            email=user.email,
+            is_staff=user.is_staff,
+            is_active=user.is_active,
+            date_joined=user.date_joined
+        )
 
 
 # Helper function for creating history logs
@@ -274,6 +299,7 @@ def revenue_change_api(request):
 
 
 def monthly_report(request):
+
     sales = (
         Sales.objects.annotate(month=TruncMonth("date"))
         .values("month")
@@ -326,8 +352,11 @@ def monthly_report(request):
         "summary": summary,
     })
 
-
+@login_required
 def monthly_report_export(request):
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to export financial reports.")
+        return redirect('home')
     response = HttpResponse(content_type="text/csv")
     response["Content-Disposition"] = 'attachment; filename="financial_report.csv"'
     response.write(u'\ufeff'.encode('utf8'))
@@ -565,6 +594,23 @@ def product_bulk_archive(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
+@require_http_methods(["POST"])
+def product_bulk_restore(request):
+    try:
+        ids = request.POST.get('ids', '').split(',')
+        ids = [int(id.strip()) for id in ids if id.strip()]
+        
+        if not ids:
+            return JsonResponse({'success': False, 'message': 'No products selected'})
+        
+        restored_count = Products.objects.filter(id__in=ids).update(is_archived=False)
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully restored {restored_count} product(s)'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
 class ProductCreateView(CreateView):
     model = Products
     form_class = ProductsForm
@@ -597,28 +643,9 @@ class ProductCreateView(CreateView):
                 request.POST['size_unit'] = unit_obj.id
             except SizeUnits.DoesNotExist:
                 pass
-
-        unit_price_val = request.POST.get('unit_price')
-        if unit_price_val:
-            try:
-                price_obj, created = UnitPrices.objects.get_or_create(
-                    unit_price=unit_price_val,
-                    defaults={'created_by_admin': AuthUser.objects.get(id=request.user.id)}
-                )
-                request.POST['unit_price'] = price_obj.id
-            except Exception:
-                pass
-
-        srp_price_val = request.POST.get('srp_price')
-        if srp_price_val:
-            try:
-                price_obj, created = SrpPrices.objects.get_or_create(
-                    srp_price=srp_price_val,
-                    defaults={'created_by_admin': AuthUser.objects.get(id=request.user.id)}
-                )
-                request.POST['srp_price'] = price_obj.id
-            except Exception:
-                pass
+        
+        # Note: unit_price and srp_price are handled by forms.py clean methods
+        # No need to process them here to avoid double conversion
         
         return super().post(request, *args, **kwargs)
 
@@ -654,6 +681,12 @@ class ProductsUpdateView(UpdateView):
     model = Products
     form_class = ProductsForm
     template_name = "prod_edit.html"
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        kwargs['created_by_admin'] = auth_user
+        return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -704,29 +737,8 @@ class ProductsUpdateView(UpdateView):
             except SizeUnits.DoesNotExist:
                 pass
         
-        # Handle unit_price
-        unit_price_val = request.POST.get('unit_price')
-        if unit_price_val:
-            try:
-                price_obj, created = UnitPrices.objects.get_or_create(
-                    unit_price=unit_price_val,
-                    defaults={'created_by_admin': AuthUser.objects.get(id=request.user.id)}
-                )
-                request.POST['unit_price'] = price_obj.id
-            except Exception:
-                pass
-        
-        # Handle srp_price
-        srp_price_val = request.POST.get('srp_price')
-        if srp_price_val:
-            try:
-                price_obj, created = SrpPrices.objects.get_or_create(
-                    srp_price=srp_price_val,
-                    defaults={'created_by_admin': AuthUser.objects.get(id=request.user.id)}
-                )
-                request.POST['srp_price'] = price_obj.id
-            except Exception:
-                pass
+        # Note: unit_price and srp_price are handled by forms.py clean methods
+        # No need to process them here to avoid double conversion
         
         # Store the current page in session
         referer = request.META.get('HTTP_REFERER', '')
@@ -941,6 +953,23 @@ def rawmaterial_bulk_archive(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
+@require_http_methods(["POST"])
+def rawmaterial_bulk_restore(request):
+    try:
+        ids = request.POST.get('ids', '').split(',')
+        ids = [int(id.strip()) for id in ids if id.strip()]
+        
+        if not ids:
+            return JsonResponse({'success': False, 'message': 'No raw materials selected'})
+        
+        restored_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=False)
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully restored {restored_count} raw material(s)'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
 class ArchivedRawMaterialsListView(ListView):
     model = RawMaterials
     template_name = 'archived_rawmaterials.html'
@@ -1029,9 +1058,17 @@ class RawMaterialsUpdateView(UpdateView):
 
 
 
-class RawMaterialsDeleteView(DeleteView):
+class RawMaterialsDeleteView(LoginRequiredMixin, DeleteView):
     model = RawMaterials
     success_url = reverse_lazy('rawmaterials')
+
+    def dispatch(self, request, *args, **kwargs):
+        # Restrict to superusers only
+        if not request.user.is_superuser:
+            messages.error(request, "❌ You don't have permission to delete raw materials.")
+            return redirect('rawmaterials-list')
+        return super().dispatch(request, *args, **kwargs)
+
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Raw Material deleted successfully.")
@@ -1066,6 +1103,8 @@ class HistoryLogList(ListView):
             queryset = queryset.filter(log_type__category=log_filter)
 
         # Apply date filter (month-based)
+        show_all = self.request.GET.get('show_all', '').strip()
+        
         if date_str:
             try:
                 # Convert YYYY-MM to start and end dates of the month
@@ -1083,18 +1122,26 @@ class HistoryLogList(ListView):
             except (ValueError, IndexError):
                 # If date format is invalid, skip the date filter
                 pass
-        else:
+        elif not show_all:
             today = timezone.now()
             import calendar
             last_day = calendar.monthrange(today.year, today.month)[1]
+            
             start_date = timezone.make_aware(datetime(today.year, today.month, 1))
             end_date = timezone.make_aware(datetime(today.year, today.month, last_day, 23, 59, 59))
-            queryset = queryset.filter(log_date__gte=start_date, log_date__lte=end_date)
+            
+            queryset = queryset.filter(
+                log_date__gte=start_date,
+                log_date__lte=end_date
+            )
 
         return queryset
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+
+        today = timezone.now()
+        context['current_month_value'] = today.strftime("%Y-%m")
         
         # Get unique admins and log types for the filter dropdowns
         context['admins'] = HistoryLog.objects.filter(
@@ -1123,13 +1170,13 @@ class SaleArchiveView(View):
         sale = get_object_or_404(Sales, pk=pk)
         sale.is_archived = True
         sale.save()
-        return redirect('sales')
+        return redirect('salesexpenses')
 
 class SaleArchiveOldView(View):
     def post(self, request):
         one_year_ago = timezone.now() - timedelta(days=365)
         Sales.objects.filter(is_archived=False, date__lt=one_year_ago).update(is_archived=True)
-        return redirect('sales')
+        return redirect('salesexpenses')
     
 class ArchivedSalesListView(ListView):
     model = Sales
@@ -1140,12 +1187,37 @@ class ArchivedSalesListView(ListView):
     def get_queryset(self):
         return Sales.objects.filter(is_archived=True).order_by('-date')
 
+class ArchivedSalesExpensesCombinedView(TemplateView):
+    """Combined view for archived sales and expenses with filtering"""
+    template_name = 'archived_sales_expenses.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Get filter type from query params
+        filter_type = self.request.GET.get('type', '')
+        
+        # Fetch archived sales
+        if not filter_type or filter_type == 'sales':
+            context['archived_sales'] = Sales.objects.filter(is_archived=True).order_by('-date')
+        else:
+            context['archived_sales'] = []
+        
+        # Fetch archived expenses
+        if not filter_type or filter_type == 'expenses':
+            context['archived_expenses'] = Expenses.objects.filter(is_archived=True).order_by('-date')
+        else:
+            context['archived_expenses'] = []
+        
+        return context
+
 class SaleUnarchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
         sale.is_archived = False
         sale.save()
-        return redirect('sales-archived-list')
+        messages.success(request, "✅ Sale restored successfully.")
+        return redirect('salesexpense-archive')
 
 @require_http_methods(["POST"])
 def sales_bulk_delete(request):
@@ -1211,11 +1283,18 @@ class SaleBulkDeleteView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
 
-class SalesList(ListView):
+class SalesExpensesList(ListView):
     model = Sales
     context_object_name = 'sales'
-    template_name = "sales_list.html"
+    template_name = "salesexpenses_list.html"
     paginate_by = 10
+
+    def dispatch(self, request, *args, **kwargs):
+        # Restrict to superusers only
+        if not request.user.is_superuser:
+            messages.error(request, " You don't have permission to access sales records.")
+            return redirect('home')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         # Exclude withdrawal-based sales (they have their own table below)
@@ -1241,17 +1320,18 @@ class SalesList(ListView):
         if category:
             qs = qs.filter(category__iexact=category)
 
-        # --- Month filter (YYYY-MM) ---
-        month = self.request.GET.get("month", "").strip()
-        if month:
+        date_filter = self.request.GET.get("date_filter", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
+        
+        if date_filter:
             try:
-                year_str, month_str = month.split("-")
+                year_str, month_str = date_filter.split("-")
                 year = int(year_str)
                 month_num = int(month_str.lstrip("0"))
                 qs = qs.filter(date__year=year, date__month=month_num)
             except ValueError:
                 pass
-        else:
+        elif not show_all:
             today = timezone.now()
             qs = qs.filter(date__year=today.year, date__month=today.month)
 
@@ -1284,8 +1364,7 @@ class SalesList(ListView):
         else:
             today = timezone.now()
             total_qs = total_qs.filter(date__year=today.year, date__month=today.month)
-        
-        # Apply category filter (only affects manual sales display, not total)
+         # Apply category filter (only affects manual sales display, not total)
         if category:
             total_qs = total_qs.filter(category__iexact=category)
         
@@ -1298,20 +1377,133 @@ class SalesList(ListView):
                 Q(description__icontains=query) |
                 Q(created_by_admin__username__icontains=query)
             )
-
-        # Calculate summary from ALL sales (including withdrawals)
-        context["sales_summary"] = total_qs.aggregate(
+        
+        # Calculate MANUAL sales summary (excludes withdrawal sales)
+        manual_sales_qs = Sales.objects.filter(is_archived=False).exclude(
+            Q(description__icontains="Order #") | Q(description__icontains="order #")
+        ).order_by("-date")
+        
+        # Apply same filters to manual sales
+        if month:
+            try:
+                year_str, month_str = month.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                manual_sales_qs = manual_sales_qs.filter(date__year=year, date__month=month_num)
+            except ValueError:
+                pass
+        else:
+            today = timezone.now()
+            manual_sales_qs = manual_sales_qs.filter(date__year=today.year, date__month=today.month)
+        
+        if category:
+            manual_sales_qs = manual_sales_qs.filter(category__iexact=category)
+        
+        if query:
+            manual_sales_qs = manual_sales_qs.filter(
+                Q(category__icontains=query) |
+                Q(amount__icontains=query) |
+                Q(date__icontains=query) |
+                Q(description__icontains=query) |
+                Q(created_by_admin__username__icontains=query)
+            )
+        
+        context["manual_sales_summary"] = manual_sales_qs.aggregate(
             total_sales=Sum("amount"),
             average_sales=Avg("amount"),
             sales_count=Count("id"),
         )
+        
+        # Calculate WITHDRAWAL sales summary (only from Sales table with "Order #")
+        withdrawal_sales_qs = Sales.objects.filter(
+            is_archived=False
+        ).filter(
+            Q(description__icontains="Order #") | Q(description__icontains="order #")
+        ).order_by("-date")
+        
+        # Apply same month filter
+        if month:
+            try:
+                year_str, month_str = month.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=year, date__month=month_num)
+            except ValueError:
+                pass
+        else:
+            today = timezone.now()
+            withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=today.year, date__month=today.month)
+        
+        context["withdrawal_sales_summary"] = withdrawal_sales_qs.aggregate(
+            total_sales=Sum("amount"),
+            average_sales=Avg("amount"),
+            sales_count=Count("id"),
+        )
+        
+        # Calculate TOTAL sales summary (manual + withdrawal)
+        manual_total = context["manual_sales_summary"]["total_sales"] or 0
+        withdrawal_total = context["withdrawal_sales_summary"]["total_sales"] or 0
+        manual_count = context["manual_sales_summary"]["sales_count"] or 0
+        withdrawal_count = context["withdrawal_sales_summary"]["sales_count"] or 0
+        
+        context["sales_summary"] = {
+            'total_sales': manual_total + withdrawal_total,
+            'sales_count': manual_count + withdrawal_count,
+        }
+        
+        # Add expenses summary for combined display
+        expenses_qs = Expenses.objects.filter(is_archived=False)
+        # Apply same month filter
+        if month:
+            try:
+                year_str, month_str = month.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                expenses_qs = expenses_qs.filter(date__year=year, date__month=month_num)
+            except ValueError:
+                pass
+        else:
+            today = timezone.now()
+            expenses_qs = expenses_qs.filter(date__year=today.year, date__month=today.month)
+        
+        context["expenses_summary"] = expenses_qs.aggregate(
+            total_expenses=Sum("amount"),
+            average_expenses=Avg("amount"),
+            expenses_count=Count("id"),
+        )
+        
+        # Calculate net profit
+        total_sales = context["sales_summary"]["total_sales"] or 0
+        total_expenses = context["expenses_summary"]["total_expenses"] or 0
+        context["net_profit"] = total_sales - total_expenses
+        
+        # Add expenses list for display (limit to recent 10)
+        context["expenses_list"] = expenses_qs.order_by("-date")[:10]
+        
         # Format categories for display (exclude withdrawal-based sales)
         raw_categories = Sales.objects.filter(
             is_archived=False
         ).exclude(
             Q(description__icontains="Order #") | Q(description__icontains="order #")
         ).values_list('category', flat=True).distinct()
-        categories = [(cat, cat.replace('_', ' ').title()) for cat in raw_categories]
+        
+        # Create clean list of unique categories with proper formatting
+        # Convert UPPERCASE_WITH_UNDERSCORE to Title Case
+        # Use a dict to ensure uniqueness by normalized display name
+        categories_dict = {}
+        for cat in raw_categories:
+            if cat:  # Skip empty/None values
+                # Replace underscores with spaces and convert to title case for display
+                formatted = cat.replace('_', ' ').title()
+                
+                # Use the formatted display name as the key to prevent duplicates
+                # This ensures "Physical Store" and "PHYSICAL_STORE" are treated as the same
+                if formatted not in categories_dict:
+                    # Prefer uppercase version for the value (for consistency with DB)
+                    categories_dict[formatted] = {'value': cat.upper().replace(' ', '_'), 'display': formatted}
+        
+        # Sort by display name
+        categories = sorted(categories_dict.values(), key=lambda x: x['display'])
         context['categories'] = categories
 
         # Add withdrawal-based sales grouped by order_group_id
@@ -1368,6 +1560,10 @@ class SalesList(ListView):
             })
         
         context['withdrawal_orders'] = sorted(withdrawal_orders, key=lambda x: x['date'], reverse=True)
+        
+        # Add current month value for default display
+        today = timezone.now()
+        context['current_month_value'] = today.strftime("%Y-%m")
 
         return context
 
@@ -1376,7 +1572,7 @@ class SalesCreateView(CreateView):
     model = Sales
     form_class = SalesForm
     template_name = 'sales_add.html'
-    success_url = reverse_lazy('sales')
+    success_url = reverse_lazy('salesexpenses')
 
     @transaction.atomic
     def form_valid(self, form):
@@ -1399,7 +1595,7 @@ class SalesUpdateView(UpdateView):
     model = Sales
     form_class = SalesForm
     template_name = 'sales_edit.html'
-    success_url = reverse_lazy('sales')
+    success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -1408,7 +1604,14 @@ class SalesUpdateView(UpdateView):
 
 class SalesDeleteView(DeleteView):
     model = Sales
-    success_url = reverse_lazy('sales')
+    success_url = reverse_lazy('salesexpenses')
+
+    def dispatch(self, request, *args, **kwargs):
+        # Restrict to superusers only
+        if not request.user.is_superuser:
+            messages.error(request, "❌ You don't have permission to delete sales records.")
+            return redirect('withdrawalSales')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Sale deleted successfully.")
@@ -1428,7 +1631,7 @@ class WithdrawalOrderDetailView(View):
         
         if not withdrawals.exists():
             messages.error(request, "Order not found.")
-            return redirect('sales')
+            return redirect('withdrawalSales')
         
         first_withdrawal = withdrawals.first()
         
@@ -1606,7 +1809,7 @@ class WithdrawalOrderUpdatePaymentView(View):
         
         if not withdrawals.exists():
             messages.error(request, "Order not found.")
-            return redirect('sales')
+            return redirect('salesexpenses')
         
         # Determine the amount for sales entry
         sales_amount = Decimal(0)
@@ -1693,86 +1896,112 @@ class WithdrawalOrderUpdatePaymentView(View):
         else:  # UNPAID
             messages.success(request, "✅ Order marked as UNPAID. No sales recorded.")
         
-        return redirect('sales')
+        return redirect('withdrawalSales')
 
 
-class ExpensesList(ListView):
-    model = Expenses
-    context_object_name = 'expenses'
-    template_name = "expenses_list.html"
-    paginate_by = 10
-
+class WithdrawalSalesList(ListView):
+    """View for displaying sales generated from withdrawals with grouped orders"""
+    model = Withdrawals
+    context_object_name = 'withdrawal_orders'
+    template_name = 'withdrawal_sales_list.html'
+    paginate_by = 20
+    
     def get_queryset(self):
-        # Start with active (non-archived) records
-        qs = Expenses.objects.filter(is_archived=False).select_related("created_by_admin").order_by("-date")
-
-        # --- Search query ---
-        query = self.request.GET.get("q", "").strip()
-        if query:
-            qs = qs.filter(
-                Q(category__icontains=query) |
-                Q(amount__icontains=query) |
-                Q(date__icontains=query) |
-                Q(description__icontains=query) |
-                Q(created_by_admin__username__icontains=query)
-            )
-
-        # --- Category filter ---
-        category = self.request.GET.get("category", "").strip()
-        if category:
-            qs = qs.filter(category__iexact=category)
-
-        # --- Month filter (YYYY-MM) ---
+        # Get withdrawals that are sold through orders/consignment/reseller
+        qs = Withdrawals.objects.filter(
+            reason='SOLD',
+            is_archived=False,
+            sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
+        ).select_related("created_by_admin").order_by("-date")
+        
+        # Apply filters
         show_all = self.request.GET.get("show_all", "").strip()
         month = self.request.GET.get("month", "").strip()
+        channel = self.request.GET.get("channel", "").strip()
         
-        if show_all == "true":
-            pass
-        elif month:
-            try:
-                year_str, month_str = month.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                qs = qs.filter(date__year=year, date__month=month_num)
-            except ValueError:
-                pass
-        else:
-            # Default: show only current month
-            today = timezone.now()
-            qs = qs.filter(date__year=today.year, date__month=today.month)
-
+        # Month filter
+        if show_all != "true":
+            if month:
+                try:
+                    year_str, month_str = month.split("-")
+                    year = int(year_str)
+                    month_num = int(month_str.lstrip("0"))
+                    qs = qs.filter(date__year=year, date__month=month_num)
+                except ValueError:
+                    pass
+            else:
+                # Default: show only current month
+                today = timezone.now()
+                qs = qs.filter(date__year=today.year, date__month=today.month)
+        
+        # Channel filter
+        if channel:
+            qs = qs.filter(sales_channel=channel)
+        
         self._full_queryset = qs
-        return qs
-
+        
+        # Group by order_group_id
+        from collections import defaultdict
+        grouped_orders = defaultdict(list)
+        for withdrawal in qs:
+            if withdrawal.order_group_id:
+                grouped_orders[withdrawal.order_group_id].append(withdrawal)
+            else:
+                # For withdrawals without order_group_id, treat each as individual
+                grouped_orders[f"single_{withdrawal.id}"].append(withdrawal)
+        
+        # Convert to list of dicts for template
+        withdrawal_orders = []
+        for group_id, withdrawals in grouped_orders.items():
+            first_withdrawal = withdrawals[0]
+            # Check if this is a real order group or a single withdrawal
+            is_single = isinstance(group_id, str) and group_id.startswith('single_')
+            actual_group_id = group_id if not is_single else None
+            
+            withdrawal_orders.append({
+                'group_id': group_id,
+                'actual_group_id': actual_group_id,
+                'is_single': is_single,
+                'customer_name': first_withdrawal.customer_name,
+                'sales_channel': first_withdrawal.get_sales_channel_display(),
+                'payment_status': first_withdrawal.payment_status,
+                'payment_status_display': first_withdrawal.get_payment_status_display() if first_withdrawal.payment_status else 'N/A',
+                'paid_amount': first_withdrawal.paid_amount,
+                'date': first_withdrawal.date,
+                'item_count': len(withdrawals),
+                'withdrawals': withdrawals,
+            })
+        
+        return sorted(withdrawal_orders, key=lambda x: x['date'], reverse=True)
+    
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-
-        full_qs = getattr(self, "_full_queryset", Expenses.objects.filter(is_archived=False))
-
-        context["expenses_summary"] = full_qs.aggregate(
-            total_expenses=Sum("amount"),
-            average_expenses=Avg("amount"),
-            expenses_count=Count("id"),
-        )
-
-        categories = Expenses.objects.filter(is_archived=False).values_list('category', flat=True).distinct()
-        context["categories"] = categories
-
+        
+        # Get unique sales channels for filter
+        channels = Withdrawals.objects.filter(
+            reason='SOLD',
+            is_archived=False,
+            sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
+        ).values_list('sales_channel', flat=True).distinct()
+        context["channels"] = channels
+        
         return context
-    
+
+
 class ExpenseArchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
         expense.is_archived = True
         expense.save()
-        return redirect('expenses')
+        messages.success(request, "✅ Expense archived successfully.")
+        return redirect('salesexpenses')
 
 class ExpenseArchiveOldView(View):
     def post(self, request):
         one_year_ago = timezone.now() - timedelta(days=365)
         Expenses.objects.filter(is_archived=False, date__lt=one_year_ago).update(is_archived=True)
-        messages.success(request, "📦 Old expenses archived successfully.")
-        return redirect('expenses')
+        messages.success(request, " Old expenses archived successfully.")
+        return redirect('salesexpenses')
 
 @require_http_methods(["POST"])
 def expenses_bulk_delete(request):
@@ -1822,13 +2051,14 @@ class ExpenseUnarchiveView(View):
         expense = get_object_or_404(Expenses, pk=pk)
         expense.is_archived = False
         expense.save()
-        return redirect('expenses-archived-list')
+        messages.success(request, "✅ Expense restored successfully.")
+        return redirect('salesexpense-archive')
 
 class ExpensesCreateView(CreateView):
     model = Expenses
     form_class = ExpensesForm
     template_name = 'expenses_add.html'
-    success_url = reverse_lazy('expenses')
+    success_url = reverse_lazy('salesexpenses')
 
     @transaction.atomic
     def form_valid(self, form):
@@ -1852,20 +2082,80 @@ class ExpensesUpdateView(UpdateView):
     model = Expenses
     form_class = ExpensesForm
     template_name = 'expenses_edit.html'
-    success_url = reverse_lazy('expenses')
+    success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
         response = super().form_valid(form)
         messages.success(self.request, "✏️ Expense updated successfully.")
         return response
 
-class ExpensesDeleteView(DeleteView):
+class ExpensesDeleteView(LoginRequiredMixin, DeleteView):
     model = Expenses
-    success_url = reverse_lazy('expenses')
+    success_url = reverse_lazy('salesexpenses')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "❌ You don't have permission to delete expense records.")
+            return redirect('expenses')
+        return super().dispatch(request, *args, **kwargs)
+
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Expense deleted successfully.")
         return super().get_success_url()
+
+
+class SalesExpensesCreateView(View):
+    """View for creating both sales and expenses together"""
+    template_name = 'sales_expenses_add.html'
+    
+    def get(self, request):
+        form = SalesExpensesForm()
+        return render(request, self.template_name, {'form': form})
+    
+    @transaction.atomic
+    def post(self, request):
+        form = SalesExpensesForm(request.POST)
+        
+        if form.is_valid():
+            try:
+                auth_user = AuthUser.objects.get(id=request.user.id)
+                
+                # Create Sales record
+                sales = Sales.objects.create(
+                    category=form.cleaned_data['sales_category'],
+                    amount=form.cleaned_data['sales_amount'],
+                    date=form.cleaned_data['date'],
+                    description=form.cleaned_data['sales_description'] or '',
+                    created_by_admin=auth_user,
+                    is_archived=False
+                )
+                
+                # Create Expenses record with "Sales-related expenses" as category
+                expenses = Expenses.objects.create(
+                    category=f"Expenses for {form.cleaned_data['sales_category']}",
+                    amount=form.cleaned_data['total_expenses'],
+                    date=form.cleaned_data['date'],
+                    description=form.cleaned_data['expenses_description'] or 'Auto-generated from sales entry',
+                    created_by_admin=auth_user,
+                    is_archived=False
+                )
+                
+                # Calculate profit
+                profit = form.cleaned_data['sales_amount'] - form.cleaned_data['total_expenses']
+                
+                messages.success(
+                    request, 
+                    f"✅ Sales & Expenses recorded successfully! Net Profit: ₱{profit:,.2f}"
+                )
+                return redirect('salesexpenses')
+                
+            except Exception as e:
+                messages.error(request, f"Failed to create sales & expenses: {e}")
+                return render(request, self.template_name, {'form': form})
+        else:
+            messages.error(request, "Please correct the errors below.")
+            return render(request, self.template_name, {'form': form})
 
 
 class ProductBatchList(ListView):
@@ -1883,9 +2173,9 @@ class ProductBatchList(ListView):
             .order_by('-id')
         )
 
-        # Unified search field for Product Type, Variant, and Size
         search = self.request.GET.get("search", "").strip()
-        date_created = self.request.GET.get("date_created", "").strip()
+        date_filter = self.request.GET.get("date_filter", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
 
         if search:
             queryset = queryset.filter(
@@ -1894,22 +2184,36 @@ class ProductBatchList(ListView):
                 Q(product__size__size_label__icontains=search)
             )
 
-        show_all = self.request.GET.get("show_all", "").strip()
-        
-        if show_all == "true":
-            pass
-        elif date_created:
+        if date_filter:
             try:
-                parsed_date = datetime.strptime(date_created, "%Y-%m")
-                queryset = queryset.filter(batch_date__year=parsed_date.year, batch_date__month=parsed_date.month)
+                parsed_date = datetime.strptime(date_filter, "%Y-%m")
+                queryset = queryset.filter(
+                    batch_date__year=parsed_date.year,
+                    batch_date__month=parsed_date.month
+                )
             except ValueError:
                 pass
-        else:
+        elif not show_all:
+            # Default: show only current month
             today = timezone.now()
-            queryset = queryset.filter(batch_date__year=today.year, batch_date__month=today.month)
+            queryset = queryset.filter(
+                batch_date__year=today.year,
+                batch_date__month=today.month
+            )
 
         return queryset
     
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        today = timezone.now()
+        month_names = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"]
+        context['current_month_display'] = f"{month_names[today.month - 1]} {today.year}"
+        context['current_month_value'] = today.strftime("%Y-%m")
+        return context
+    
+
 class ProductBatchCreateView(CreateView):
     model = ProductBatches
     form_class = ProductBatchForm
@@ -1936,6 +2240,13 @@ class ProductBatchUpdateView(UpdateView):
 class ProductBatchDeleteView(DeleteView):
     model = ProductBatches
     success_url = reverse_lazy("product-batch")
+
+    def dispatch(self, request, *args, **kwargs):
+        # Restrict to superusers only
+        if not request.user.is_superuser:
+            messages.error(request, "❌ You don't have permission to delete product batches.")
+            return redirect('product-batch')
+        return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Product Batch deleted successfully.")
@@ -2014,7 +2325,23 @@ def product_batch_bulk_archive(request):
         })
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
-    
+
+@require_http_methods(["POST"])
+def product_batch_bulk_restore(request):
+    try:
+        ids = request.POST.get('ids', '').split(',')
+        ids = [int(id.strip()) for id in ids if id.strip()]
+        
+        if not ids:
+            return JsonResponse({'success': False, 'message': 'No batches selected'})
+        
+        restored_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=False)
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully restored {restored_count} batch(es)'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 class ProductInventoryList(ListView):
     model = ProductInventory
@@ -2092,6 +2419,7 @@ class RawMaterialBatchList(ListView):
 
         query = self.request.GET.get("q", "").strip()
         date_filter = self.request.GET.get("date_filter", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
 
         if query:
             queryset = queryset.filter(
@@ -2103,12 +2431,9 @@ class RawMaterialBatchList(ListView):
                 Q(created_by_admin__username__icontains=query)
             )
 
-        show_all = self.request.GET.get("show_all", "").strip()
-        
-        if show_all == "true":
-            pass
-        elif date_filter:
+        if date_filter:
             try:
+                # Parse only year and month (from YYYY-MM)
                 parsed_date = datetime.strptime(date_filter, "%Y-%m")
                 queryset = queryset.filter(
                     Q(batch_date__year=parsed_date.year, batch_date__month=parsed_date.month) |
@@ -2117,12 +2442,25 @@ class RawMaterialBatchList(ListView):
                 )
             except ValueError:
                 pass
-        else:
-            # Default: show only current month
+        elif not show_all:
             today = timezone.now()
-            queryset = queryset.filter(batch_date__year=today.year, batch_date__month=today.month)
+            queryset = queryset.filter(
+                Q(batch_date__year=today.year, batch_date__month=today.month) |
+                Q(received_date__year=today.year, received_date__month=today.month) |
+                Q(expiration_date__year=today.year, expiration_date__month=today.month)
+            )
 
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.now()
+        month_names = ["January", "February", "March", "April", "May", "June",
+                      "July", "August", "September", "October", "November", "December"]
+        context['current_month_display'] = f"{month_names[today.month - 1]} {today.year}"
+        context['current_month_value'] = today.strftime("%Y-%m")
+        return context
+
 
 class RawMaterialBatchCreateView(CreateView):
     model = RawMaterialBatches
@@ -2141,9 +2479,15 @@ class RawMaterialBatchUpdateView(UpdateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
     
-class RawMaterialBatchDeleteView(DeleteView):
+class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
     model = RawMaterialBatches
     success_url = reverse_lazy('rawmaterial-batch')
+
+    def dispatch(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "❌ You don't have permission to delete product batches.")
+            return redirect('rawmaterial-batch')
+        return super().dispatch(request, *args, **kwargs)
 
 
 class RawMaterialBatchArchiveView(View):
@@ -2331,14 +2675,382 @@ class ProductAttributesView(LoginRequiredMixin, TemplateView):
         context['srp_prices'] = SrpPrices.objects.all().order_by('srp_price')
         return context
 
-from .attribute_views import (
-    ProductTypeAddView, ProductTypeEditView, ProductTypeDeleteView,
-    ProductVariantAddView, ProductVariantEditView, ProductVariantDeleteView,
-    SizeAddView, SizeEditView, SizeDeleteView,
-    SizeUnitAddView, SizeUnitEditView, SizeUnitDeleteView,
-    UnitPriceAddView, UnitPriceEditView, UnitPriceDeleteView,
-    SrpPriceAddView, SrpPriceEditView, SrpPriceDeleteView
-)
+
+# Product Type CRUD
+@method_decorator(login_required, name='dispatch')
+class ProductTypeAddView(View):
+    def post(self, request):
+        from django.db import IntegrityError
+        name = request.POST.get('name')
+        if name:
+            try:
+                auth_user = AuthUser.objects.get(id=request.user.id)
+                ProductTypes.objects.create(name=name, created_by_admin=auth_user)
+                messages.success(request, 'Product Type added successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Product Type already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class ProductTypeEditView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        product_type = get_object_or_404(ProductTypes, pk=pk)
+        name = request.POST.get('name')
+        if name:
+            try:
+                product_type.name = name
+                product_type.save()
+                messages.success(request, 'Product Type updated successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Product Type name already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class ProductTypeDeleteView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        product_type = get_object_or_404(ProductTypes, pk=pk)
+        try:
+            product_type.delete()
+            messages.success(request, 'Product Type deleted successfully!')
+        except IntegrityError:
+            messages.error(request, '❌ Cannot delete this Product Type because it is being used by existing products.')
+        return redirect('product-attributes')
+
+
+# Product Variant CRUD
+@method_decorator(login_required, name='dispatch')
+class ProductVariantAddView(View):
+    def post(self, request):
+        from django.db import IntegrityError
+        name = request.POST.get('name')
+        if name:
+            try:
+                auth_user = AuthUser.objects.get(id=request.user.id)
+                ProductVariants.objects.create(name=name, created_by_admin=auth_user)
+                messages.success(request, 'Product Variant added successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Product Variant already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class ProductVariantEditView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        product_variant = get_object_or_404(ProductVariants, pk=pk)
+        name = request.POST.get('name')
+        if name:
+            try:
+                product_variant.name = name
+                product_variant.save()
+                messages.success(request, 'Product Variant updated successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Product Variant name already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class ProductVariantDeleteView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        product_variant = get_object_or_404(ProductVariants, pk=pk)
+        try:
+            product_variant.delete()
+            messages.success(request, 'Product Variant deleted successfully!')
+        except IntegrityError:
+            messages.error(request, '❌ Cannot delete this Product Variant because it is being used by existing products.')
+        return redirect('product-attributes')
+
+
+# Size CRUD
+@method_decorator(login_required, name='dispatch')
+class SizeAddView(View):
+    def post(self, request):
+        from django.db import IntegrityError
+        size_label = request.POST.get('size_label')
+        if size_label:
+            try:
+                auth_user = AuthUser.objects.get(id=request.user.id)
+                Sizes.objects.create(size_label=size_label, created_by_admin=auth_user)
+                messages.success(request, 'Size added successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Size already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class SizeEditView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        size = get_object_or_404(Sizes, pk=pk)
+        size_label = request.POST.get('size_label')
+        if size_label:
+            try:
+                size.size_label = size_label
+                size.save()
+                messages.success(request, 'Size updated successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Size already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class SizeDeleteView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        size = get_object_or_404(Sizes, pk=pk)
+        try:
+            size.delete()
+            messages.success(request, 'Size deleted successfully!')
+        except IntegrityError:
+            messages.error(request, '❌ Cannot delete this Size because it is being used by existing products.')
+        return redirect('product-attributes')
+
+
+# Size Unit CRUD
+@method_decorator(login_required, name='dispatch')
+class SizeUnitAddView(View):
+    def post(self, request):
+        from django.db import IntegrityError
+        unit_name = request.POST.get('unit_name', '').strip()
+        if unit_name:
+            # Check if already exists (case-insensitive)
+            if SizeUnits.objects.filter(unit_name__iexact=unit_name).exists():
+                messages.error(request, '❌ This Size Unit already exists!')
+                return redirect('product-attributes')
+            
+            try:
+                auth_user = AuthUser.objects.get(id=request.user.id)
+                SizeUnits.objects.create(unit_name=unit_name, created_by_admin=auth_user)
+                messages.success(request, '✅ Size Unit added successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Size Unit already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class SizeUnitEditView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        size_unit = get_object_or_404(SizeUnits, pk=pk)
+        unit_name = request.POST.get('unit_name', '').strip()
+        if unit_name:
+            # Check if another record with same name exists (excluding current)
+            if SizeUnits.objects.filter(unit_name__iexact=unit_name).exclude(pk=pk).exists():
+                messages.error(request, '❌ This Size Unit already exists!')
+                return redirect('product-attributes')
+            
+            try:
+                size_unit.unit_name = unit_name
+                size_unit.save()
+                messages.success(request, '✅ Size Unit updated successfully!')
+            except IntegrityError:
+                messages.error(request, '❌ This Size Unit already exists!')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class SizeUnitDeleteView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        size_unit = get_object_or_404(SizeUnits, pk=pk)
+        try:
+            size_unit.delete()
+            messages.success(request, 'Size Unit deleted successfully!')
+        except IntegrityError:
+            messages.error(request, '❌ Cannot delete this Size Unit because it is being used by existing products.')
+        return redirect('product-attributes')
+
+
+# Unit Price CRUD
+@method_decorator(login_required, name='dispatch')
+class UnitPriceAddView(View):
+    def post(self, request):
+        from django.db import IntegrityError
+        unit_price = request.POST.get('unit_price', '').strip()
+        
+        if not unit_price:
+            messages.error(request, '❌ Please enter a price!')
+            return redirect('product-attributes')
+        
+        try:
+            # Convert to Decimal for validation
+            price_value = Decimal(unit_price)
+            
+            # Validate positive number
+            if price_value <= 0:
+                messages.error(request, '❌ Price must be greater than zero!')
+                return redirect('product-attributes')
+            
+        except (InvalidOperation, ValueError):
+            messages.error(request, '❌ Invalid price format! Please enter a valid number.')
+            return redirect('product-attributes')
+        
+        # Check if already exists
+        if UnitPrices.objects.filter(unit_price=price_value).exists():
+            messages.error(request, f'❌ Unit Price ₱{price_value} already exists!')
+            return redirect('product-attributes')
+        
+        try:
+            auth_user = AuthUser.objects.get(id=request.user.id)
+            UnitPrices.objects.create(unit_price=price_value, created_by_admin=auth_user)
+            messages.success(request, f'✅ Unit Price ₱{price_value} added successfully!')
+        except IntegrityError as e:
+            messages.error(request, f'❌ Database error: This Unit Price already exists!')
+        except Exception as e:
+            messages.error(request, f'❌ Error: {str(e)}')
+        
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class UnitPriceEditView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        unit_price_obj = get_object_or_404(UnitPrices, pk=pk)
+        unit_price = request.POST.get('unit_price', '').strip()
+        if unit_price:
+            try:
+                # Convert to Decimal for comparison
+                price_value = Decimal(unit_price)
+                
+                # Validate positive number
+                if price_value <= 0:
+                    messages.error(request, '❌ Price must be greater than zero!')
+                    return redirect('product-attributes')
+                
+                # Check if another record with same price exists (excluding current)
+                if UnitPrices.objects.filter(unit_price=price_value).exclude(pk=pk).exists():
+                    messages.error(request, '❌ This Unit Price already exists!')
+                    return redirect('product-attributes')
+                
+                unit_price_obj.unit_price = price_value
+                unit_price_obj.save()
+                messages.success(request, '✅ Unit Price updated successfully!')
+            except InvalidOperation:
+                messages.error(request, '❌ Invalid price format! Please enter a valid number.')
+            except ValueError:
+                messages.error(request, '❌ Invalid price value!')
+            except IntegrityError as e:
+                messages.error(request, f'❌ Database error: {str(e)}')
+            except Exception as e:
+                messages.error(request, f'❌ Error updating Unit Price: {str(e)}')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class UnitPriceDeleteView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        unit_price = get_object_or_404(UnitPrices, pk=pk)
+        
+        # Check if being used by products
+        products_using = Products.objects.filter(unit_price_id=pk)
+        if products_using.exists():
+            count = products_using.count()
+            messages.error(request, f'❌ Cannot delete this Unit Price because it is being used by {count} product(s).')
+            return redirect('product-attributes')
+        
+        try:
+            unit_price.delete()
+            messages.success(request, '✅ Unit Price deleted successfully!')
+        except IntegrityError:
+            messages.error(request, '❌ Cannot delete this Unit Price because it is being used by existing products.')
+        except Exception as e:
+            messages.error(request, f'❌ Error deleting Unit Price: {str(e)}')
+        return redirect('product-attributes')
+
+
+# SRP Price CRUD
+@method_decorator(login_required, name='dispatch')
+class SrpPriceAddView(View):
+    def post(self, request):
+        from django.db import IntegrityError
+        srp_price = request.POST.get('srp_price', '').strip()
+        
+        if not srp_price:
+            messages.error(request, '❌ Please enter a price!')
+            return redirect('product-attributes')
+        
+        try:
+            # Convert to Decimal for validation
+            price_value = Decimal(srp_price)
+            
+            # Validate positive number
+            if price_value <= 0:
+                messages.error(request, '❌ Price must be greater than zero!')
+                return redirect('product-attributes')
+            
+        except (InvalidOperation, ValueError):
+            messages.error(request, '❌ Invalid price format! Please enter a valid number.')
+            return redirect('product-attributes')
+        
+        # Check if already exists
+        if SrpPrices.objects.filter(srp_price=price_value).exists():
+            messages.error(request, f'❌ SRP Price ₱{price_value} already exists!')
+            return redirect('product-attributes')
+        
+        try:
+            auth_user = AuthUser.objects.get(id=request.user.id)
+            SrpPrices.objects.create(srp_price=price_value, created_by_admin=auth_user)
+            messages.success(request, f'✅ SRP Price ₱{price_value} added successfully!')
+        except IntegrityError:
+            messages.error(request, f'❌ This SRP Price already exists!')
+        except Exception as e:
+            messages.error(request, f'❌ Error adding SRP Price. Please try again.')
+        
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class SrpPriceEditView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError
+        srp_price_obj = get_object_or_404(SrpPrices, pk=pk)
+        srp_price = request.POST.get('srp_price', '').strip()
+        if srp_price:
+            try:
+                # Convert to Decimal for comparison
+                price_value = Decimal(srp_price)
+                
+                # Validate positive number
+                if price_value <= 0:
+                    messages.error(request, '❌ Price must be greater than zero!')
+                    return redirect('product-attributes')
+                
+                # Check if another record with same price exists (excluding current)
+                if SrpPrices.objects.filter(srp_price=price_value).exclude(pk=pk).exists():
+                    messages.error(request, '❌ This SRP Price already exists!')
+                    return redirect('product-attributes')
+                
+                srp_price_obj.srp_price = price_value
+                srp_price_obj.save()
+                messages.success(request, '✅ SRP Price updated successfully!')
+            except InvalidOperation:
+                messages.error(request, '❌ Invalid price format! Please enter a valid number.')
+            except ValueError:
+                messages.error(request, '❌ Invalid price value!')
+            except IntegrityError as e:
+                messages.error(request, f'❌ Database error: {str(e)}')
+            except Exception as e:
+                messages.error(request, f'❌ Error updating SRP Price: {str(e)}')
+        return redirect('product-attributes')
+
+@method_decorator(login_required, name='dispatch')
+class SrpPriceDeleteView(View):
+    def post(self, request, pk):
+        from django.db import IntegrityError, connection
+        srp_price = get_object_or_404(SrpPrices, pk=pk)
+        
+        # Check if being used by products
+        products_using = Products.objects.filter(srp_price_id=pk)
+        if products_using.exists():
+            count = products_using.count()
+            messages.error(request, f'❌ Cannot delete this SRP Price because it is being used by {count} product(s).')
+            return redirect('product-attributes')
+        
+        try:
+            srp_price.delete()
+            messages.success(request, '✅ SRP Price deleted successfully!')
+        except IntegrityError:
+            messages.error(request, '❌ Cannot delete this SRP Price because it is being used by existing products.')
+        except Exception as e:
+            messages.error(request, f'❌ Error deleting SRP Price: {str(e)}')
+        return redirect('product-attributes')
+
 
 class WithdrawSuccessView(ListView):
     model = Withdrawals
@@ -2386,25 +3098,18 @@ class WithdrawSuccessView(ListView):
                     queryset = queryset.filter(reason=value)
                     break
 
-        # Check for show_all parameter
+        date_filter = request.GET.get("date_filter", "").strip()
         show_all = request.GET.get("show_all", "").strip()
-        date_val = request.GET.get("date")
         
-        if show_all == "true":
-            pass
-        elif date_val:
+        if date_filter:
             try:
-                if len(date_val) == 7:  # YYYY-MM
-                    year, month = map(int, date_val.split("-"))
-                    queryset = queryset.filter(date__year=year, date__month=month)
-                elif len(date_val) == 10:  # YYYY-MM-DD
-                    year, month, day = map(int, date_val.split("-"))
-                    queryset = queryset.filter(date__year=year, date__month=month, date__day=day)
-                elif len(date_val) == 4:  # YYYY
-                    queryset = queryset.filter(date__year=int(date_val))
+                year_str, month_str = date_filter.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                queryset = queryset.filter(date__year=year, date__month=month_num)
             except ValueError:
                 pass
-        else:
+        elif not show_all:
             today = timezone.now()
             queryset = queryset.filter(date__year=today.year, date__month=today.month)
 
@@ -2416,6 +3121,9 @@ class WithdrawSuccessView(ListView):
         from django.core.paginator import Paginator
         
         context = super().get_context_data(**kwargs)
+        
+        today = timezone.now()
+        context['current_month_value'] = today.strftime("%Y-%m")
         
         # Cache admin list for 5 minutes to reduce queries
         admins = cache.get('withdrawal_admins_list')
@@ -3409,11 +4117,33 @@ class NotificationsList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        return (
-            Notifications.objects
-            .filter(is_archived=False)
-            .order_by('-created_at')
-        )
+        qs = Notifications.objects.filter(is_archived=False).order_by('-notification_timestamp')
+        
+        # Date filter
+        date_filter = self.request.GET.get('date_filter', '').strip()
+        show_all = self.request.GET.get('show_all', '').strip()
+        
+        if date_filter:
+            try:
+                year_str, month_str = date_filter.split('-')
+                year = int(year_str)
+                month_num = int(month_str.lstrip('0'))
+                qs = qs.filter(created_at__year=year, created_at__month=month_num)
+            except ValueError:
+                pass
+        elif not show_all:
+            # Default to current month
+            today = timezone.now()
+            qs = qs.filter(created_at__year=today.year, created_at__month=today.month)
+        
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # Add current month value for default display
+        today = timezone.now()
+        context['current_month_value'] = today.strftime("%Y-%m")
+        return context
 
     def get(self, request, *args, **kwargs):
         Notifications.objects.filter(is_read=False).update(is_read=True)
@@ -3451,7 +4181,7 @@ class BulkProductBatchCreateView(View):
         batch_date = timezone.localdate()
         manufactured_date = form.cleaned_data['manufactured_date']
         deduct_raw_material = form.cleaned_data['deduct_raw_material']
-        auth_user = AuthUser.objects.get(id=request.user.id)
+        auth_user = get_or_create_auth_user(request.user)
 
         try:
             with transaction.atomic():
@@ -3512,7 +4242,7 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
         if form.is_valid():
             batch_date = timezone.localdate()
             received_date = form.cleaned_data['received_date']
-            auth_user = AuthUser.objects.get(id=request.user.id)
+            auth_user = get_or_create_auth_user(request.user)
 
             for rawmaterial_info in form.rawmaterials:
                 rawmaterial = rawmaterial_info['rawmaterial']
@@ -3589,21 +4319,31 @@ class StockChangesList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = StockChanges.objects.filter(is_archived=False).order_by('-date')
+        qs = StockChanges.objects.filter(is_archived=False).order_by('-date')
 
-        date_filter = self.request.GET.get("date", "").strip()
+        date_filter = self.request.GET.get("date_filter", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
+        
         if date_filter:
             try:
-                parsed_date = datetime.strptime(date_filter, "%Y-%m")
-                queryset = queryset.filter(date__year=parsed_date.year, date__month=parsed_date.month)
+                year_str, month_str = date_filter.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                qs = qs.filter(date__year=year, date__month=month_num)
             except ValueError:
                 pass
-        else:
+        elif not show_all:
 
             today = timezone.now()
-            queryset = queryset.filter(date__year=today.year, date__month=today.month)
+            qs = qs.filter(date__year=today.year, date__month=today.month)
         
-        return queryset
+        return qs
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        today = timezone.now()
+        context['current_month_value'] = today.strftime("%Y-%m")
+        return context
 
 
 class StockChangesArchiveView(View):
@@ -3909,7 +4649,7 @@ def login_view(request):
                                 recipient_list=[email_to],
                                 fail_silently=False,
                             )
-                        except Exception as email_error:
+                        except Exception:
                             pass
                         
                         LoginAttempt.objects.create(
@@ -3957,7 +4697,7 @@ def register(request):
         if form.is_valid():
             user = form.save()  
             login(request, user)
-            messages.success(request, 'Your account has been created successfully! You can now log in.')
+            messages.success(request, 'Your account has been created successfully! Please wait for an admin approval before you can login.')
             return redirect('login')  
         else:
             messages.error(request, 'There were errors in your form. Please check the fields and try again.')
@@ -3966,10 +4706,323 @@ def register(request):
 
     return render(request, 'registration/register.html', {'form': form})
 
-@login_required
-def profile_view(request):
-    return render(request, 'profile.html') 
+def user_management(request):
+    """Admin page to manage pending user registrations"""
+    if not request.user.is_superuser:
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('home')
+    
+    # Get all inactive users (pending approval) - exclude rejected/deleted users
+    from django.db.models import Q
+    pending_users = User.objects.filter(
+        is_active=False
+    ).exclude(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
+    ).order_by('-date_joined')
+    
+    # Get all active users - exclude deleted/inactive users
+    active_users = User.objects.filter(
+        is_active=True
+    ).exclude(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
+    ).order_by('-date_joined')
+    
+    # Get inactive users (deactivated by admin)
+    inactive_users = User.objects.filter(
+        username__startswith='inactive_user_'
+    ).order_by('-date_joined')
+    
+    # Get deleted users (soft deleted)
+    deleted_users = User.objects.filter(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
+    ).order_by('-date_joined')
+    
+    context = {
+        'pending_users': pending_users,
+        'active_users': active_users,
+        'inactive_users': inactive_users,
+        'deleted_users': deleted_users,
+    }
+    return render(request, 'user_management.html', context)
 
+@login_required
+def user_management(request):
+    """Admin page to manage pending user registrations"""
+    if not request.user.is_superuser:
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('home')
+    
+    # Get all inactive users (pending approval) - exclude rejected/deleted users
+    from django.db.models import Q
+    pending_users = User.objects.filter(
+        is_active=False
+    ).exclude(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
+    ).order_by('-date_joined')
+    
+    # Get all active users - exclude deleted/inactive users
+    active_users = User.objects.filter(
+        is_active=True
+    ).exclude(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
+    ).order_by('-date_joined')
+    
+    # Get inactive users (deactivated by admin)
+    inactive_users = User.objects.filter(
+        username__startswith='inactive_user_'
+    ).order_by('-date_joined')
+    
+    # Get deleted users (soft deleted)
+    deleted_users = User.objects.filter(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
+    ).order_by('-date_joined')
+    
+    context = {
+        'pending_users': pending_users,
+        'active_users': active_users,
+        'inactive_users': inactive_users,
+        'deleted_users': deleted_users,
+    }
+    return render(request, 'user_management.html', context)
+
+@login_required
+@require_http_methods(["POST"])
+def approve_user(request, user_id):
+    """Approve a pending user registration"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        user = User.objects.get(id=user_id, is_active=False)
+        user.is_active = True
+        user.save()
+        
+        messages.success(request, f'User {user.username} has been approved and can now log in.')
+        return JsonResponse({'success': True, 'message': f'User {user.username} approved successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found or already active'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def reject_user(request, user_id):
+    """Reject and soft-delete a pending user registration"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id, is_active=False)
+        username = user.username
+        
+        # Soft delete: anonymize user data instead of hard delete to preserve foreign key integrity
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.email = f"rejected_{user.id}_{timestamp}@deleted.local"
+        user.username = f"rejected_user_{user.id}_{timestamp}"
+        user.first_name = "Rejected"
+        user.last_name = "User"
+        user.set_unusable_password()
+        user.is_active = False
+        user.save()
+        
+        messages.success(request, f'User {username} has been rejected and removed.')
+        return JsonResponse({'success': True, 'message': f'User {username} rejected successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_user_role(request, user_id):
+    """Toggle user between staff and administrator"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+        
+        # Prevent modifying own account
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'message': 'Cannot modify your own role'})
+        
+        # Toggle superuser status
+        if user.is_superuser:
+            user.is_superuser = False
+            new_role = 'Staff'
+        else:
+            user.is_superuser = True
+            new_role = 'Administrator'
+        
+        user.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': f'User {user.username} is now a {new_role}',
+            'new_role': new_role
+        })
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def create_admin_user(request):
+    """Admin-only: Create a new user account (Staff or Administrator) without approval"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        username = request.POST.get('username', '').strip()
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        password1 = request.POST.get('password1', '')
+        password2 = request.POST.get('password2', '')
+        user_type = request.POST.get('user_type', 'staff')
+        
+        # Validation
+        if not all([username, first_name, last_name, email, password1, password2]):
+            return JsonResponse({'success': False, 'message': 'All fields are required'})
+        
+        if password1 != password2:
+            return JsonResponse({'success': False, 'message': 'Passwords do not match'})
+        
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'success': False, 'message': f'Username "{username}" already exists'})
+        
+        if User.objects.filter(email=email).exists():
+            return JsonResponse({'success': False, 'message': f'Email "{email}" is already in use'})
+        
+        # Create user
+        user = User.objects.create(
+            username=username,
+            first_name=first_name,
+            last_name=last_name,
+            email=email,
+            is_active=True,  # Immediately active
+            is_staff=True
+        )
+        user.set_password(password1)
+        
+        # Set role
+        if user_type == 'superuser':
+            user.is_superuser = True
+            role_name = 'Administrator'
+        else:
+            user.is_superuser = False
+            role_name = 'Staff'
+        
+        user.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'{role_name} account "{username}" created successfully and is immediately active'
+        })
+    
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def deactivate_user(request, user_id):
+    """Deactivate an active user (soft deactivation)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id, is_active=True)
+        
+        # Prevent deactivating own account
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'message': 'Cannot deactivate your own account'})
+        
+        username = user.username
+        original_email = user.email
+        
+        # Soft deactivate: mark as inactive and prefix username
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.username = f"inactive_user_{user.id}_{timestamp}"
+        user.email = f"inactive_{user.id}_{timestamp}@deactivated.local"
+        user.is_active = False
+        user.save()
+        
+        messages.success(request, f'User {username} has been deactivated.')
+        return JsonResponse({'success': True, 'message': f'User {username} deactivated successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found or already inactive'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def reactivate_user(request, user_id):
+    """Reactivate an inactive user"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        user = User.objects.get(id=user_id)
+        
+        if not user.username.startswith('inactive_user_'):
+            return JsonResponse({'success': False, 'message': 'User is not in inactive state'})
+        
+        # Extract original username from the inactive username pattern
+        # Pattern: inactive_user_{id}_{timestamp}
+        # We'll need to ask admin to provide new username or restore from a stored field
+        # For now, we'll just activate and let them change username manually
+        user.is_active = True
+        # Remove the inactive prefix - restore to a basic username
+        user.username = f"user_{user.id}"
+        user.email = f"user_{user.id}@reactivated.local"
+        user.save()
+        
+        messages.success(request, f'User has been reactivated. Please update their username and email.')
+        return JsonResponse({'success': True, 'message': 'User reactivated successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def delete_user(request, user_id):
+    """Permanently delete a user (soft delete)"""
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id)
+        
+        # Prevent deleting own account
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'message': 'Cannot delete your own account'})
+        
+        username = user.username
+        
+        # Soft delete: anonymize user data
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.email = f"deleted_{user.id}_{timestamp}@deleted.local"
+        user.username = f"deleted_user_{user.id}_{timestamp}"
+        user.first_name = "Deleted"
+        user.last_name = "User"
+        user.set_unusable_password()
+        user.is_active = False
+        user.is_staff = False
+        user.is_superuser = False
+        user.save()
+        
+        messages.success(request, f'User {username} has been deleted.')
+        return JsonResponse({'success': True, 'message': f'User {username} deleted successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+    
 @login_required
 def edit_profile(request):
     user = request.user
@@ -4186,43 +5239,6 @@ def set_user_inactive(sender, user, request, **kwargs):
         pass
 
 
-def check_expirations(request):
-    """
-    Trigger the expiration check management command.
-    This will create notifications, deduct expired items from inventory,
-    and log them to financial loss.
-    """
-    from django.core.management import call_command
-    from io import StringIO
-    
-    # Capture command output
-    out = StringIO()
-    
-    try:
-        # Call the management command that handles everything properly
-        call_command('check_expirations', stdout=out)
-        output = out.getvalue()
-        
-        # Count notifications created
-        notification_count = Notifications.objects.filter(
-            notification_type="EXPIRATION_ALERT",
-            is_read=False
-        ).count()
-        
-        return JsonResponse({
-            "status": "ok",
-            "message": "Expiration check completed successfully",
-            "notifications_created": notification_count,
-            "details": output
-        })
-    except Exception as e:
-        return JsonResponse({
-            "status": "error",
-            "message": str(e)
-        }, status=500)
-
-
-@method_decorator(login_required, name='dispatch')
 class BestSellerProductsView(LoginRequiredMixin, TemplateView):
     template_name = "bestseller_products.html"
 
@@ -4232,7 +5248,7 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
         now = timezone.now()
 
         filter_date = self.request.GET.get('month')  
-        filter_year_only = self.request.GET.get('year')  
+        show_all = self.request.GET.get('show_all')
         
         filter_type = None 
         
@@ -4250,18 +5266,12 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
                 filter_month = None
                 filter_year = None
 
-        elif filter_year_only:
-            try:
-                current_year = int(filter_year_only)
-                current_month = None
-                filter_month = None
-                filter_year = current_year
-                filter_type = 'year'
-            except (ValueError, TypeError):
-                current_month = now.month
-                current_year = now.year
-                filter_month = None
-                filter_year = None
+        elif show_all:
+            current_month = None
+            current_year = None
+            filter_month = None
+            filter_year = None
+            filter_type = 'all'
 
         else:
             current_month = now.month
@@ -4272,12 +5282,14 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
         filters = {
             'item_type': 'PRODUCT',
             'reason': 'SOLD',
-            'is_archived': False,
-            'date__year': current_year
+            'is_archived': False
         }
         
-        if filter_type != 'year':
-            filters['date__month'] = current_month
+        if filter_type != 'all':
+            if current_year:
+                filters['date__year'] = current_year
+            if current_month:
+                filters['date__month'] = current_month
 
         withdrawals = Withdrawals.objects.filter(**filters).values('item_id', 'quantity', 'custom_price')
 
@@ -4373,14 +5385,21 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
         context['filter_year'] = filter_year
         context['filter_type'] = filter_type
         
-        if filter_type == 'year':
+        context['current_month_value'] = now.strftime("%Y-%m")
+        
+        if filter_type == 'all':
             context['current_month_name'] = None
+            context['current_year'] = None
             context['filter_month_name'] = None
             context['filter_month_value'] = ''
-        else:
+        elif current_month and current_year:
             context['current_month_name'] = datetime(current_year, current_month, 1).strftime('%B')
             context['filter_month_name'] = datetime(current_year, current_month, 1).strftime('%B')
             context['filter_month_value'] = f"{current_year}-{current_month:02d}"
+        else:
+            context['current_month_name'] = None
+            context['filter_month_name'] = None
+            context['filter_month_value'] = ''
         
         context['available_years'] = [d.year for d in available_years]
         context['months'] = [
@@ -4395,12 +5414,16 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
 def database_backup(request):
     """
     Generate and download a Django JSON fixture backup
+    Only administrator can access this feature
     """
-    from django.http import HttpResponse
+    from django.http import HttpResponse, HttpResponseForbidden
     from django.core import serializers
     from django.apps import apps
     from datetime import datetime
     import json
+
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Access denied. Only administrators can backup the database.")
     
     if request.method == 'POST':
         try:
@@ -4422,7 +5445,7 @@ def database_backup(request):
                         all_data.extend(json.loads(model_data))
                 except Exception as e:
                     # Skip models that can't be serialized
-                    print(f"Skipping {model.__name__}: {str(e)}")
+                    print(f"Skipping {model.__name__}: {e}")
                     continue
             
             # Convert to JSON string with pretty formatting
@@ -4434,6 +5457,8 @@ def database_backup(request):
                 content_type='application/json'
             )
             response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            response.write(u'\ufeff'.encode('utf8'))
             
             # Log the backup action
             auth_user = AuthUser.objects.get(id=request.user.id)
@@ -4456,11 +5481,21 @@ def database_backup(request):
             return response
             
         except Exception as e:
-            messages.error(request, f'❌ Backup error: {str(e)}')
+            messages.error(request, f'❌ Backup error: {e}')
 @login_required
 def financial_loss(request):
+
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to access financial loss reports.")
+        return redirect('home')
+    
     """View for displaying financial losses from expired and damaged items"""
     from django.core.paginator import Paginator
+
+    date_filter = request.GET.get('date_filter', '').strip()
+    show_all = request.GET.get('show_all', '').strip()
+    today = timezone.now()
 
     product_withdrawals = Withdrawals.objects.filter(
         item_type='PRODUCT',
@@ -4468,11 +5503,33 @@ def financial_loss(request):
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
+    if date_filter:
+        try:
+            year_str, month_str = date_filter.split('-')
+            year = int(year_str)
+            month_num = int(month_str.lstrip('0'))
+            product_withdrawals = product_withdrawals.filter(date__year=year, date__month=month_num)
+        except ValueError:
+            pass
+    elif not show_all:
+        product_withdrawals = product_withdrawals.filter(date__year=today.year, date__month=today.month)
+
     raw_material_withdrawals = Withdrawals.objects.filter(
         item_type='RAW_MATERIAL',
         reason__in=['EXPIRED', 'DAMAGED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
+
+    if date_filter:
+        try:
+            year_str, month_str = date_filter.split('-')
+            year = int(year_str)
+            month_num = int(month_str.lstrip('0'))
+            raw_material_withdrawals = raw_material_withdrawals.filter(date__year=year, date__month=month_num)
+        except ValueError:
+            pass
+    elif not show_all:
+        raw_material_withdrawals = raw_material_withdrawals.filter(date__year=today.year, date__month=today.month)
 
     product_loss_data = []
     total_product_loss = Decimal('0.00')
@@ -4543,6 +5600,7 @@ def financial_loss(request):
         'product_loss': total_product_loss,
         'raw_material_loss': total_raw_material_loss,
         'total_loss': total_loss,
+        'current_month_value': today.strftime("%Y-%m"),
     }
     
     return render(request, 'financial_loss.html', context)

@@ -47,16 +47,16 @@
                 {% endfor %}
               </select>
               <!-- Reason Filter -->
-              <select id="reasonFilter" class="form-control" style="width:150px;">
+              <select id="reasonFilter" class="form-control" style="width:180px;">
                 <option value="">All Reasons</option>
                 {% for value, label in withdrawals.model.REASON_CHOICES %}
                   <option value="{{ label }}">{{ label }}</option>
                 {% endfor %}
               </select>
               <!-- Month-Year Filter -->
-              <input id="dateFilter" type="month" class="form-control" style="width:180px;" value="2025-11" />
-              <button type="button" onclick="window.location.href='?show_all=true'" class="btn btn-info" title="Show all data">
-                <i class="la la-list"></i> Show All
+              <input id="dateFilter" type="month" class="form-control" style="width:180px;" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" class="btn btn-info" onclick="toggleShowAll()">
+                Show All Data
               </button>
               <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
@@ -65,9 +65,11 @@
             
             <!-- Bulk Action Buttons -->
             <div class="mb-3">
+              {% if user.is_superuser %}
                 <button type="button" class="btn btn-danger btn-rounded" id="bulkDeleteBtn" style="display:none;" onclick="bulkDeleteWithdrawal()">
                     <i class="la la-trash"></i> Delete Selected
                 </button>
+              {% endif %}
                 <button type="button" class="btn btn-warning btn-rounded" id="bulkArchiveBtn" style="display:none;" onclick="bulkArchiveWithdrawal()">
                     <i class="la la-archive"></i> Archive Selected
                 </button>
@@ -94,7 +96,11 @@
                   {% for group in withdrawal_groups %}
                   <tr>
                     <td>
-                        <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
+                        {% if group.is_single %}
+                        <input type="checkbox" class="row-checkbox" value="{{ group.withdrawals.0.id }}" onchange="updateBulkButtons()">
+                        {% else %}
+                        <input type="checkbox" class="row-checkbox" value="{{ group.order_group_id }}" data-group="true" onchange="updateBulkButtons()">
+                        {% endif %}
                     </td>
                     <td>{{ group.date|localtime|date:"Y-m-d g:i A" }}</td>
                     <td>{{ group.item_type_display }}</td>
@@ -132,9 +138,11 @@
                           <i class="la la-archive la-lg"></i>
                         </a>
                         &nbsp;&nbsp;
+                        {% if user.is_superuser %}
                         <a href="#" data-toggle="modal" data-target="#deleteWithdrawModal{{ group.withdrawals.0.id }}" class="text-danger" title="Delete">
                           <i class="la la-trash la-lg"></i>
                         </a>
+                        {% endif %}
                       {% else %}
                         <a href="{% url 'withdrawal-group-edit' group.order_group_id %}" title="Edit Group" class="text-primary">
                           <i class="la la-edit la-lg"></i>
@@ -144,9 +152,11 @@
                           <i class="la la-archive la-lg"></i>
                         </a>
                         &nbsp;&nbsp;
+                        {% if user.is_superuser %}
                         <a href="#" data-toggle="modal" data-target="#deleteGroupModal{{ group.group_key }}" class="text-danger" title="Delete Group">
                           <i class="la la-trash la-lg"></i>
                         </a>
+                        {% endif %}
                       {% endif %}
                     </td>
                   </tr>
@@ -704,6 +714,17 @@ function bulkArchiveWithdrawal() {
         console.error('Bulk archive error:', error);
         showToast('An error occurred while archiving withdrawals', 'error');
     });
+}
+
+function toggleShowAll() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('show_all')) {
+    params.delete('show_all');
+  } else {
+    params.set('show_all', '1');
+    params.delete('date_filter');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
 }
 </script>
 {% endblock %}

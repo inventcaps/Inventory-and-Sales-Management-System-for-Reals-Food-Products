@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load widget_tweaks %}
+{% block content %}
+<div class="content">
+  <div class="container-fluid">
+    <h4 class="page-title">
+      <a href="{% url 'salesexpenses' %}" class="btn btn-link p-0 mr-2" title="Back to Sales">
+        <i class="la la-arrow-left" style="font-size: 24px;"></i>
+      </a>
+      Sales & Expenses
+    </h4>
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Add Sales & Expenses</div>
+          </div>
+
+          <div class="card-body">
+              <form action="" method="post" novalidate>
+                {% csrf_token %}
+
+                <div class="form-container">
+                  <!-- Sales Section -->
+                  <div class="col-md-12 mb-4">
+                    <h5 class="text-primary"><i class="la la-dollar"></i> Sales Information</h5>
+                    <hr>
+                  </div>
+
+                  <!-- Sales Category -->
+                  <div class="form-item" style="flex: 1 1 100%;">
+                    <label for="{{ form.sales_category.id_for_label }}">{{ form.sales_category.label }}</label>
+                    {% render_field form.sales_category class="form-control" placeholder="Enter Sales Category" %}
+                    {% for error in form.sales_category.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Sales Amount -->
+                  <div class="form-item">
+                    <label for="{{ form.sales_amount.id_for_label }}">{{ form.sales_amount.label }}</label>
+                    {% render_field form.sales_amount class="form-control" placeholder="Enter Sales Amount" id="salesAmount" %}
+                    {% for error in form.sales_amount.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Date -->
+                  <div class="form-item">
+                    <label for="{{ form.date.id_for_label }}">{{ form.date.label }}</label>
+                    {% render_field form.date class="form-control" placeholder="Select Date" %}
+                    {% for error in form.date.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Sales Description -->
+                  <div class="form-item" style="flex: 1 1 100%;">
+                    <label for="{{ form.sales_description.id_for_label }}">{{ form.sales_description.label }}</label>
+                    {% render_field form.sales_description class="form-control" placeholder="Enter Sales Description" %}
+                    {% for error in form.sales_description.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Expenses Section -->
+                  <div class="col-md-12 mb-4 mt-4">
+                    <h5 class="text-danger"><i class="la la-credit-card"></i> Expenses Information</h5>
+                    <hr>
+                  </div>
+
+                  <!-- Total Expenses -->
+                  <div class="form-item">
+                    <label for="{{ form.total_expenses.id_for_label }}">{{ form.total_expenses.label }}</label>
+                    {% render_field form.total_expenses class="form-control" placeholder="Enter Total Expenses" id="totalExpenses" %}
+                    {% for error in form.total_expenses.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Expenses Description -->
+                  <div class="form-item" style="flex: 1 1 100%;">
+                    <label for="{{ form.expenses_description.id_for_label }}">{{ form.expenses_description.label }}</label>
+                    {% render_field form.expenses_description class="form-control" placeholder="Enter Expenses Description (Optional)" %}
+                    {% for error in form.expenses_description.errors %}
+                      <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Profit Calculation Display -->
+                  <div class="col-md-12 mt-4">
+                    <div class="card bg-light">
+                      <div class="card-body">
+                        <h5 class="card-title">Profit Calculation</h5>
+                        <div class="row">
+                          <div class="col-md-4">
+                            <p><strong>Sales Amount:</strong> <span id="displaySales">₱0.00</span></p>
+                          </div>
+                          <div class="col-md-4">
+                            <p><strong>Total Expenses:</strong> <span id="displayExpenses">₱0.00</span></p>
+                          </div>
+                          <div class="col-md-4">
+                            <p><strong>Net Profit:</strong> <span id="displayProfit" class="text-success">₱0.00</span></p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-actions btn-row mt-3">
+                  <button type="submit" class="btn btn-primary btn-rounded">Save Sales & Expenses</button>
+                  <a href="{% url 'salesexpenses' %}" class="btn btn-secondary btn-rounded">Cancel</a>
+                </div>
+              </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Real-time profit calculation
+  function calculateProfit() {
+    const salesAmount = parseFloat(document.getElementById('salesAmount').value) || 0;
+    const totalExpenses = parseFloat(document.getElementById('totalExpenses').value) || 0;
+    const profit = salesAmount - totalExpenses;
+
+    // Update display
+    document.getElementById('displaySales').textContent = '₱' + salesAmount.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    document.getElementById('displayExpenses').textContent = '₱' + totalExpenses.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    
+    const profitElement = document.getElementById('displayProfit');
+    profitElement.textContent = '₱' + profit.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+    
+    // Change color based on profit/loss
+    if (profit >= 0) {
+      profitElement.className = 'text-success';
+    } else {
+      profitElement.className = 'text-danger';
+    }
+  }
+
+  // Add event listeners
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('salesAmount').addEventListener('input', calculateProfit);
+    document.getElementById('totalExpenses').addEventListener('input', calculateProfit);
+  });
+</script>
+{% endblock %}

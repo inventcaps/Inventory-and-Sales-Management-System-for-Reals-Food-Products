@@ -1,0 +1,690 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="content">
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h4 class="page-title mb-0">User Management</h4>
+            <button class="btn btn-primary" data-toggle="modal" data-target="#createAdminModal">
+                <i class="la la-user-plus"></i> Create New Admin User
+            </button>
+        </div>
+        
+        <!-- Pending Users Section -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Pending Approvals</div>
+                        <div class="card-category">Users waiting for admin approval</div>
+                    </div>
+                    <div class="card-body">
+                        {% if pending_users %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Registered</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in pending_users %}
+                                    <tr id="pending-user-{{ user.id }}">
+                                        <td><strong>{{ user.username }}</strong></td>
+                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            {% if user.is_staff %}
+                                                <span class="badge bg-primary">Staff</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">User</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <button class="btn btn-success btn-sm" onclick="showApproveModal({{ user.id }}, '{{ user.username }}')">
+                                                <i class="la la-check"></i> Approve
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="showRejectModal({{ user.id }}, '{{ user.username }}')">
+                                                <i class="la la-times"></i> Reject
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="la la-info-circle"></i> No pending user approvals.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Users Section -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Active Users</div>
+                        <div class="card-category">Manage existing users</div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Username</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Role</th>
+                                        <th>Last Login</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in active_users %}
+                                    <tr>
+                                        <td><strong>{{ user.username }}</strong></td>
+                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>
+                                            {% if user.is_superuser %}
+                                                <span class="badge bg-danger">Administrator</span>
+                                            {% elif user.is_staff %}
+                                                <span class="badge bg-primary">Staff</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">User</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</td>
+                                        <td>
+                                            {% if user.id != request.user.id %}
+                                                <button class="btn btn-warning btn-sm" onclick="showToggleRoleModal({{ user.id }}, '{{ user.username }}', {{ user.is_superuser|yesno:'true,false' }})">
+                                                    <i class="la la-exchange"></i> 
+                                                    {% if user.is_superuser %}
+                                                        Demote to Staff
+                                                    {% else %}
+                                                        Promote to Admin
+                                                    {% endif %}
+                                                </button>
+                                                <button class="btn btn-secondary btn-sm" onclick="showDeactivateModal({{ user.id }}, '{{ user.username }}')">
+                                                    <i class="la la-ban"></i> Deactivate
+                                                </button>
+                                                <button class="btn btn-danger btn-sm" onclick="showDeleteModal({{ user.id }}, '{{ user.username }}')">
+                                                    <i class="la la-trash"></i> Delete
+                                                </button>
+                                            {% else %}
+                                                <span class="badge bg-info">You</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inactive Users Section -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Inactive Users</div>
+                        <div class="card-category">Users deactivated by admin</div>
+                    </div>
+                    <div class="card-body">
+                        {% if inactive_users %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Deactivated</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in inactive_users %}
+                                    <tr>
+                                        <td><strong>{{ user.id }}</strong></td>
+                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>
+                                            <button class="btn btn-success btn-sm" onclick="showReactivateModal({{ user.id }})">
+                                                <i class="la la-check-circle"></i> Reactivate
+                                            </button>
+                                            <button class="btn btn-danger btn-sm" onclick="showDeleteModal({{ user.id }}, 'User ID {{ user.id }}')">
+                                                <i class="la la-trash"></i> Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="la la-info-circle"></i> No inactive users.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Deleted Users Section -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Deleted Users</div>
+                        <div class="card-category">Soft-deleted users (anonymized)</div>
+                    </div>
+                    <div class="card-body">
+                        {% if deleted_users %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Deleted</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in deleted_users %}
+                                    <tr>
+                                        <td><strong>{{ user.id }}</strong></td>
+                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="la la-info-circle"></i> No deleted users.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create Admin User Modal -->
+<div class="modal fade" id="createAdminModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="la la-user-plus"></i> Create New Admin User</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="createAdminForm">
+                {% csrf_token %}
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                    <!-- Error Alert -->
+                    <div id="createAdminError" class="alert alert-danger" style="display: none;">
+                        <span id="createAdminErrorMessage"></span>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Username <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>First Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="first_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" name="last_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" name="password1" id="admin_password1" required>
+                        <small class="form-text text-muted">Min 8 characters, include uppercase, lowercase, and number</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control" name="password2" id="admin_password2" required>
+                    </div>
+                    <div class="form-group">
+                        <label>User Role <span class="text-danger">*</span></label>
+                        <select class="form-control" name="user_type" required>
+                            <option value="staff">Staff</option>
+                            <option value="superuser">Administrator</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="la la-info-circle"></i> This account will be <strong>immediately active</strong> and can log in right away.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="la la-save"></i> Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Approve User Modal -->
+<div class="modal fade" id="approveModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Approval</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="approveModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmApproveBtn">Approve</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reject User Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Rejection</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="rejectModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmRejectBtn">Reject</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toggle Role Modal -->
+<div class="modal fade" id="toggleRoleModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Role Change</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="toggleRoleModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmToggleRoleBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Deactivate User Modal -->
+<div class="modal fade" id="deactivateModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deactivation</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="deactivateModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmDeactivateBtn">Deactivate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reactivate User Modal -->
+<div class="modal fade" id="reactivateModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Reactivation</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="reactivateModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmReactivateBtn">Reactivate</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Deletion</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p id="deleteModalMessage"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Modal state variables
+let currentUserId = null;
+let currentUsername = null;
+let currentIsSuperuser = null;
+
+// Show Approve Modal
+function showApproveModal(userId, username) {
+    currentUserId = userId;
+    currentUsername = username;
+    document.getElementById('approveModalMessage').textContent = `Are you sure you want to approve ${username}?`;
+    $('#approveModal').modal('show');
+}
+
+// Show Reject Modal
+function showRejectModal(userId, username) {
+    currentUserId = userId;
+    currentUsername = username;
+    document.getElementById('rejectModalMessage').textContent = `Are you sure you want to reject and delete ${username}? This action cannot be undone.`;
+    $('#rejectModal').modal('show');
+}
+
+// Show Toggle Role Modal
+function showToggleRoleModal(userId, username, isSuperuser) {
+    currentUserId = userId;
+    currentUsername = username;
+    currentIsSuperuser = isSuperuser;
+    const action = isSuperuser ? 'demote to Staff' : 'promote to Administrator';
+    document.getElementById('toggleRoleModalMessage').textContent = `Are you sure you want to ${action} ${username}?`;
+    $('#toggleRoleModal').modal('show');
+}
+
+// Show Deactivate Modal
+function showDeactivateModal(userId, username) {
+    currentUserId = userId;
+    currentUsername = username;
+    document.getElementById('deactivateModalMessage').textContent = `Are you sure you want to deactivate ${username}? They will not be able to log in until reactivated.`;
+    $('#deactivateModal').modal('show');
+}
+
+// Show Reactivate Modal
+function showReactivateModal(userId) {
+    currentUserId = userId;
+    document.getElementById('reactivateModalMessage').textContent = 'Are you sure you want to reactivate this user?';
+    $('#reactivateModal').modal('show');
+}
+
+// Show Delete Modal
+function showDeleteModal(userId, username) {
+    currentUserId = userId;
+    currentUsername = username;
+    document.getElementById('deleteModalMessage').textContent = `Are you sure you want to permanently delete ${username}? This will anonymize all their data.`;
+    $('#deleteModal').modal('show');
+}
+
+// Approve User
+function approveUser() {
+    fetch(`/user/${currentUserId}/approve/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#approveModal').modal('hide');
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+// Reject User
+function rejectUser() {
+    fetch(`/user/${currentUserId}/reject/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#rejectModal').modal('hide');
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+// Toggle Role
+function toggleRole() {
+    fetch(`/user/${currentUserId}/toggle-role/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#toggleRoleModal').modal('hide');
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    });
+}
+
+// Deactivate User
+function deactivateUser() {
+    fetch(`/user/${currentUserId}/deactivate/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#deactivateModal').modal('hide');
+        if (data.success) {
+            if (typeof showToast === 'function') {
+                showToast(data.message, 'success');
+            }
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('Error: ' + data.message, 'error');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        }
+    });
+}
+
+// Reactivate User
+function reactivateUser() {
+    fetch(`/user/${currentUserId}/reactivate/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#reactivateModal').modal('hide');
+        if (data.success) {
+            if (typeof showToast === 'function') {
+                showToast(data.message, 'success');
+            }
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('Error: ' + data.message, 'error');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        }
+    });
+}
+
+// Delete User
+function deleteUser() {
+    fetch(`/user/${currentUserId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        $('#deleteModal').modal('hide');
+        if (data.success) {
+            if (typeof showToast === 'function') {
+                showToast(data.message, 'success');
+            }
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            if (typeof showToast === 'function') {
+                showToast('Error: ' + data.message, 'error');
+            } else {
+                alert('Error: ' + data.message);
+            }
+        }
+    });
+}
+
+// Event listeners for modal confirm buttons
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('confirmApproveBtn').addEventListener('click', approveUser);
+    document.getElementById('confirmRejectBtn').addEventListener('click', rejectUser);
+    document.getElementById('confirmToggleRoleBtn').addEventListener('click', toggleRole);
+    document.getElementById('confirmDeactivateBtn').addEventListener('click', deactivateUser);
+    document.getElementById('confirmReactivateBtn').addEventListener('click', reactivateUser);
+    document.getElementById('confirmDeleteBtn').addEventListener('click', deleteUser);
+});
+
+// Create Admin User Form Handler
+document.getElementById('createAdminForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Hide previous errors
+    const errorDiv = document.getElementById('createAdminError');
+    const errorMessage = document.getElementById('createAdminErrorMessage');
+    errorDiv.style.display = 'none';
+    
+    const password1 = document.getElementById('admin_password1').value;
+    const password2 = document.getElementById('admin_password2').value;
+    
+    // Validate passwords match
+    if (password1 !== password2) {
+        errorMessage.textContent = 'Passwords do not match!';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    // Validate password strength
+    if (password1.length < 8 || !/[A-Z]/.test(password1) || !/[a-z]/.test(password1) || !/\d/.test(password1)) {
+        errorMessage.textContent = 'Password must be at least 8 characters and include uppercase, lowercase, and number.';
+        errorDiv.style.display = 'block';
+        return;
+    }
+    
+    const formData = new FormData(this);
+    
+    fetch('/user/create-admin/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            $('#createAdminModal').modal('hide');
+            // Reset form and hide errors
+            document.getElementById('createAdminForm').reset();
+            errorDiv.style.display = 'none';
+            
+            if (typeof showToast === 'function') {
+                showToast(data.message, 'success');
+            } else {
+                alert(data.message);
+            }
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            // Show error in modal
+            errorMessage.textContent = data.message;
+            errorDiv.style.display = 'block';
+        }
+    })
+    .catch(error => {
+        errorMessage.textContent = 'Error creating user: ' + error;
+        errorDiv.style.display = 'block';
+    });
+});
+</script>
+{% endblock %}

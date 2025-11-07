@@ -55,7 +55,7 @@ class ProductTypeDeleteView(View):
         product_type = get_object_or_404(ProductTypes, pk=pk)
         
         # Check if being used by products
-        products_using = Products.objects.filter(product_type_id=pk)
+        products_using = Products.objects.filter(product_type_id=pk, is_archived=False)
         if products_using.exists():
             count = products_using.count()
             messages.error(request, f'❌ Cannot delete this Product Type because it is being used by {count} product(s).')
@@ -120,7 +120,7 @@ class ProductVariantDeleteView(View):
         
         variant = get_object_or_404(ProductVariants, pk=pk)
         
-        products_using = Products.objects.filter(variant_id=pk)
+        products_using = Products.objects.filter(variant_id=pk, is_archived=False)
         if products_using.exists():
             count = products_using.count()
             messages.error(request, f'❌ Cannot delete this Variant because it is being used by {count} product(s).')
@@ -185,7 +185,7 @@ class SizeDeleteView(View):
         
         size = get_object_or_404(Sizes, pk=pk)
         
-        products_using = Products.objects.filter(size_id=pk)
+        products_using = Products.objects.filter(size_id=pk, is_archived=False)
         if products_using.exists():
             count = products_using.count()
             messages.error(request, f'❌ Cannot delete this Size because it is being used by {count} product(s).')
@@ -250,7 +250,7 @@ class SizeUnitDeleteView(View):
         
         size_unit = get_object_or_404(SizeUnits, pk=pk)
         
-        products_using = Products.objects.filter(size_unit_id=pk)
+        products_using = Products.objects.filter(size_unit_id=pk, is_archived=False)
         if products_using.exists():
             count = products_using.count()
             messages.error(request, f'❌ Cannot delete this Size Unit because it is being used by {count} product(s).')
@@ -340,7 +340,7 @@ class UnitPriceDeleteView(View):
         from django.db import IntegrityError
         unit_price = get_object_or_404(UnitPrices, pk=pk)
         
-        products_using = Products.objects.filter(unit_price_id=pk)
+        products_using = Products.objects.filter(unit_price_id=pk, is_archived=False)
         if products_using.exists():
             count = products_using.count()
             messages.error(request, f'❌ Cannot delete this Unit Price because it is being used by {count} product(s).')
@@ -431,7 +431,7 @@ class SrpPriceDeleteView(View):
         from django.db import IntegrityError, connection
         srp_price = get_object_or_404(SrpPrices, pk=pk)
         
-        products_using = Products.objects.filter(srp_price_id=pk)
+        products_using = Products.objects.filter(srp_price_id=pk, is_archived=False)
         if products_using.exists():
             count = products_using.count()
             messages.error(request, f'❌ Cannot delete this SRP Price because it is being used by {count} product(s).')

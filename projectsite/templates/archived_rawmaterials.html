@@ -3,21 +3,33 @@
 {% block content %}
 <div class="content">
     <div class="container-fluid">
-        <h4 class="page-title">Archived Raw Materials</h4>
+        <h4 class="page-title">
+            <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Active Raw Materials">
+                <i class="la la-arrow-left" style="font-size: 24px;"></i>
+            </a>
+            Archived Raw Materials
+        </h4>
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="card-title">List of Archived Raw Materials</div>
-                        </div>
-                        <a href="{% url 'rawmaterials-list' %}" class="btn btn-primary btn-rounded">Back to Active Raw Materials</a>
+                    <div class="card-header">
+                        <div class="card-title">List of Archived Raw Materials</div>
                     </div>
                     <div class="card-body">
+                        <!-- Bulk Action Buttons -->
+                        <div class="mb-3">
+                            <button type="button" class="btn btn-success btn-rounded" id="bulkRestoreBtn" style="display:none;" onclick="bulkRestore()">
+                                <i class="la la-undo"></i> Restore Selected
+                            </button>
+                        </div>
+
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
+                                        <th scope="col" style="width: 40px;">
+                                            <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+                                        </th>
                                         <th>Name</th>
                                         <th>Size</th>
                                         <th>Unit</th>
@@ -28,6 +40,9 @@
                                 <tbody>
                                     {% for object in object_list %}
                                     <tr>
+                                        <td>
+                                            <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
+                                        </td>
                                         <td>{{ object.name }}</td>
                                         <td>{{ object.size }}</td>
                                         <td>{{ object.unit }}</td>
@@ -40,7 +55,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">No archived raw materials found.</td>
+                                        <td colspan="6" class="text-center text-muted">No archived raw materials found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -78,7 +93,111 @@
 </div>
 {% endfor %}
 
+<!-- Bulk Restore Confirmation Modal -->
+<div class="modal fade" id="bulkRestoreModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Restore</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to restore <strong id="bulkRestoreCount">0</strong> raw material(s)?
+        <br><br>
+        <small class="text-muted">These raw materials will be moved back to the active list.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkRestoreModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="confirmBulkRestore()">Restore</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Check for success message after page reload
+    const unarchiveSuccess = sessionStorage.getItem('unarchiveRawMaterialSuccess');
+    if (unarchiveSuccess) {
+        showToast(unarchiveSuccess, 'success');
+        sessionStorage.removeItem('unarchiveRawMaterialSuccess');
+    }
+});
+
+// Bulk selection functions
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateBulkButtons();
+}
+
+function updateBulkButtons() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    const bulkRestoreBtn = document.getElementById('bulkRestoreBtn');
+    
+    if (checkedBoxes.length > 0) {
+        bulkRestoreBtn.style.display = 'inline-block';
+    } else {
+        bulkRestoreBtn.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && checkedBoxes.length === allCheckboxes.length;
+}
+
+function getSelectedIds() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function bulkRestore() {
+    const selectedIds = getSelectedIds();
+    if (selectedIds.length === 0) {
+        showToast('Please select at least one raw material', 'warning');
+        return;
+    }
+    
+    // Update modal message and show it
+    document.getElementById('bulkRestoreCount').textContent = selectedIds.length;
+    $('#bulkRestoreModal').modal('show');
+}
+
+function confirmBulkRestore() {
+    const selectedIds = getSelectedIds();
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('ids', selectedIds.join(','));
+    
+    // Hide modal
+    $('#bulkRestoreModal').modal('hide');
+    
+    fetch('{% url "rawmaterials-bulk-restore" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Store success message in sessionStorage
+            sessionStorage.setItem('unarchiveRawMaterialSuccess', data.message);
+            // Reload page immediately
+            window.location.reload();
+        } else {
+            showToast(data.message || 'Failed to restore raw materials', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Bulk restore error:', error);
+        showToast('An error occurred while restoring raw materials', 'error');
+    });
+}
+
 // Handle unarchive form submission with toast
 function handleUnarchiveSubmit(event, materialName) {
     event.preventDefault();
@@ -86,9 +205,6 @@ function handleUnarchiveSubmit(event, materialName) {
     
     // Close the modal
     $(form).closest('.modal').modal('hide');
-    
-    // Show loading toast
-    showToast('Restoring raw material...', 'info');
     
     // Submit form via fetch
     fetch(form.action, {
@@ -100,11 +216,10 @@ function handleUnarchiveSubmit(event, materialName) {
     })
     .then(response => {
         if (response.ok) {
-            showToast(`Raw material "${materialName}" restored successfully!`, 'success');
-            // Reload page after short delay
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // Store success message in sessionStorage
+            sessionStorage.setItem('unarchiveRawMaterialSuccess', `Raw material "${materialName}" restored successfully!`);
+            // Reload page immediately
+            window.location.reload();
         } else {
             showToast('Failed to restore raw material. Please try again.', 'error');
         }

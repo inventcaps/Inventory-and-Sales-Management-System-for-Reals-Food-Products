@@ -40,6 +40,7 @@
                           value="{{ form.barcode.value|default:'' }}"
                           placeholder="Scan or enter barcode manually">
                     <small id="barcode-status" class="form-text text-muted">Ready to scan...</small>
+                    <small id="barcode-validation" class="form-text" style="display:none;"></small>
                   </div>
                 </div>
 
@@ -242,10 +243,13 @@ document.addEventListener("DOMContentLoaded", function() {
         const now = new Date().toLocaleTimeString();
         updateBarcodeStatus(`✓ Scanned: ${barcode} at ${now}`, "text-success");
         
-        // Focus next field (Product Type)
+        // Check barcode availability
+        checkBarcodeAvailability(barcode);
+        
+        // Focus next field (Product Type) after validation
         const productTypeInput = document.querySelector('input[name="product_type"]');
         if (productTypeInput) {
-          setTimeout(() => productTypeInput.focus(), 300);
+          setTimeout(() => productTypeInput.focus(), 800);
         }
 
       } catch (err) {
@@ -278,17 +282,101 @@ document.addEventListener("DOMContentLoaded", function() {
   // Start connection
   connectWebSocket();
 
-  // Manual barcode input (keyboard)
+  // Barcode validation
+  let validationTimer = null;
+  const barcodeValidation = document.getElementById("barcode-validation");
+  const submitButton = document.querySelector('button[type="submit"]');
+  let isBarcodeValid = true;
+
+  function checkBarcodeAvailability(barcode) {
+    if (!barcode || barcode.trim() === '') {
+      barcodeValidation.style.display = 'none';
+      isBarcodeValid = true;
+      if (submitButton) submitButton.disabled = false;
+      return;
+    }
+
+    // Show checking status
+    barcodeValidation.textContent = '🔍 Checking barcode...';
+    barcodeValidation.className = 'form-text text-info';
+    barcodeValidation.style.display = 'block';
+
+    fetch(`/api/check-barcode/?barcode=${encodeURIComponent(barcode)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.available) {
+          barcodeValidation.textContent = '✓ Barcode is available';
+          barcodeValidation.className = 'form-text text-success';
+          barcodeInput.style.borderColor = '#28a745';
+          isBarcodeValid = true;
+          if (submitButton) submitButton.disabled = false;
+        } else {
+          barcodeValidation.textContent = `✗ ${data.message}`;
+          barcodeValidation.className = 'form-text text-danger';
+          barcodeInput.style.borderColor = '#dc3545';
+          isBarcodeValid = false;
+          if (submitButton) submitButton.disabled = true;
+        }
+        barcodeValidation.style.display = 'block';
+      })
+      .catch(error => {
+        console.error('Barcode check error:', error);
+        barcodeValidation.textContent = '⚠️ Could not verify barcode';
+        barcodeValidation.className = 'form-text text-warning';
+        barcodeValidation.style.display = 'block';
+        isBarcodeValid = true; // Allow submission on error
+        if (submitButton) submitButton.disabled = false;
+      });
+  }
+
+  // Manual barcode input (keyboard) with validation
   barcodeInput.addEventListener('input', function() {
-    if (this.value.length > 0) {
-      updateBarcodeStatus(`Manual entry: ${this.value}`, "text-info");
+    const barcode = this.value.trim();
+    
+    if (barcode.length > 0) {
+      updateBarcodeStatus(`Manual entry: ${barcode}`, "text-info");
+      
+      // Debounce validation check
+      clearTimeout(validationTimer);
+      validationTimer = setTimeout(() => {
+        checkBarcodeAvailability(barcode);
+      }, 500);
+    } else {
+      barcodeValidation.style.display = 'none';
+      this.style.borderColor = '';
+      isBarcodeValid = true;
+      if (submitButton) submitButton.disabled = false;
     }
   });
+
+  // Validate on blur
+  barcodeInput.addEventListener('blur', function() {
+    const barcode = this.value.trim();
+    if (barcode) {
+      checkBarcodeAvailability(barcode);
+    }
+  });
+
+  // Prevent form submission if barcode is invalid
+  const form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      if (!isBarcodeValid) {
+        e.preventDefault();
+        barcodeValidation.textContent = '✗ Please use a different barcode';
+        barcodeValidation.className = 'form-text text-danger';
+        barcodeValidation.style.display = 'block';
+        barcodeInput.focus();
+        return false;
+      }
+    });
+  }
 
   // Cleanup
   window.addEventListener("beforeunload", function() {
     if (socket) socket.close();
     if (reconnectTimer) clearTimeout(reconnectTimer);
+    if (validationTimer) clearTimeout(validationTimer);
   });
 });
 </script>

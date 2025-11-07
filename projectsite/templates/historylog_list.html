@@ -32,12 +32,17 @@
               </select>
               
               <!-- Date Filter -->
-              <input type="month" id="dateFilter" name="date" class="form-control auto-submit" style="width:180px;" value="{% if request.GET.date %}{{ request.GET.date }}{% else %}2025-11{% endif %}">
+              <input type="month" id="dateFilter" name="date" class="form-control auto-submit" style="width:180px;" value="{% if request.GET.date %}{{ request.GET.date }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}">
+              
+              <!-- Show All Data Button -->
+              <button type="button" class="btn btn-info" onclick="toggleShowAll()">
+                Show All Data
+              </button>
               
               <!-- Reset Button -->
-              <a href="{% url 'history_log' %}" class="btn btn-secondary" style="height:38px; display:flex; align-items:center;">
-                <i class="fas fa-undo"></i> Reset
-              </a>
+              <button type="button" onclick="window.location.href='{% url 'history_log' %}'" class="btn btn-secondary" title="Reset filters">
+                <i class="la la-times"></i>
+              </button>
               
               <!-- Loading Indicator -->
               <div class="spinner-border text-primary d-none" id="loadingSpinner" role="status">
@@ -212,6 +217,17 @@
       }
     });
   });
+  
+  function toggleShowAll() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('show_all')) {
+      params.delete('show_all');
+    } else {
+      params.set('show_all', '1');
+      params.delete('date');
+    }
+    window.location.href = window.location.pathname + '?' + params.toString();
+  }
 </script>
 
 {% endblock %}
