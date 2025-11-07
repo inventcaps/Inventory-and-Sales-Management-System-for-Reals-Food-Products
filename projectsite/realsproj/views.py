@@ -417,8 +417,7 @@ class ProductsList(ListView):
             queryset = queryset.filter(
                 Q(product_type__name__icontains=search) |
                 Q(variant__name__icontains=search) |
-                Q(size__size_label__icontains=search) |
-                Q(description__icontains=search)
+                Q(size__size_label__icontains=search) 
             )
         
         date_created = self.request.GET.get("date_created")
