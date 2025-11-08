@@ -33,6 +33,9 @@
                         <form id="filterForm">
                             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
                                 <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 350px;">
+                                <input type="month" name="date_created" id="dateFilter" class="form-control" style="width:180px;"
+                                       placeholder="Filter by Month"
+                                       value="{{ request.GET.date_created }}">
                                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                                     <i class="la la-times"></i>
                                 </button>
@@ -232,6 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   
   const searchInput = document.getElementById('searchInput');
+  const dateFilter = document.getElementById('dateFilter');
   const tableBody = document.getElementById('rawMaterialsTable');
   const pagination = document.querySelector('.pagination-container');
   const modalsContainer = document.querySelector('#rawMaterialModalsContainer');
@@ -251,6 +255,12 @@ document.addEventListener('DOMContentLoaded', function() {
         params.delete("q");
       }
       
+      // Update or remove date filter
+      if (dateFilter.value) {
+        params.set("date_created", dateFilter.value);
+      } else {
+        params.delete("date_created");
+      }
       
       // Reset to page 1 when filters change
       if (resetPage) {
@@ -291,6 +301,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Event listeners
   searchInput.addEventListener('keyup', () => fetchRawMaterials(true));
+  dateFilter.addEventListener('change', () => fetchRawMaterials(true));
   
   // Handle pagination clicks
   document.addEventListener('click', function(e) {

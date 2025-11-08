@@ -884,7 +884,7 @@ class RawMaterialsList(ListView):
         queryset = RawMaterials.objects.filter(is_archived=False).select_related("unit", "created_by_admin").order_by('-id')
         
         query = self.request.GET.get("q", "").strip()
-        date_filter = self.request.GET.get("date_filter", "").strip()
+        date_created = self.request.GET.get("date_created", "").strip()
 
         if query:
             queryset = queryset.filter(
@@ -895,10 +895,10 @@ class RawMaterialsList(ListView):
                 Q(created_by_admin__username__icontains=query)
             )
         
-        if date_filter:
+        if date_created:
             try:
                 # Parse only year and month (from YYYY-MM)
-                parsed_date = datetime.strptime(date_filter, "%Y-%m")
+                parsed_date = datetime.strptime(date_created, "%Y-%m")
                 queryset = queryset.filter(
                     Q(date_created__year=parsed_date.year, date_created__month=parsed_date.month)
                 )
@@ -5981,9 +5981,10 @@ class PriceHistoryList(ListView):
     model = PriceHistory
     context_object_name = 'price_changes'
     template_name = "price_history.html"
-    paginate_by = 20
+    paginate_by = 10
     
     def get_queryset(self):
+        from datetime import datetime
         qs = PriceHistory.objects.all().select_related('product', 'changed_by_admin')
         
         product_id = self.request.GET.get('product_id')
@@ -6000,18 +6001,52 @@ class PriceHistoryList(ListView):
             qs = qs.filter(changed_at__gte=date_from)
         if date_to:
             qs = qs.filter(changed_at__lte=date_to)
+
+        show_all = self.request.GET.get('show_all')
+        date_created = self.request.GET.get('date_created')
+        
+        # If show_all is not set, apply date filtering
+        if not show_all:
+            if date_created:
+                # User selected a specific month
+                try:
+                    parsed_date = datetime.strptime(date_created, "%Y-%m")
+                    qs = qs.filter(
+                        changed_at__year=parsed_date.year,
+                        changed_at__month=parsed_date.month
+                    )
+                except ValueError:
+                    pass
+            else:
+                # Default to current month if no date selected
+                now = datetime.now()
+                qs = qs.filter(
+                    changed_at__year=now.year,
+                    changed_at__month=now.month
+                )
         
         search = self.request.GET.get('search')
         if search:
             qs = qs.filter(
                 Q(product__product_type__name__icontains=search) |
-                Q(product__variant__name__icontains=search)
+                Q(product__variant__name__icontains=search) |
+                Q(product__size__size_label__icontains=search)
             )
         
         return qs.order_by('-changed_at')
     
     def get_context_data(self, **kwargs):
+        from datetime import datetime
         context = super().get_context_data(**kwargs)
         context['products'] = Products.objects.all().order_by('product_type__name', 'variant__name')
         context['price_types'] = PriceHistory.PRICE_TYPE_CHOICES
+        
+        now = datetime.now()
+        context['current_month_value'] = now.strftime('%Y-%m')
+
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        context['query_params'] = query_params.urlencode()
+        
         return context

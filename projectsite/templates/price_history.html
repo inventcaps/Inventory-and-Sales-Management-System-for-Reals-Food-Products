@@ -12,6 +12,29 @@
                     </div>
 
                     <div class="card-body">
+                        <!-- Filters -->
+                        <form method="get" id="filterForm" class="mb-3">
+                            <!-- First Row: Search, Date, Price Type, Show All, Reset -->
+                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                                <input type="text" name="search" class="form-control" style="width: 350px;"
+                                    placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
+                                <input type="month" name="date_created" class="form-control" style="width:180px;"
+                                       placeholder="Filter by Month"
+                                       value="{% if request.GET.date_created %}{{ request.GET.date_created }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" id="dateFilter">
+                                <select name="price_type" class="form-control" style="width:150px;" id="priceTypeFilter">
+                                    <option value="">All</option>
+                                    <option value="UNIT" {% if request.GET.price_type == 'UNIT' %}selected{% endif %}>Unit Price</option>
+                                    <option value="SRP" {% if request.GET.price_type == 'SRP' %}selected{% endif %}>SRP</option>
+                                </select>
+                                <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
+                                    Show All Data
+                                </button>
+                                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                                    <i class="la la-times"></i>
+                                </button>
+                            </div>
+                        </form>
+
                         <!-- Table -->
                         <div class="table-responsive">
                             <table class="table table-striped table-hover">
@@ -19,12 +42,11 @@
                                     <tr>
                                         <th>Date & Time</th>
                                         <th>Product</th>
-                                        <th>Price Type</th>
+                                        <th class="text-center">Price Type</th>
                                         <th>Old Price</th>
                                         <th>New Price</th>
                                         <th>Change</th>
                                         <th>Changed By</th>
-                                        <th>Reason</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -32,9 +54,9 @@
                                     <tr>
                                         <td>{{ change.changed_at|date:"Y-m-d g:i A" }}</td>
                                         <td>
-                                            <strong>{{ change.product }}</strong>
+                                            {{ change.product }}
                                         </td>
-                                        <td>
+                                        <td class="text-center">
                                             <span class="badge {% if change.price_type == 'UNIT' %}badge-info{% else %}badge-primary{% endif %}">
                                                 {{ change.get_price_type_display }}
                                             </span>
@@ -79,22 +101,10 @@
                                                 <span class="text-muted">System</span>
                                             {% endif %}
                                         </td>
-                                        <td>
-                                            {% if change.reason %}
-                                                {{ change.reason }}
-                                            {% else %}
-                                                <span class="text-muted">-</span>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="8" class="text-center">
-                                            <div class="py-4">
-                                                <i class="la la-history la-3x text-muted"></i>
-                                                <p class="text-muted mt-2">No price changes found</p>
-                                            </div>
-                                        </td>
+                                        <td colspan="7" class="text-center">No price changes found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -102,7 +112,9 @@
                         </div>
 
                         <!-- Pagination -->
-                        {% include 'includes/pagination.html' %}
+                        <div class="pagination-container">
+                            {% include 'includes/pagination.html' with price_changes=price_changes query_params=query_params %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -111,21 +123,114 @@
 </div>
 
 <script>
+// Toggle Show All Data
+function toggleShowAll() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('show_all', 'true');
+    params.delete('date_created');
+    window.location.href = `${window.location.pathname}?${params.toString()}`;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('filterForm');
-    const selects = form.querySelectorAll('select');
-    const dateInputs = form.querySelectorAll('input[type="date"]');
+    const searchInput = form.querySelector('input[name="search"]');
+    const dateInput = document.getElementById('dateFilter');
+    const priceTypeSelect = form.querySelector('select[name="price_type"]');
+    const tableBody = document.querySelector('.table tbody');
+    const pagination = document.querySelector('.pagination-container');
+    const showAllBtn = document.getElementById('showAllBtn');
     
-    selects.forEach(select => {
-        select.addEventListener('change', function() {
-            form.submit();
-        });
-    });
+    let typingTimer;
+    const debounceTime = 600;
     
-    dateInputs.forEach(input => {
-        input.addEventListener('change', function() {
-            form.submit();
-        });
+    function fetchPriceHistory(resetPage = true) {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Update or remove search query
+            if (searchInput.value) {
+                params.set("search", searchInput.value);
+            } else {
+                params.delete("search");
+            }
+            
+            // Update or remove date filter
+            if (dateInput.value) {
+                params.set("date_created", dateInput.value);
+            } else {
+                params.delete("date_created");
+            }
+            
+            // Update or remove price type filter
+            if (priceTypeSelect.value) {
+                params.set("price_type", priceTypeSelect.value);
+            } else {
+                params.delete("price_type");
+            }
+            
+            // Reset to page 1 when filters change
+            if (resetPage) {
+                params.delete("page");
+            }
+            
+            const url = "/price-history/?" + params.toString();
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    
+                    // Replace table body
+                    const newRows = doc.querySelector(".table tbody");
+                    if (newRows && tableBody) tableBody.innerHTML = newRows.innerHTML;
+                    
+                    // Replace pagination
+                    const newPagination = doc.querySelector(".pagination-container");
+                    if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
+                    
+                    // Update URL without page reload
+                    window.history.pushState({}, '', url);
+                })
+                .catch(err => console.error("Error fetching price history:", err));
+        }, debounceTime);
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('keyup', () => fetchPriceHistory(true));
+    dateInput.addEventListener('change', () => fetchPriceHistory(true));
+    priceTypeSelect.addEventListener('change', () => fetchPriceHistory(true));
+    
+    // Handle pagination clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.pagination a')) {
+            e.preventDefault();
+            const link = e.target.closest('a');
+            const url = link.getAttribute('href');
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    
+                    // Replace table body
+                    const newRows = doc.querySelector(".table tbody");
+                    if (newRows && tableBody) tableBody.innerHTML = newRows.innerHTML;
+                    
+                    // Replace pagination
+                    const newPagination = doc.querySelector(".pagination-container");
+                    if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
+                    
+                    // Update URL without page reload
+                    window.history.pushState({}, '', url);
+                    
+                    // Scroll to top of table
+                    document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+                })
+                .catch(err => console.error("Error fetching price history:", err));
+        }
     });
 });
 </script>
@@ -142,13 +247,12 @@ document.addEventListener('DOMContentLoaded', function() {
   white-space: normal;
   vertical-align: top;
 }
-.table th:nth-child(1), .table td:nth-child(1) { width: 10%; } 
-.table th:nth-child(2), .table td:nth-child(2) { width: 20%; } 
-.table th:nth-child(3), .table td:nth-child(3) { width: 8%; }  
-.table th:nth-child(4), .table td:nth-child(4) { width: 10%; }  
-.table th:nth-child(5), .table td:nth-child(5) { width: 10%; }  
-.table th:nth-child(6), .table td:nth-child(6) { width: 10%; } 
-.table th:nth-child(7), .table td:nth-child(7) { width: 12%; }  
-.table th:nth-child(8), .table td:nth-child(8) { width: 20%; } 
+.table th:nth-child(1), .table td:nth-child(1) { width: 12%; } 
+.table th:nth-child(2), .table td:nth-child(2) { width: 25%; } 
+.table th:nth-child(3), .table td:nth-child(3) { width: 10%; }  
+.table th:nth-child(4), .table td:nth-child(4) { width: 12%; }  
+.table th:nth-child(5), .table td:nth-child(5) { width: 12%; }  
+.table th:nth-child(6), .table td:nth-child(6) { width: 15%; } 
+.table th:nth-child(7), .table td:nth-child(7) { width: 14%; }  
 </style>
 {% endblock %}
