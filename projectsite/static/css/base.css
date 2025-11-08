@@ -56,12 +56,15 @@ body, .main-panel{
   top: 0; 
   left: 0;
   right: 0;
-  z-index: 10000;
+  z-index: 999 !important;
   background: var(--glass-navbar) !important;
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255,255,255,.3) !important;
   box-shadow: 0 4px 12px rgba(0,0,0,.08);
   width: 100%;
+}
+.main-header .logo-header {
+  z-index: 999 !important;
 }
 .navbar.navbar-header{
   background: transparent !important;
@@ -116,6 +119,8 @@ body {
   -webkit-backdrop-filter: blur(var(--blur));
   color: var(--text);
   border-right: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 1000 !important;
+  position: relative;
 }
 
 .sidebar .user .info span{ color:var(--text) !important; }
@@ -895,10 +900,52 @@ body, .main-panel, .card, .navbar, .sidebar, .dropdown-menu, .table, .form-contr
 
 .modal {
    z-index: 1050 !important;
+   position: fixed !important;
 }
 
 .modal-dialog {
-   z-index: 1051 !important;
+   z-index: 1060 !important;
+   position: relative !important;
+}
+
+.modal-content {
+   z-index: 1061 !important;
+   position: relative !important;
+}
+
+.modal-header {
+   z-index: 1062 !important;
+   position: relative !important;
+}
+
+.modal-body {
+   z-index: 1062 !important;
+   position: relative !important;
+}
+
+.modal-footer {
+   z-index: 1062 !important;
+   position: relative !important;
+}
+
+.modal-footer .btn,
+.modal-footer button {
+   z-index: 1063 !important;
+   position: relative !important;
+   pointer-events: auto !important;
+}
+
+.modal-footer form {
+   z-index: 1063 !important;
+   position: relative !important;
+}
+
+.modal button,
+.modal .btn {
+   z-index: 1063 !important;
+   position: relative !important;
+   pointer-events: auto !important;
+   cursor: pointer !important;
 }
 
 html[data-theme="dark"] .modal-content {
@@ -976,8 +1023,33 @@ html[data-theme="dark"] #toast-container .toast-body {
 }
 
 .card-header {
-  z-index: 1000 !important;
+  z-index: 1 !important;
   position: relative !important;
+}
+
+.main-panel {
+  z-index: 1 !important;
+  position: relative;
+}
+
+.card {
+  z-index: 1 !important;
+  position: relative;
+}
+
+.content {
+  z-index: 1 !important;
+  position: relative;
+}
+
+.table-responsive {
+  z-index: 1 !important;
+  position: relative;
+}
+
+.container-fluid {
+  z-index: 1 !important;
+  position: relative;
 }
 
 html[data-theme="dark"] .pagination .page-link {
