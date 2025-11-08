@@ -71,7 +71,7 @@
                         <span class="badge badge-secondary">N/A</span>
                       {% endif %}
                     </td>
-                    <td>{{ order.date|date:"Y-m-d H:i" }}</td>
+                    <td>{{ order.date|date:"Y-m-d g:i A" }}</td>
                     <td>
                       {% if order.actual_group_id %}
                         <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" class="btn btn-sm btn-success">
@@ -153,4 +153,18 @@ document.getElementById('dateFilter').addEventListener('change', function() {
   window.location = url;
 });
 </script>
+
+<style>
+.table {
+  table-layout: fixed;
+  width: 100%;
+}
+.table th,
+.table td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+</style>
 {% endblock %}

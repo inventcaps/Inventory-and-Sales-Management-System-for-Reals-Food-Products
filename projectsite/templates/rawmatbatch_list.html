@@ -31,19 +31,13 @@
           </div>
 
           <div class="card-body">
-            <form class="row mb-3" id="filterForm">
-              <div class="col-auto">
+            <form id="filterForm">
+              <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
                 <input type="text" id="searchInput" class="form-control" name= "q" placeholder="Search raw batches..." value="{{ request.GET.q }}" style="width: 350px;"/>
-              </div>
-              <div class="col-auto">
                 <input type="month" name="date_filter" class="form-control" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" id="rawDateFilter" style="width: 180px;">
-              </div>
-              <div class="col-auto">
                 <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
                   Show All Data
                 </button>
-              </div>
-              <div class="col-auto">
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
@@ -70,7 +64,7 @@
                     <th scope="col" style="width: 40px;">
                         <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                     </th>
-                    <th scope="col">Batch Date</th>
+                    <th scope="col">Date</th>
                     <th scope="col">Material</th>
                     <th scope="col">Quantity</th>
                     <th scope="col">Received Date</th>
@@ -552,4 +546,24 @@ function handleDeleteSubmit(event, batchName) {
     });
 }
 </script>
+<style>
+#batchTable {
+  table-layout: fixed;
+  width: 100%;
+}
+#batchTable th,
+#batchTable td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+#batchTable th:nth-child(1), #batchTable td:nth-child(1) { width: 5%; }  
+#batchTable th:nth-child(2), #batchTable td:nth-child(2) { width: 12%; } 
+#batchTable th:nth-child(3), #batchTable td:nth-child(3) { width: 25%; }  
+#batchTable th:nth-child(4), #batchTable td:nth-child(4) { width: 10%; }  
+#batchTable th:nth-child(5), #batchTable td:nth-child(5) { width: 15%; } 
+#batchTable th:nth-child(6), #batchTable td:nth-child(6) { width: 15%; } 
+#batchTable th:nth-child(7), #batchTable td:nth-child(7) { width: 18%; }  
+</style>
 {% endblock %}

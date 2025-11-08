@@ -5240,10 +5240,36 @@ class UserActivityList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
+        from django.utils import timezone
+        from datetime import timedelta
+        
         query = self.request.GET.get('q')
+        status = self.request.GET.get('status')
         users = User.objects.all().select_related('useractivity').order_by('username')
+        
         if query:
             users = users.filter(username__icontains=query)
+        
+        if status:
+            if status == 'deleted':
+                users = users.filter(username__startswith='deleted_user')
+            elif status == 'active':
+                time_threshold = timezone.now() - timedelta(minutes=5)
+                users = users.filter(
+                    useractivity__active=True,
+                    useractivity__last_activity__gte=time_threshold
+                ).exclude(username__startswith='deleted_user')
+            elif status == 'inactive':
+                time_threshold = timezone.now() - timedelta(minutes=5)
+                from django.db.models import Q
+                users = users.filter(
+                    useractivity__active=True
+                ).filter(
+                    Q(useractivity__last_activity__lt=time_threshold) | Q(useractivity__last_activity__isnull=True)
+                ).exclude(username__startswith='deleted_user')
+            elif status == 'logged_out':
+                users = users.filter(useractivity__active=False).exclude(username__startswith='deleted_user')
+        
         return users
 
 

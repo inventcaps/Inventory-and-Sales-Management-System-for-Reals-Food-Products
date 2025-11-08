@@ -58,13 +58,16 @@
                     {% endfor %}
                   </div>
 
-                  <!-- Deduct Raw Materials - Full Width -->
-                  <div class="form-item" style="flex: 1 1 100%;">
-                    <div class="form-check">
-                      {% render_field form.deduct_raw_material class="form-check-input show-checkbox" %}
-                      <label class="form-check-label ms-2" for="{{ form.deduct_raw_material.id_for_label }}">
-                        {{ form.deduct_raw_material.label }}
-                      </label>
+                  <!-- Deduct Raw Materials -->
+                  <div class="form-item">
+                    <label class="d-block">Options</label>
+                    <div class="d-flex align-items-center" style="height: calc(1.5em + 0.75rem + 2px);">
+                      <div class="form-check mb-0">
+                        {% render_field form.deduct_raw_material class="form-check-input green-checkbox" style="margin-top: 0;" %}
+                        <label class="form-check-label" for="{{ form.deduct_raw_material.id_for_label }}" style="margin-left: 0.5rem; cursor: pointer;">
+                          {{ form.deduct_raw_material.label }}
+                        </label>
+                      </div>
                     </div>
                     {% for error in form.deduct_raw_material.errors %}
                       <div class="invalid-feedback d-block">{{ error }}</div>
@@ -82,4 +85,23 @@
     </div>
   </div>
 </div>
+
+<style>
+.green-checkbox {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #28a745;
+}
+
+.green-checkbox:checked {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.form-check-label {
+  cursor: pointer;
+  user-select: none;
+}
+</style>
 {% endblock %}

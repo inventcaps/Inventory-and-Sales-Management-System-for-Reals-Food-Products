@@ -45,7 +45,7 @@
                     {% for object in object_list %}
                     <tr>
                       <td>{{ object.formatted_message }}</td>
-                      <td>{{ object.notification_timestamp|date:"M d, Y, h:i a" }}</td>
+                      <td>{{ object.notification_timestamp|date:"Y-m-d g:i A" }}</td>
                       <td>
                           <a href="#" data-toggle="modal" data-target="#deleteNotificationModal{{ object.id }}" class="text-danger" title="Delete">
                             <i class="la la-trash la-lg"></i>

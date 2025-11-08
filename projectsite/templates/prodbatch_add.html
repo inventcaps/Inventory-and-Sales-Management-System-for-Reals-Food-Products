@@ -44,15 +44,18 @@
             <div class="col-md-6">
               <div class="form-group">
                 <label class="font-weight-bold d-block">Options</label>
-                <div class="form-check mt-2">
-                  <input type="checkbox" 
-                         name="{{ form.deduct_raw_material.name }}" 
-                         id="{{ form.deduct_raw_material.id_for_label }}"
-                         class="form-check-input green-checkbox"
-                         {% if form.deduct_raw_material.value %}checked{% endif %}>
-                  <label class="form-check-label" for="{{ form.deduct_raw_material.id_for_label }}">
-                    Deduct Raw Materials
-                  </label>
+                <div class="d-flex align-items-center" style="height: calc(1.5em + 0.75rem + 2px);">
+                  <div class="form-check mb-0">
+                    <input type="checkbox" 
+                           name="{{ form.deduct_raw_material.name }}" 
+                           id="{{ form.deduct_raw_material.id_for_label }}"
+                           class="form-check-input green-checkbox"
+                           style="margin-top: 0;"
+                           {% if form.deduct_raw_material.value %}checked{% endif %}>
+                    <label class="form-check-label" for="{{ form.deduct_raw_material.id_for_label }}" style="margin-left: 0.5rem; cursor: pointer;">
+                      Deduct Raw Materials
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>

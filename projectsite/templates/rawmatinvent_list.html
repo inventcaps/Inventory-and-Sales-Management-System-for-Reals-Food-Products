@@ -19,18 +19,12 @@
           <div class="card-body">
             <!-- Search bar -->
             <form method="get" action="" id="filterForm">
-              <div class="row mb-3">
-                <div class="col-md-6">
-                  <div class="input-group">
-                    <input type="text" id="searchInput" name="q" value="{{ request.GET.q }}" 
-                      class="form-control" placeholder="Search raw material inventory...">
-                  </div>
-                </div>
-                <div class="col-md-1">
-                  <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
-                    <i class="la la-times"></i>
-                  </button>
-                </div>
+              <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                <input type="text" id="searchInput" name="q" value="{{ request.GET.q }}" 
+                  class="form-control" style="width: 350px;" placeholder="Search raw material inventory...">
+                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                  <i class="la la-times"></i>
+                </button>
               </div>
 
               <!-- Table -->
@@ -185,4 +179,22 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+<style>
+.table {
+  table-layout: fixed;
+  width: 100%;
+}
+.table th,
+.table td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+
+.table th:nth-child(1), .table td:nth-child(1) { width: 40%; }
+.table th:nth-child(2), .table td:nth-child(2) { width: 20%; } 
+.table th:nth-child(3), .table td:nth-child(3) { width: 20%; }  
+</style>
 {% endblock %}
