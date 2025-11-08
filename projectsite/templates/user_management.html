@@ -45,7 +45,7 @@
                                                 <span class="badge bg-secondary">User</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm" onclick="showApproveModal({{ user.id }}, '{{ user.username }}')">
                                                 <i class="la la-check"></i> Approve
@@ -105,7 +105,7 @@
                                                 <span class="badge bg-secondary">User</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</td>
+                                        <td>{{ user.last_login|date:"Y-m-d g:i A"|default:"Never" }}</td>
                                         <td>
                                             {% if user.id != request.user.id %}
                                                 <button class="btn btn-warning btn-sm" onclick="showToggleRoleModal({{ user.id }}, '{{ user.username }}', {{ user.is_superuser|yesno:'true,false' }})">
@@ -163,7 +163,7 @@
                                         <td><strong>{{ user.id }}</strong></td>
                                         <td>{{ user.first_name }} {{ user.last_name }}</td>
                                         <td>{{ user.email }}</td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm" onclick="showReactivateModal({{ user.id }})">
                                                 <i class="la la-check-circle"></i> Reactivate
@@ -213,7 +213,7 @@
                                         <td><strong>{{ user.id }}</strong></td>
                                         <td>{{ user.first_name }} {{ user.last_name }}</td>
                                         <td>{{ user.email }}</td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>

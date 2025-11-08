@@ -30,7 +30,7 @@
                                 <tbody>
                                     {% for change in price_changes %}
                                     <tr>
-                                        <td>{{ change.changed_at|date:"M d, Y, h:i a" }}</td>
+                                        <td>{{ change.changed_at|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <strong>{{ change.product }}</strong>
                                         </td>
@@ -129,4 +129,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<style>
+.table {
+  table-layout: fixed;
+  width: 100%;
+}
+.table th,
+.table td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+.table th:nth-child(1), .table td:nth-child(1) { width: 10%; } 
+.table th:nth-child(2), .table td:nth-child(2) { width: 20%; } 
+.table th:nth-child(3), .table td:nth-child(3) { width: 8%; }  
+.table th:nth-child(4), .table td:nth-child(4) { width: 10%; }  
+.table th:nth-child(5), .table td:nth-child(5) { width: 10%; }  
+.table th:nth-child(6), .table td:nth-child(6) { width: 10%; } 
+.table th:nth-child(7), .table td:nth-child(7) { width: 12%; }  
+.table th:nth-child(8), .table td:nth-child(8) { width: 20%; } 
+</style>
 {% endblock %}

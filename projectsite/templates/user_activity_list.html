@@ -16,35 +16,40 @@
                     
                     <!-- Search -->
                     <div class="card-body">
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <form method="get" action="" class="mt-2" id="searchForm">
-                                    <div class="input-group">
-                                        <input type="text" id="searchInput" name="q"
-                                            class="form-control"
-                                            placeholder="Search users..."
-                                            value="{{ request.GET.q }}">
-                                    </div>
-                                </form>
-                            </div>
-                            <div class="col-md-1">
-                                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary mt-2" title="Reset filters">
+                        <form method="get" action="" id="filterForm">
+                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                                <input type="text" id="searchInput" name="q"
+                                    class="form-control" style="width: 350px;"
+                                    placeholder="Search users..."
+                                    value="{{ request.GET.q }}">
+                                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                                     <i class="la la-times"></i>
                                 </button>
                             </div>
-                        </div>
 
-                        <!-- Table -->
-                        <table class="table table-striped mt-3">
-                            <thead>
-                                <tr>
-                                    <th scope="col">Username</th>
-                                    <th scope="col">Email</th>
-                                    <th scope="col">Status</th>
-                                    <th scope="col">Last Login</th>
-                                    <th scope="col">Last Logout</th>
-                                </tr>
-                            </thead>
+                            <!-- Table -->
+                            <table class="table table-striped mt-3">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Username</th>
+                                        <th scope="col">Email</th>
+                                        <th scope="col">
+                                            <span class="fw-bold me-2">Status</span>
+                                            <select id="statusFilter" name="status"
+                                                style="border:none; background:transparent; font-weight:500; cursor:pointer;"
+                                                onchange="document.getElementById('filterForm').submit();">
+                                                <option value="" {% if not request.GET.status %}selected{% endif %}>All</option>
+                                                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                                                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                                                <option value="logged_out" {% if request.GET.status == 'logged_out' %}selected{% endif %}>Logged Out</option>
+                                                <option value="deleted" {% if request.GET.status == 'deleted' %}selected{% endif %}>Deleted</option>
+                                            </select>
+                                        </th>
+                                        <th scope="col">Last Login</th>
+                                        <th scope="col">Last Logout</th>
+                                    </tr>
+                                </thead>
+                        </form>
                             <tbody id="userTableBody">
                                 {% for user in users %}
                                 <tr {% if user.username|slice:":12" == "deleted_user" %}class="table-secondary"{% endif %}>
@@ -66,7 +71,9 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if user.useractivity.is_truly_active %}
+                                        {% if user.username|slice:":12" == "deleted_user" %}
+                                            <span class="badge bg-danger">Deleted</span>
+                                        {% elif user.useractivity.is_truly_active %}
                                             <span class="badge bg-success">Active</span>
                                         {% elif user.useractivity.active %}
                                             <span class="badge bg-warning text-dark">Inactive</span>
@@ -74,10 +81,10 @@
                                             <span class="badge bg-secondary">Logged Out</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ user.last_login|default:"—" }}</td>
+                                    <td>{{ user.last_login|date:"Y-m-d g:i A"|default:"—" }}</td>
                                     <td>
                                         {% if user.useractivity.last_logout %}
-                                            {{ user.useractivity.last_logout }}
+                                            {{ user.useractivity.last_logout|date:"Y-m-d g:i A" }}
                                         {% else %}
                                             —
                                         {% endif %}
@@ -102,4 +109,22 @@
     </div>
 </div>
 
+<style>
+.table {
+  table-layout: fixed;
+  width: 100%;
+}
+.table th,
+.table td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+/* Center align Status column (3rd column) */
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  text-align: center;
+}
+</style>
 {% endblock %}

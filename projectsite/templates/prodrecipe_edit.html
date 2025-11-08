@@ -5,7 +5,12 @@
 {% block content %}
 <div class="content">
   <div class="container-fluid">
-    <h4 class="page-title">Edit Materials for {{ object.product.name }}</h4>
+    <h4 class="page-title">
+      <a href="{% url 'recipe-list' object.product.id %}" class="btn btn-link p-0 mr-2" title="Back to Materials">
+        <i class="la la-arrow-left" style="font-size: 24px;"></i>
+      </a>
+      Edit Materials for {{ product.product_type.name }} - {{ product.variant.name }} ({{ product.size.size_label }} {{ product.size_unit.unit_name }})
+    </h4>
 
     <div class="card">
       <div class="card-body">
@@ -38,7 +43,6 @@
 
           <div class="mt-3">
             <button type="submit" class="btn btn-success btn-rounded">Update Materials</button>
-            <a href="{% url 'recipe-list' object.product.id %}" class="btn btn-secondary">Cancel</a>
           </div>
         </form>
       </div>

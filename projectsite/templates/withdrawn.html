@@ -67,9 +67,7 @@
                     <i class="la la-archive"></i> Archive Selected
                 </button>
             </div>
-          </div>
 
-          <div class="card-body">
             <div class="table-responsive">
               <table class="table table-striped" id="withdrawalTable">
                 <thead>
@@ -81,7 +79,7 @@
                     <th scope="col">Type</th>
                     <th scope="col">Reason</th>
                     <th scope="col">Items</th>
-                    <th scope="col">Withdrawn By</th>
+                    <th scope="col">Admin</th>
                     <th scope="col">Actions</th>
                   </tr>
                 </thead>
@@ -628,4 +626,26 @@ function toggleShowAll() {
 }
 
 </script>
+
+<style>
+#withdrawalTable {
+  table-layout: fixed;
+  width: 100%;
+}
+#withdrawalTable th,
+#withdrawalTable td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+
+#withdrawalTable th:nth-child(1), #withdrawalTable td:nth-child(1) { width: 5%; } 
+#withdrawalTable th:nth-child(2), #withdrawalTable td:nth-child(2) { width: 12%; }
+#withdrawalTable th:nth-child(3), #withdrawalTable td:nth-child(3) { width: 15%; }
+#withdrawalTable th:nth-child(4), #withdrawalTable td:nth-child(4) { width: 10%; }  
+#withdrawalTable th:nth-child(5), #withdrawalTable td:nth-child(5) { width: 25%; }  
+#withdrawalTable th:nth-child(6), #withdrawalTable td:nth-child(6) { width: 13%; } 
+#withdrawalTable th:nth-child(7), #withdrawalTable td:nth-child(7) { width: 20%; }
+</style>
 {% endblock %}

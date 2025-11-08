@@ -4,6 +4,9 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
+      <a href="{% url 'products' %}" class="btn btn-link p-0 mr-2" title="Back to Products">
+        <i class="la la-arrow-left" style="font-size: 24px;"></i>
+      </a>
       Materials for {{ product.product_type.name }} - {{ product.variant.name }} ({{ product.size.size_label }} {{ product.size_unit.unit_name }})
     </h4>
 
@@ -52,10 +55,6 @@
                 {% endfor %}
               </tbody>
             </table>
-
-            <div class="mt-3 text-right">
-                <a href="{% url 'products' %}" class="btn btn-secondary btn-rounded">Back to Products</a>
-            </div> 
           </div>
         </div>
       </div> 

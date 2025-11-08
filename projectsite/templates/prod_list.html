@@ -12,7 +12,7 @@
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
                             <div class="card-title">List of Products</div>
-                            <span id="scanner-status" class="badge badge-secondary">Scanner: Connecting...</span>
+                            <span id="scanner-status" class="badge badge-secondary" style="margin-top: 5px;">Scanner: Connecting...</span>
                         </div>
                         <div class="d-flex align-items-center" style="gap:0.5rem; position: relative; z-index: 1050;">
                             
@@ -44,28 +44,20 @@
                         <form method="get" id="filterForm" class="mb-3">
 
                             <!-- Other Filters Row -->
-                            <div class="row">
-                                <div class="col-auto">
-                                    <input type="text" name="search" class="form-control" style="width: 350px;"
-                                        placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
+                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                                <input type="text" name="search" class="form-control" style="width: 350px;"
+                                    placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
+                                <input type="month" name="date_created" class="form-control" style="width:180px;"
+                                       placeholder="Filter by Month"
+                                       value="{{ request.GET.date_created }}">
+                                <div style="position:relative;">
+                                    <input type="text" name="barcode" id="barcode-search" class="form-control"
+                                        placeholder="🔍 Scan or enter barcode..." value="{{ request.GET.barcode }}">
+                                    <small id="barcode-status" class="form-text text-muted" style="position:absolute; bottom:-20px; left:0; white-space:nowrap;">Ready to scan...</small>
                                 </div>
-                                <div class="col-auto">
-                                    <input type="month" name="date_created" class="form-control"
-                                           placeholder="Filter by Month"
-                                           value="{{ request.GET.date_created }}">
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="input-group">
-                                        <input type="text" name="barcode" id="barcode-search" class="form-control"
-                                            placeholder="🔍 Scan or enter barcode..." value="{{ request.GET.barcode }}">
-                                    </div>
-                                    <small id="barcode-status" class="form-text text-muted">Ready to scan...</small>
-                                </div>
-                                <div class="col-auto">
-                                    <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
-                                        <i class="la la-times"></i>
-                                    </button>
-                                </div>
+                                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                                    <i class="la la-times"></i>
+                                </button>
                             </div>
                         </form>
 
@@ -713,4 +705,23 @@ function confirmBulkArchive() {
   </div>
 </div>
 
+<style>
+#productsTable {
+  table-layout: fixed;
+  width: 100%;
+}
+#productsTable th,
+#productsTable td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+#productsTable th:nth-child(2), #productsTable td:nth-child(2) { width: 30%; }
+#productsTable th:nth-child(3), #productsTable td:nth-child(3) { width: 12%; } 
+#productsTable th:nth-child(4), #productsTable td:nth-child(4) { width: 12%; } 
+#productsTable th:nth-child(5), #productsTable td:nth-child(5) { width: 16%; } 
+#productsTable th:nth-child(6), #productsTable td:nth-child(6) { width: 10%; }  
+#productsTable th:nth-child(7), #productsTable td:nth-child(7) { width: 15%; }
+</style>
 {% endblock %}

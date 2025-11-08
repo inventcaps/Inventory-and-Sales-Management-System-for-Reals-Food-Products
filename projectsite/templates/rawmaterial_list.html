@@ -30,11 +30,9 @@
 
                     <div class="card-body">
                         <!-- Search -->
-                        <form class="row mb-3" id="filterForm">
-                            <div class="col-auto">
+                        <form id="filterForm">
+                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
                                 <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 350px;">
-                            </div>
-                            <div class="col-auto">
                                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                                     <i class="la la-times"></i>
                                 </button>
@@ -79,7 +77,7 @@
                                         <td>{{ object.size|floatformat:0 }}</td>
                                         <td>{{ object.unit }}</td>
                                         <td>{{ object.price_per_unit }}</td>
-                                        <td>{{ object.date_created|date:"Y-m-d H:i" }}</td>
+                                        <td>{{ object.date_created|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <a href="{% url 'rawmaterials-edit' object.id %}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
@@ -519,4 +517,25 @@ function handleDeleteSubmit(event, materialName) {
 }
 
 </script>
+
+<style>
+.table {
+  table-layout: fixed;
+  width: 100%;
+}
+.table th,
+.table td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+}
+.table th:nth-child(1), .table td:nth-child(1) { width: 5%; }  
+.table th:nth-child(2), .table td:nth-child(2) { width: 25%; } 
+.table th:nth-child(3), .table td:nth-child(3) { width: 10%; }
+.table th:nth-child(4), .table td:nth-child(4) { width: 10%; } 
+.table th:nth-child(5), .table td:nth-child(5) { width: 15%; } 
+.table th:nth-child(6), .table td:nth-child(6) { width: 20%; }  
+.table th:nth-child(7), .table td:nth-child(7) { width: 15%; } 
+</style>
 {% endblock %}
