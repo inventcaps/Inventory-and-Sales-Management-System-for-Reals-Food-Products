@@ -64,26 +64,6 @@
 
           <div class="card-body">
 
-            <!-- Filters moved here -->
-            <div class="d-flex align-items-center mb-2" style="gap:0.5rem;">
-              <!-- Category Filter -->
-              <select id="categoryFilter" class="form-control" style="width:180px;">
-                <option value="">All Categories</option>
-                  {% for cat in categories %}
-                    <option value="{{ cat.value }}" {% if request.GET.category == cat.value %}selected{% endif %}>
-                      {{ cat.display }}
-                    </option>
-                  {% endfor %}
-              </select>
-              <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
-              <button type="button" class="btn btn-info" onclick="toggleShowAll()">
-                Show All Data
-              </button>
-              <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
-                <i class="la la-times"></i>
-              </button>
-            </div>
-
             <!-- Sales & Expenses Summary -->
             <div class="row mb-3 text-center" id="salesSummary">
               <!-- Manual Sales Card -->
@@ -129,6 +109,26 @@
                   </div>
                 </div>
               </div>
+            </div>
+
+            <!-- Filters moved here -->
+            <div class="d-flex align-items-center mb-2" style="gap:0.5rem;">
+              <!-- Category Filter -->
+              <select id="categoryFilter" class="form-control" style="width:180px;">
+                <option value="">All Categories</option>
+                  {% for cat in categories %}
+                    <option value="{{ cat.value }}" {% if request.GET.category == cat.value %}selected{% endif %}>
+                      {{ cat.display }}
+                    </option>
+                  {% endfor %}
+              </select>
+              <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.month %}{{ request.GET.month }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" class="btn btn-info" onclick="toggleShowAll()">
+                Show All Data
+              </button>
+              <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                <i class="la la-times"></i>
+              </button>
             </div>
 
             <!-- Bulk Action Buttons -->
@@ -206,6 +206,26 @@
             <div class="card-title">Expenses Records</div>
           </div>
           <div class="card-body">
+            <!-- Filters for Expenses -->
+            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+              <!-- Category Filter -->
+              <select id="expenseCategoryFilter" class="form-control" style="width:180px;">
+                <option value="">All Categories</option>
+                {% for cat in expense_categories %}
+                  <option value="{{ cat.value }}" {% if request.GET.expense_category == cat.value %}selected{% endif %}>
+                    {{ cat.display }}
+                  </option>
+                {% endfor %}
+              </select>
+              <input type="month" id="expenseDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.expense_month %}{{ request.GET.expense_month }}{% elif not request.GET.expense_show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" class="btn btn-info" id="expenseShowAllBtn">
+                Show All Data
+              </button>
+              <button type="button" id="expenseResetBtn" class="btn btn-secondary" title="Reset filters">
+                <i class="la la-times"></i>
+              </button>
+            </div>
+
             <!-- Bulk Action Buttons -->
             <div class="mb-3">
                 <button type="button" class="btn btn-danger btn-rounded" id="bulkDeleteExpenseBtn" style="display:none;" onclick="bulkDeleteExpense()">
@@ -261,6 +281,10 @@
                   {% endfor %}
                 </tbody>
               </table>
+            </div>
+
+            <div class="pagination-container">
+              {% include 'includes/expenses_pagination.html' %}
             </div>
           </div>
         </div>
@@ -964,9 +988,121 @@ function confirmBulkArchiveExpenses() {
         showToast('An error occurred while archiving expenses', 'error');
     });
 }
-</script>
 
-<script src="{% static 'js/sales_search.js' %}"></script>
+// Expense Filtering Functions - Same as sales filtering (server-side)
+document.addEventListener('DOMContentLoaded', function() {
+    const expenseCategoryFilter = document.getElementById('expenseCategoryFilter');
+    const expenseDateFilter = document.getElementById('expenseDateFilter');
+    const expenseShowAllBtn = document.getElementById('expenseShowAllBtn');
+    const expenseResetBtn = document.getElementById('expenseResetBtn');
+    
+    // Expense filters work the same way as sales filters - reload page with parameters
+    if (expenseCategoryFilter) {
+        expenseCategoryFilter.addEventListener('change', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (this.value) {
+                params.set('expense_category', this.value);
+            } else {
+                params.delete('expense_category');
+            }
+            params.delete('expense_page'); // Reset to page 1 when filter changes
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+    }
+    
+    if (expenseDateFilter) {
+        expenseDateFilter.addEventListener('change', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (this.value) {
+                params.set('expense_month', this.value);
+                params.delete('expense_show_all');
+            } else {
+                params.delete('expense_month');
+            }
+            params.delete('expense_page'); // Reset to page 1 when filter changes
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+    }
+    
+    if (expenseShowAllBtn) {
+        expenseShowAllBtn.addEventListener('click', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('expense_show_all')) {
+                params.delete('expense_show_all');
+            } else {
+                params.set('expense_show_all', '1');
+                params.delete('expense_month');
+            }
+            params.delete('expense_page'); // Reset to page 1 when filter changes
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+    }
+    
+    if (expenseResetBtn) {
+        expenseResetBtn.addEventListener('click', function() {
+            const params = new URLSearchParams(window.location.search);
+            params.delete('expense_category');
+            params.delete('expense_month');
+            params.delete('expense_show_all');
+            params.delete('expense_page');
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+    }
+});
+
+// Sales Filtering Functions - Same as expenses filtering (server-side)
+document.addEventListener('DOMContentLoaded', function() {
+    const categoryFilter = document.getElementById('categoryFilter');
+    const dateFilter = document.getElementById('dateFilter');
+    const resetBtn = document.querySelector('.btn-secondary[title="Reset filters"]');
+    
+    // Category filter - reload page with parameters
+    if (categoryFilter) {
+        categoryFilter.addEventListener('change', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (this.value) {
+                params.set('category', this.value);
+            } else {
+                params.delete('category');
+            }
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+    }
+    
+    // Month filter - reload page with parameters
+    if (dateFilter) {
+        dateFilter.addEventListener('change', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (this.value) {
+                params.set('month', this.value);
+                params.delete('show_all');
+            } else {
+                params.delete('month');
+            }
+            window.location.href = window.location.pathname + '?' + params.toString();
+        });
+    }
+    
+    // Reset button
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            window.location.href = window.location.pathname;
+        });
+    }
+});
+
+// Show All button function
+function toggleShowAll() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('show_all')) {
+        params.delete('show_all');
+    } else {
+        params.set('show_all', '1');
+        params.delete('month');
+    }
+    window.location.href = window.location.pathname + '?' + params.toString();
+}
+</script>
 
 <style>
 .table-responsive {

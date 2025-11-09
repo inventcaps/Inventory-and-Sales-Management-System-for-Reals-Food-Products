@@ -1319,20 +1319,30 @@ class SalesExpensesList(ListView):
         # --- Category filter ---
         category = self.request.GET.get("category", "").strip()
         if category:
-            qs = qs.filter(category__iexact=category)
+            # Use exact match with the category value from database
+            qs = qs.filter(category=category)
 
-        date_filter = self.request.GET.get("date_filter", "").strip()
+        # Accept 'month' parameter from JavaScript
+        date_filter = self.request.GET.get("month", "").strip()
         show_all = self.request.GET.get("show_all", "").strip()
         
-        if date_filter:
+        # Apply month filter logic
+        if show_all:
+            # Show all data - no date filter
+            pass
+        elif date_filter:
+            # Filter by selected month
             try:
                 year_str, month_str = date_filter.split("-")
                 year = int(year_str)
                 month_num = int(month_str.lstrip("0"))
                 qs = qs.filter(date__year=year, date__month=month_num)
             except ValueError:
-                pass
-        elif not show_all:
+                # If invalid format, default to current month
+                today = timezone.now()
+                qs = qs.filter(date__year=today.year, date__month=today.month)
+        else:
+            # No filter specified - default to current month
             today = timezone.now()
             qs = qs.filter(date__year=today.year, date__month=today.month)
 
@@ -1454,16 +1464,27 @@ class SalesExpensesList(ListView):
         
         # Add expenses summary for combined display
         expenses_qs = Expenses.objects.filter(is_archived=False)
-        # Apply same month filter
-        if month:
+        
+        # Get expense-specific filter parameters
+        expense_category = self.request.GET.get("expense_category", "").strip()
+        expense_month = self.request.GET.get("expense_month", "").strip()
+        expense_show_all = self.request.GET.get("expense_show_all", "").strip()
+        
+        # Apply expense category filter
+        if expense_category:
+            expenses_qs = expenses_qs.filter(category__iexact=expense_category)
+        
+        # Apply expense month filter
+        if expense_month:
             try:
-                year_str, month_str = month.split("-")
+                year_str, month_str = expense_month.split("-")
                 year = int(year_str)
                 month_num = int(month_str.lstrip("0"))
                 expenses_qs = expenses_qs.filter(date__year=year, date__month=month_num)
             except ValueError:
                 pass
-        else:
+        elif not expense_show_all:
+            # Default to current month if no filter and not showing all
             today = timezone.now()
             expenses_qs = expenses_qs.filter(date__year=today.year, date__month=today.month)
         
@@ -1478,8 +1499,24 @@ class SalesExpensesList(ListView):
         total_expenses = context["expenses_summary"]["total_expenses"] or 0
         context["net_profit"] = total_sales - total_expenses
         
-        # Add expenses list for display (limit to recent 10)
-        context["expenses_list"] = expenses_qs.order_by("-date")[:10]
+        # Add expenses list for display with pagination
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+        
+        expenses_list = expenses_qs.order_by("-date")
+        expense_page = self.request.GET.get('expense_page', 1)
+        expenses_paginator = Paginator(expenses_list, 10)  # 10 expenses per page
+        
+        try:
+            expenses_page_obj = expenses_paginator.page(expense_page)
+        except PageNotAnInteger:
+            expenses_page_obj = expenses_paginator.page(1)
+        except EmptyPage:
+            expenses_page_obj = expenses_paginator.page(expenses_paginator.num_pages)
+        
+        context["expenses_list"] = expenses_page_obj
+        context["expenses_paginator"] = expenses_paginator
+        context["expenses_page_obj"] = expenses_page_obj
+        context["expenses_is_paginated"] = expenses_paginator.num_pages > 1
         
         # Format categories for display (exclude withdrawal-based sales)
         raw_categories = Sales.objects.filter(
@@ -1500,12 +1537,31 @@ class SalesExpensesList(ListView):
                 # Use the formatted display name as the key to prevent duplicates
                 # This ensures "Physical Store" and "PHYSICAL_STORE" are treated as the same
                 if formatted not in categories_dict:
-                    # Prefer uppercase version for the value (for consistency with DB)
-                    categories_dict[formatted] = {'value': cat.upper().replace(' ', '_'), 'display': formatted}
+                    # Use original category value from database (don't convert to uppercase)
+                    categories_dict[formatted] = {'value': cat, 'display': formatted}
         
         # Sort by display name
         categories = sorted(categories_dict.values(), key=lambda x: x['display'])
         context['categories'] = categories
+
+        # Format expense categories for display
+        raw_expense_categories = Expenses.objects.filter(
+            is_archived=False
+        ).values_list('category', flat=True).distinct()
+        
+        # Create clean list of unique expense categories with proper formatting
+        expense_categories_dict = {}
+        for cat in raw_expense_categories:
+            if cat:  # Skip empty/None values
+                # Replace underscores with spaces and convert to title case for display
+                formatted = cat.replace('_', ' ').title()
+                
+                if formatted not in expense_categories_dict:
+                    expense_categories_dict[formatted] = {'value': cat, 'display': formatted}
+        
+        # Sort by display name
+        expense_categories = sorted(expense_categories_dict.values(), key=lambda x: x['display'])
+        context['expense_categories'] = expense_categories
 
         # Add withdrawal-based sales grouped by order_group_id
         month = self.request.GET.get("month", "").strip()

@@ -57,30 +57,10 @@ document.addEventListener("DOMContentLoaded", function () {
         params.delete("page");
       }
 
-      const url = "/sales/?" + params.toString();
-
-      fetch(url)
-        .then(response => response.text())
-        .then(html => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, "text/html");
-
-          // Replace table body
-          const newRows = doc.querySelector("#salesTableBody");
-          if (newRows) tableBody.innerHTML = newRows.innerHTML;
-
-          // Replace pagination
-          const newPagination = doc.querySelector(".pagination-container");
-          if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
-
-          // Replace summary
-          const newSummary = doc.querySelector("#salesSummary");
-          if (newSummary && summaryContainer) summaryContainer.innerHTML = newSummary.innerHTML;
-          
-          // Update URL without page reload
-          window.history.pushState({}, '', url);
-        })
-        .catch(err => console.error("Error fetching sales:", err));
+      const url = window.location.pathname + "?" + params.toString();
+      
+      // Use full page reload instead of AJAX to ensure get_queryset() runs
+      window.location.href = url;
     }, 300);
   }
 
