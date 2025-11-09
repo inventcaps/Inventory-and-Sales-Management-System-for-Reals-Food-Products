@@ -6,6 +6,64 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">Withdrawals</h4>
+    
+    <!-- Withdrawal Summary Cards -->
+    <div class="row mb-3">
+      <!-- Total Withdrawals Card -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Total Withdrawals</h5>
+                <p class="text-muted mb-0">All withdrawal quantities</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Product Withdrawals Card -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Product Withdrawals</h5>
+                <p class="text-muted mb-0">{{ product_withdrawals_count }} withdrawal(s)</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Raw Material Withdrawals Card -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Raw Material Withdrawals</h5>
+                <p class="text-muted mb-0">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div class="row">
       <div class="col-md-12">
         <div class="card">
