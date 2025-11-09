@@ -480,8 +480,7 @@ html[data-theme="dark"] .main-header {
 }
 
 html[data-theme="dark"] .sidebar {
-  background: rgba(26, 31, 32, 0.8) !important;
-  backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur));
+  background: #1a1f20 !important;
   color: var(--text) !important;
   border-right: 1px solid var(--border);
 }

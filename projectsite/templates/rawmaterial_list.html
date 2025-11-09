@@ -5,26 +5,6 @@
     <div class="container-fluid">
         <h4 class="page-title">Raw Material List</h4>
         
-        <!-- Total Raw Materials Card -->
-        <div class="row mb-3">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h5 class="card-title mb-1">Total Raw Materials</h5>
-                                <p class="text-muted mb-0">Total number of active raw materials</p>
-                            </div>
-                            <div class="text-right">
-                                <h2 class="mb-0 text-primary">{{ total_raw_materials }}</h2>
-                                <small class="text-muted">materials</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
@@ -50,8 +30,30 @@
                     </div>
 
                     <div class="card-body">
-                        <!-- Search -->
                         <form id="filterForm">
+
+                            <!-- Total Raw Materials Card -->
+                            <div class="row mb-0">
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h5 class="card-title mb-1">Total Raw Materials</h5>
+                                                    <p class="text-muted mb-0">Total number of active raw materials</p>
+                                                </div>
+                                                <div class="text-right">
+                                                    <h2 class="mb-0 text-primary">{{ total_raw_materials|default:"0" }}</h2>
+                                                    <medium class="text-muted">Materials</medium>
+                                                    <!-- Debug: total_raw_materials = "{{ total_raw_materials }}" -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Search -->
                             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
                                 <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 350px;">
                                 <input type="month" name="date_created" id="dateFilter" class="form-control" style="width:180px;"
