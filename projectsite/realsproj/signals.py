@@ -13,7 +13,7 @@ def user_logged_in_handler(sender, request, user, **kwargs):
 
 @receiver(user_logged_out)
 def user_logged_out_handler(sender, request, user, **kwargs):
-    if user.is_authenticated:
+    if user and user.is_authenticated:
         activity, created = UserActivity.objects.get_or_create(user=user)
         activity.last_logout = timezone.now()
         activity.save()

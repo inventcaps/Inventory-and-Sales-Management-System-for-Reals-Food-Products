@@ -158,7 +158,13 @@
                     <a data-toggle="collapse" href="#collapseExample" aria-expanded="true">
                         <span>
                             {{ request.user.username }}
-                            <span class="user-level">Administrator</span>
+                            <span class="user-level">
+                              Administrator
+                            {% if request.user.is_superuser %}
+                            {% else %}
+                              Staff
+                            {% endif %}
+                            </span>
                             <span class="caret"></span>
                         </span>
                     </a>
@@ -429,6 +435,257 @@ $(document).ready(function() {
     }
   });
 </script>
+
+<!-- Account Status Checker - Automatic Logout for Deactivated Accounts -->
+<script>
+{% if user.is_authenticated %}
+(function() {
+    console.log('=== ACCOUNT STATUS CHECKER INITIALIZED ===');
+    console.log('Current user:', '{{ user.username }}');
+    console.log('Current role:', {{ user.is_superuser|lower }});
+    console.log('Checking every 3 seconds...');
+    
+    let isLoggingOut = false;
+    let lastKnownRole = {{ user.is_superuser|lower }};  // Track initial role
+    
+    // Check account status
+    function checkAccountStatus() {
+        // Don't check if already logging out
+        if (isLoggingOut) {
+            console.log('Already logging out, skipping check...');
+            return;
+        }
+        
+        console.log('[' + new Date().toLocaleTimeString() + '] Checking account status...');
+        
+        fetch('{% url "check-account-status" %}', {
+            method: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response content-type:', response.headers.get('content-type'));
+            
+            // If 401 (not authenticated), user already logged out
+            if (response.status === 401) {
+                console.log('User not authenticated (401), stopping checks');
+                clearInterval(window.accountStatusInterval);
+                return null;
+            }
+            
+            // If not OK (200), stop checking
+            if (!response.ok) {
+                console.log('Response not OK, stopping checks');
+                clearInterval(window.accountStatusInterval);
+                return null;
+            }
+            
+            // Check if response is JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Response is not JSON, got:', contentType);
+                clearInterval(window.accountStatusInterval);
+                return null;
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            if (!data) {
+                console.log('No data received');
+                return;
+            }
+            
+            console.log('Account status:', data);
+            console.log('is_active:', data.is_active);
+            console.log('is_superuser:', data.is_superuser);
+            
+            // Check if account was deactivated
+            if (data.is_active === false) {
+                console.log('⚠️ ACCOUNT DEACTIVATED! Showing modal...');
+                isLoggingOut = true;
+                clearInterval(window.accountStatusInterval);
+                
+                // Show the deactivation modal (same as promote/demote)
+                try {
+                    $('#accountDeactivatedModal').modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        show: true
+                    });
+                    console.log('Deactivation modal shown');
+                } catch (error) {
+                    console.error('Error showing modal:', error);
+                    alert('Your account has been deactivated. Please contact the administrator.');
+                    document.getElementById('deactivatedLogoutForm').submit();
+                }
+                return;
+            }
+            
+            // Check if role changed (promoted or demoted)
+            if (data.is_superuser !== lastKnownRole) {
+                isLoggingOut = true;
+                clearInterval(window.accountStatusInterval);
+                
+                if (data.is_superuser === true) {
+                    // User was promoted to Administrator
+                    console.log('🎉 PROMOTED TO ADMINISTRATOR! Showing modal...');
+                    try {
+                        $('#accountPromotedModal').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
+                        console.log('Promotion modal shown');
+                    } catch (error) {
+                        console.error('Error showing modal:', error);
+                        alert('You have been promoted to Administrator. Please log out and log back in.');
+                        document.getElementById('promotedLogoutForm').submit();
+                    }
+                } else {
+                    // User was demoted to Staff
+                    console.log('⚠️ DEMOTED TO STAFF! Showing modal...');
+                    try {
+                        $('#accountDemotedModal').modal({
+                            backdrop: 'static',
+                            keyboard: false,
+                            show: true
+                        });
+                        console.log('Demotion modal shown');
+                    } catch (error) {
+                        console.error('Error showing modal:', error);
+                        alert('You have been demoted to Staff. Please log out and log back in.');
+                        document.getElementById('demotedLogoutForm').submit();
+                    }
+                }
+                return;
+            }
+            
+            console.log('✓ Account is still active, no changes');
+        })
+        .catch(error => {
+            console.error('❌ Error checking account status:', error);
+            // Don't stop checking on network errors
+        });
+    }
+    
+    // Check immediately on page load
+    checkAccountStatus();
+    
+    // Then check every 3 seconds
+    window.accountStatusInterval = setInterval(checkAccountStatus, 3000);
+})();
+{% endif %}
+</script>
+
+<!-- Check for deactivation modal flag from middleware -->
+<script>
+{% if request.show_deactivated_modal %}
+$(document).ready(function() {
+    console.log('Deactivation flag detected, showing modal...');
+    
+    // Clear the session flag via AJAX
+    fetch('{% url "clear-deactivation-flag" %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    }).then(() => {
+        console.log('Session flag cleared');
+    });
+    
+    // Show the modal
+    $('#accountDeactivatedModal').modal({
+        backdrop: 'static',
+        keyboard: false,
+        show: true
+    });
+});
+{% endif %}
+</script>
+
+<!-- Account Deactivated Modal -->
+<div class="modal fade" id="accountDeactivatedModal" tabindex="-1" role="dialog" aria-labelledby="accountDeactivatedLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="accountDeactivatedLabel">
+                    <i class="la la-exclamation-triangle"></i> Account Deactivated
+                </h5>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="la la-user-times" style="font-size: 4rem; color: #dc3545;"></i>
+                <h5 class="mt-3">Your account has been deactivated</h5>
+                <p class="text-muted">Your account has been deactivated by an administrator. You will be logged out when you click OK.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <form method="post" action="{% url 'logout' %}" id="deactivatedLogoutForm" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger btn-rounded" id="deactivatedOkBtn">
+                        <i class="la la-sign-out"></i> OK, Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Promoted Modal -->
+<div class="modal fade" id="accountPromotedModal" tabindex="-1" role="dialog" aria-labelledby="accountPromotedLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="accountPromotedLabel">
+                    <i class="la la-arrow-up"></i> Account Promoted
+                </h5>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="la la-user-shield" style="font-size: 4rem; color: #28a745;"></i>
+                <h5 class="mt-3">You have been promoted to Administrator</h5>
+                <p class="text-muted">Your account has been promoted by an administrator. Please log out and log back in to access your new permissions.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <form method="post" action="{% url 'logout' %}" id="promotedLogoutForm" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-rounded" id="promotedOkBtn">
+                        <i class="la la-sign-out"></i> OK, Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Account Demoted Modal -->
+<div class="modal fade" id="accountDemotedModal" tabindex="-1" role="dialog" aria-labelledby="accountDemotedLabel" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="accountDemotedLabel">
+                    <i class="la la-arrow-down"></i> Account Demoted
+                </h5>
+            </div>
+            <div class="modal-body text-center py-4">
+                <i class="la la-user" style="font-size: 4rem; color: #ffc107;"></i>
+                <h5 class="mt-3">You have been demoted to Staff</h5>
+                <p class="text-muted">Your account has been demoted by an administrator. Please log out and log back in to update your permissions.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <form method="post" action="{% url 'logout' %}" id="demotedLogoutForm" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-warning btn-rounded" id="demotedOkBtn">
+                        <i class="la la-sign-out"></i> OK, Logout
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% block vendor_js %}{% endblock vendor_js %}
 {% block page_js %}{% endblock page_js %}           
