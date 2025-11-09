@@ -131,7 +131,7 @@
             <div class="modal-footer">
                 <form method="post" action="{% url 'rawmaterials-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.name }} ({{ object.size }} {{ object.unit }})')">
                     {% csrf_token %}
-                    <button type="button" class="btn btn-secondary" onclick="$('#archiveRawMaterialModal{{ object.id }}').modal('hide')">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-warning">Archive</button>
                 </form>
             </div>
@@ -153,7 +153,7 @@
             <div class="modal-footer">
                 <form method="post" action="{% url 'rawmaterials-delete' object.id %}" onsubmit="handleDeleteSubmit(event, '{{ object.name }} ({{ object.size }} {{ object.unit }})')">
                     {% csrf_token %}
-                    <button type="button" class="btn btn-secondary" onclick="$('#deleteRawMaterialModal{{ object.id }}').modal('hide')">Cancel</button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </div>
@@ -176,7 +176,7 @@
       <div class="modal-footer">
         <form method="post" action="{% url 'rawmaterials-archive-old' %}">
           {% csrf_token %}
-          <button type="button" class="btn btn-secondary" onclick="$('#archiveOldRawMaterialsModal').modal('hide')">Cancel</button>
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-warning">Yes, Archive</button>
         </form>
       </div>
