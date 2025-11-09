@@ -30,6 +30,210 @@
     html[data-theme="dark"] .logo-header .logo:active {
       color: #f1f8f4 !important;
     }
+
+    /* Prevent logo text wrapping */
+    .logo-header .logo {
+      white-space: nowrap !important;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Mobile Menu Dropdown */
+    .mobile-menu-dropdown {
+      display: none;
+      position: fixed;
+      top: 60px;
+      right: 10px;
+      background: #fff;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      border-radius: 8px;
+      min-width: 280px;
+      max-width: calc(100vw - 20px);
+      z-index: 9999;
+      overflow: hidden;
+    }
+    
+    .mobile-menu-dropdown.show {
+      display: block;
+      animation: slideDown 0.3s ease;
+    }
+    
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .mobile-menu-header {
+      display: flex;
+      align-items: center;
+      padding: 15px;
+      background: linear-gradient(135deg, #FFE8B6 10%, #8fc76f 100%);
+      color: white;
+    }
+    
+    .mobile-menu-header img {
+      margin-right: 12px;
+      border: 2px solid white;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      object-fit: cover;
+    }
+    
+    .mobile-menu-user-info h5 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    
+    .mobile-menu-user-info p {
+      margin: 0;
+      font-size: 12px;
+      opacity: 0.9;
+    }
+    
+    .mobile-menu-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 15px;
+      color: #333;
+      text-decoration: none;
+      transition: background 0.2s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+    
+    .mobile-menu-item:hover {
+      background: #f5f5f5;
+    }
+    
+    .mobile-menu-item i {
+      font-size: 18px;
+      margin-right: 12px;
+      width: 20px;
+      text-align: center;
+      color: #555;
+    }
+    
+    html[data-theme="dark"] .mobile-menu-item i {
+      color: #aaa;
+    }
+    
+    .mobile-menu-item span {
+      flex: 1;
+    }
+    
+    .mobile-menu-divider {
+      height: 1px;
+      background: #e0e0e0;
+      margin: 5px 0;
+    }
+    
+    .theme-toggle-mobile {
+      width: 50px;
+      height: 24px;
+      background: #ccc;
+      border-radius: 12px;
+      position: relative;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    
+    .theme-toggle-mobile .track {
+      display: none;
+    }
+    
+    .theme-toggle-mobile .knob {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s;
+    }
+    
+    .theme-toggle-mobile[aria-checked="true"] {
+      background: #667eea;
+    }
+    
+    .theme-toggle-mobile[aria-checked="true"] .knob {
+      transform: translateX(26px);
+    }
+    
+    /* Dark mode support */
+    html[data-theme="dark"] .mobile-menu-dropdown {
+      background: #1a1a1a;
+      border: 1px solid #333;
+    }
+    
+    html[data-theme="dark"] .mobile-menu-item {
+      color: #e0e0e0;
+    }
+    
+    html[data-theme="dark"] .mobile-menu-item:hover {
+      background: #2a2a2a;
+    }
+    
+    html[data-theme="dark"] .mobile-menu-divider {
+      background: #333;
+    }
+    
+    /* Responsive Navigation - Mobile Only */
+    @media (max-width: 991px) {
+      /* Reorder: hamburger left, logo center, three-dot right */
+      .logo-header {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .sidenav-toggler {
+        order: 1;
+        margin-left: 0 !important;
+        margin-right: 10px !important;
+      }
+      
+      .logo-header .logo {
+        order: 2;
+        flex: 1;
+        text-align: center;
+        margin: 0 10px;
+      }
+      
+      .topbar-toggler.more {
+        order: 3;
+        display: block !important;
+        margin-left: 10px !important;
+      }
+      
+      /* Hide right nav items by default on mobile */
+      .navbar-header .topbar-nav {
+        display: none !important;
+      }
+    }
+    
+    /* Desktop: hide three-dot, show all nav items */
+    @media (min-width: 992px) {
+      .topbar-toggler.more {
+        display: none !important;
+      }
+      
+      .navbar-header .topbar-nav {
+        display: flex !important;
+      }
+    }
   </style>
 
   <!-- Theme Detection Script - MUST run BEFORE page renders to prevent flash -->
@@ -60,6 +264,43 @@
             </button>
             <button class="topbar-toggler more"><i class="la la-ellipsis-v"></i></button>
         </div>
+        
+        <!-- Mobile Menu Dropdown (appears when three-dot is clicked) -->
+        <div id="mobileMenuDropdown" class="mobile-menu-dropdown">
+            <div class="mobile-menu-header">
+                <img src="{% static 'img/reals.jpg' %}" alt="user-img" width="40" class="img-circle">
+                <div class="mobile-menu-user-info">
+                    <h5>{{ request.user.username }}</h5>
+                    <p>{{ request.user.email }}</p>
+                </div>
+            </div>
+            <div class="mobile-menu-divider"></div>
+            <a href="{% url 'profile' %}" class="mobile-menu-item">
+                <i class="la la-user"></i>
+                <span>View Profile</span>
+            </a>
+            <a href="{% url 'notifications' %}" class="mobile-menu-item">
+                <i class="la la-bell"></i>
+                <span>Notifications</span>
+                {% if unread_count > 0 %}
+                <span class="badge badge-danger ml-auto">{{ unread_count }}</span>
+                {% endif %}
+            </a>
+            <div class="mobile-menu-item">
+                <i class="la la-adjust"></i>
+                <span>Dark Mode</span>
+                <button id="mobileThemeToggle" class="theme-toggle-mobile ml-auto" role="switch" aria-checked="false">
+                    <span class="track"></span>
+                    <span class="knob"></span>
+                </button>
+            </div>
+            <div class="mobile-menu-divider"></div>
+            <button class="mobile-menu-item" type="button" data-toggle="modal" data-target="#logoutModal" id="mobileLogoutBtn">
+                <i class="la la-power-off"></i>
+                <span>Logout</span>
+            </button>
+        </div>
+        
                <nav class="navbar navbar-header navbar-expand-lg">
             <div class="container-fluid">
                 <ul class="navbar-nav topbar-nav ml-md-auto align-items-center">
@@ -340,10 +581,10 @@
 <!-- Sidebar Toggle Handler - Backup for mobile -->
 <script>
 $(document).ready(function() {
-  // Ensure sidebar toggle works on mobile
+  // Sidebar toggle (hamburger icon)
   $('.sidenav-toggler, .navbar-toggler').on('click', function(e) {
     e.preventDefault();
-    console.log('Sidebar toggle clicked!'); // Debug log
+    console.log('Sidebar toggle clicked!');
     
     if ($('html').hasClass('nav_open')) {
       $('html').removeClass('nav_open');
@@ -354,12 +595,83 @@ $(document).ready(function() {
     }
   });
   
-  // Close sidebar when clicking outside on mobile
+  // Three-dot menu toggle (mobile menu dropdown)
+  $('.topbar-toggler.more').on('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Three-dot menu clicked!');
+    
+    // Calculate the correct top position based on main-header height
+    const mainHeaderHeight = $('.main-header').outerHeight();
+    console.log('Main header height:', mainHeaderHeight);
+    
+    // Toggle mobile menu
+    $('#mobileMenuDropdown').toggleClass('show');
+    
+    // Set the top position dynamically
+    if ($('#mobileMenuDropdown').hasClass('show')) {
+      $('#mobileMenuDropdown').css('top', mainHeaderHeight + 'px');
+    }
+    
+    $(this).toggleClass('toggled');
+  });
+  
+  // Sync mobile theme toggle with current theme on page load
+  const currentTheme = document.documentElement.getAttribute('data-theme');
+  if (currentTheme === 'dark') {
+    $('#mobileThemeToggle').attr('aria-checked', 'true');
+  }
+  
+  // Mobile theme toggle
+  $('#mobileThemeToggle').on('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    
+    if (currentTheme === 'dark') {
+      html.removeAttribute('data-theme');
+      localStorage.setItem('rfp-theme', 'light');
+      $(this).attr('aria-checked', 'false');
+      $('#themeToggle').attr('aria-checked', 'false');
+    } else {
+      html.setAttribute('data-theme', 'dark');
+      localStorage.setItem('rfp-theme', 'dark');
+      $(this).attr('aria-checked', 'true');
+      $('#themeToggle').attr('aria-checked', 'true');
+    }
+    
+    // Update Apex charts if present
+    if (window.Apex) {
+      window.Apex.tooltip = { theme: (html.getAttribute('data-theme') === 'dark') ? 'dark' : 'light' };
+    }
+  });
+  
+  // Close mobile menu when any menu item is clicked
+  $('#mobileMenuDropdown .mobile-menu-item').on('click', function(e) {
+    // Don't close if clicking on the dark mode toggle itself
+    if (!$(e.target).closest('#mobileThemeToggle').length) {
+      $('#mobileMenuDropdown').removeClass('show');
+      $('.topbar-toggler.more').removeClass('toggled');
+    }
+  });
+  
+  // Close menus when clicking outside
   $(document).on('click', function(e) {
+    // Close sidebar
     if ($('html').hasClass('nav_open')) {
       if (!$(e.target).closest('.sidebar, .sidenav-toggler, .navbar-toggler').length) {
         $('html').removeClass('nav_open');
         $('.sidenav-toggler, .navbar-toggler').removeClass('toggled');
+      }
+    }
+    
+    // Close mobile menu
+    if ($('#mobileMenuDropdown').hasClass('show')) {
+      if (!$(e.target).closest('#mobileMenuDropdown, .topbar-toggler.more').length) {
+        $('#mobileMenuDropdown').removeClass('show');
+        $('.topbar-toggler.more').removeClass('toggled');
       }
     }
   });
