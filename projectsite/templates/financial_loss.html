@@ -6,12 +6,42 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">Financial Loss Report</h4>
+    
+    <!-- Summary Cards -->
+    <div class="row mb-3 text-center">
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title text-muted">Total Financial Loss</h5>
+            <h3 id="totalLoss" class="text-danger">₱{{ total_loss|floatformat:2|intcomma }}</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title text-muted">Product Loss</h5>
+            <h3 id="productLoss" class="text-warning">₱{{ product_loss|floatformat:2|intcomma }}</h3>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="card-title text-muted">Raw Material Loss</h5>
+            <h3 id="rawMaterialLoss" class="text-info">₱{{ raw_material_loss|floatformat:2|intcomma }}</h3>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Products Loss Section -->
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-              <div class="card-title">Expired & Damaged Items</div>
+              <div class="card-title">Products - Expired & Damaged</div>
             </div>
             <div>
               <button type="button" class="btn btn-outline-primary btn-rounded" data-toggle="modal" data-target="#exportLossModal">
@@ -21,47 +51,16 @@
           </div>
 
           <div class="card-body">
-            <!-- Date Filter -->
+            <!-- Product Filters -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
-              <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
-              <button type="button" class="btn btn-info" onclick="toggleShowAll()">
+              <input type="month" id="productDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.product_date_filter %}{{ request.GET.product_date_filter }}{% elif not request.GET.product_show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" class="btn btn-info" onclick="toggleProductShowAll()">
                 Show All Data
               </button>
-              <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+              <button type="button" onclick="resetProductFilters()" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
               </button>
             </div>
-
-            <!-- Summary Cards -->
-            <div class="row mb-4 text-center">
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title text-muted">Total Financial Loss</h5>
-                    <h3 id="totalLoss" class="text-danger">₱{{ total_loss|floatformat:2|intcomma }}</h3>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title text-muted">Product Loss</h5>
-                    <h3 id="productLoss" class="text-warning">₱{{ product_loss|floatformat:2|intcomma }}</h3>
-                  </div>
-                </div>
-              </div>
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title text-muted">Raw Material Loss</h5>
-                    <h3 id="rawMaterialLoss" class="text-info">₱{{ raw_material_loss|floatformat:2|intcomma }}</h3>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Products Loss Section -->
-            <h5 class="mt-4 mb-3">Products - Expired & Damaged</h5>
             <div class="table-responsive">
               <table class="table table-striped" id="productsLossTable">
                 <thead>
@@ -96,6 +95,7 @@
                 </tbody>
               </table>
             </div>
+            
             
             <!-- Products Pagination -->
             {% if product_is_paginated %}
@@ -168,9 +168,32 @@
               </div>
             </nav>
             {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
 
-            <!-- Raw Materials Loss Section -->
-            <h5 class="mt-5 mb-3">Raw Materials - Expired & Damaged</h5>
+    <!-- Raw Materials Loss Section -->
+    <div class="row mt-4">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+              <div class="card-title">Raw Materials - Expired & Damaged</div>
+            </div>
+          </div>
+
+          <div class="card-body">
+            <!-- Raw Material Filters -->
+            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+              <input type="month" id="rawMaterialDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.raw_material_date_filter %}{{ request.GET.raw_material_date_filter }}{% elif not request.GET.raw_material_show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" class="btn btn-info" onclick="toggleRawMaterialShowAll()">
+                Show All Data
+              </button>
+              <button type="button" onclick="resetRawMaterialFilters()" class="btn btn-secondary" title="Reset filters">
+                <i class="la la-times"></i>
+              </button>
+            </div>
             <div class="table-responsive">
               <table class="table table-striped" id="rawMaterialsLossTable">
                 <thead>
@@ -347,110 +370,79 @@ document.getElementById("lossFilterType").addEventListener("change", function() 
   }
 });
 
-document.getElementById("dateFilter").addEventListener("change", function() {
-  const selectedMonth = this.value; 
-  filterTablesByMonth(selectedMonth);
-  updateSummaryCards(selectedMonth);
-});
-
-document.getElementById("clearFilter").addEventListener("click", function() {
-  document.getElementById("dateFilter").value = "";
-  filterTablesByMonth("");
-  updateSummaryCards("");
-});
-
-function filterTablesByMonth(month) {
-  const productRows = document.querySelectorAll("#productsLossBody tr[data-date]");
-  productRows.forEach(row => {
-    if (!month || row.getAttribute("data-date") === month) {
-      row.style.display = "";
-    } else {
-      row.style.display = "none";
-    }
-  });
-
-  const rawMaterialRows = document.querySelectorAll("#rawMaterialsLossBody tr[data-date]");
-  rawMaterialRows.forEach(row => {
-    if (!month || row.getAttribute("data-date") === month) {
-      row.style.display = "";
-    } else {
-      row.style.display = "none";
-    }
-  });
-}
-
-function updateSummaryCards(month) {
-  let productLossTotal = 0;
-  let rawMaterialLossTotal = 0;
-
-  const productRows = document.querySelectorAll("#productsLossBody tr[data-date]");
-  productRows.forEach(row => {
-    if (row.style.display !== "none") {
-      const lossCell = row.querySelector("td:last-child");
-      if (lossCell) {
-        const lossText = lossCell.textContent.replace(/[₱,]/g, "");
-        productLossTotal += parseFloat(lossText) || 0;
-      }
-    }
-  });
-
-  const rawMaterialRows = document.querySelectorAll("#rawMaterialsLossBody tr[data-date]");
-  rawMaterialRows.forEach(row => {
-    if (row.style.display !== "none") {
-      const lossCell = row.querySelector("td:last-child");
-      if (lossCell) {
-        const lossText = lossCell.textContent.replace(/[₱,]/g, "");
-        rawMaterialLossTotal += parseFloat(lossText) || 0;
-      }
-    }
-  });
-
-  const totalLoss = productLossTotal + rawMaterialLossTotal;
-
-  document.getElementById("totalLoss").textContent = "₱" + totalLoss.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  document.getElementById("productLoss").textContent = "₱" + productLossTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  document.getElementById("rawMaterialLoss").textContent = "₱" + rawMaterialLossTotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-}
-
-function toggleShowAll() {
+// Product filters
+document.getElementById("productDateFilter").addEventListener("change", function() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('show_all')) {
-    params.delete('show_all');
+  params.set('product_date_filter', this.value);
+  params.delete('product_show_all');
+  window.location.href = window.location.pathname + '?' + params.toString();
+});
+
+function toggleProductShowAll() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('product_show_all')) {
+    params.delete('product_show_all');
   } else {
-    params.set('show_all', '1');
-    params.delete('date_filter');
+    params.set('product_show_all', '1');
+    params.delete('product_date_filter');
   }
+  window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function resetProductFilters() {
+  const params = new URLSearchParams(window.location.search);
+  params.delete('product_date_filter');
+  params.delete('product_show_all');
+  params.delete('product_page');
+  window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+// Raw Material filters
+document.getElementById("rawMaterialDateFilter").addEventListener("change", function() {
+  const params = new URLSearchParams(window.location.search);
+  params.set('raw_material_date_filter', this.value);
+  params.delete('raw_material_show_all');
+  window.location.href = window.location.pathname + '?' + params.toString();
+});
+
+function toggleRawMaterialShowAll() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('raw_material_show_all')) {
+    params.delete('raw_material_show_all');
+  } else {
+    params.set('raw_material_show_all', '1');
+    params.delete('raw_material_date_filter');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function resetRawMaterialFilters() {
+  const params = new URLSearchParams(window.location.search);
+  params.delete('raw_material_date_filter');
+  params.delete('raw_material_show_all');
+  params.delete('raw_material_page');
   window.location.href = window.location.pathname + '?' + params.toString();
 }
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #productsLossTable,
 #rawMaterialsLossTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 950px;
 }
 #productsLossTable th,
 #productsLossTable td,
 #rawMaterialsLossTable th,
 #rawMaterialsLossTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-#productsLossTable th:nth-child(1), #productsLossTable td:nth-child(1) { width: 15%; } 
-#productsLossTable th:nth-child(2), #productsLossTable td:nth-child(2) { width: 30%; }  
-#productsLossTable th:nth-child(3), #productsLossTable td:nth-child(3) { width: 12%; } 
-#productsLossTable th:nth-child(4), #productsLossTable td:nth-child(4) { width: 13%; } 
-#productsLossTable th:nth-child(5), #productsLossTable td:nth-child(5) { width: 12%; } 
-#productsLossTable th:nth-child(6), #productsLossTable td:nth-child(6) { width: 18%; } 
-
-#rawMaterialsLossTable th:nth-child(1), #rawMaterialsLossTable td:nth-child(1) { width: 15%; }  
-#rawMaterialsLossTable th:nth-child(2), #rawMaterialsLossTable td:nth-child(2) { width: 30%; } 
-#rawMaterialsLossTable th:nth-child(3), #rawMaterialsLossTable td:nth-child(3) { width: 12%; }  
-#rawMaterialsLossTable th:nth-child(4), #rawMaterialsLossTable td:nth-child(4) { width: 13%; }  
-#rawMaterialsLossTable th:nth-child(5), #rawMaterialsLossTable td:nth-child(5) { width: 12%; }  
-#rawMaterialsLossTable th:nth-child(6), #rawMaterialsLossTable td:nth-child(6) { width: 18%; }  
 </style>
 {% endblock %}

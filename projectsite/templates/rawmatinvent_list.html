@@ -5,6 +5,27 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">Raw Material Inventory</h4>
+    
+    <!-- Total Stock Card -->
+    <div class="row mb-3">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Total Raw Material Stock</h5>
+                <p class="text-muted mb-0">Sum of all raw material inventory</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-primary">{{ total_rawmat_stock|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div class="row">
       <div class="col-md-12">
         <div class="card">
@@ -181,20 +202,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 700px;
 }
 .table th,
 .table td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-
-.table th:nth-child(1), .table td:nth-child(1) { width: 40%; }
-.table th:nth-child(2), .table td:nth-child(2) { width: 20%; } 
-.table th:nth-child(3), .table td:nth-child(3) { width: 20%; }  
 </style>
 {% endblock %}

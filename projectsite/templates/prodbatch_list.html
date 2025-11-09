@@ -548,18 +548,23 @@ function handleDeleteSubmit(event, batchName) {
         showToast('An error occurred while deleting the batch.', 'error');
     });
 }
+</script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #batchTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 900px;
 }
 #batchTable th,
 #batchTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
 </style>
 {% endblock %}

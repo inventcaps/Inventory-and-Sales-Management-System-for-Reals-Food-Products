@@ -493,6 +493,9 @@ class ProductsList(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["query_params"] = self.request.GET
+
+        total_products = Products.objects.filter(is_archived=False).count()
+        context['total_products'] = total_products
         return context
 
 
@@ -884,7 +887,7 @@ class RawMaterialsList(ListView):
         queryset = RawMaterials.objects.filter(is_archived=False).select_related("unit", "created_by_admin").order_by('-id')
         
         query = self.request.GET.get("q", "").strip()
-        date_filter = self.request.GET.get("date_filter", "").strip()
+        date_created = self.request.GET.get("date_created", "").strip()
 
         if query:
             queryset = queryset.filter(
@@ -895,10 +898,10 @@ class RawMaterialsList(ListView):
                 Q(created_by_admin__username__icontains=query)
             )
         
-        if date_filter:
+        if date_created:
             try:
                 # Parse only year and month (from YYYY-MM)
-                parsed_date = datetime.strptime(date_filter, "%Y-%m")
+                parsed_date = datetime.strptime(date_created, "%Y-%m")
                 queryset = queryset.filter(
                     Q(date_created__year=parsed_date.year, date_created__month=parsed_date.month)
                 )
@@ -1360,11 +1363,14 @@ class SalesExpensesList(ListView):
         month = self.request.GET.get("month", "").strip()
         category = self.request.GET.get("category", "").strip()
         query = self.request.GET.get("q", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
         
         total_qs = Sales.objects.filter(is_archived=False).order_by("-date")
         
         # Apply month filter
-        if month:
+        if show_all:
+            pass
+        elif month:
             try:
                 year_str, month_str = month.split("-")
                 year = int(year_str)
@@ -1395,7 +1401,9 @@ class SalesExpensesList(ListView):
         ).order_by("-date")
         
         # Apply same filters to manual sales
-        if month:
+        if show_all:
+            pass
+        elif month:
             try:
                 year_str, month_str = month.split("-")
                 year = int(year_str)
@@ -1433,7 +1441,9 @@ class SalesExpensesList(ListView):
         ).order_by("-date")
         
         # Apply same month filter
-        if month:
+        if show_all:
+            pass
+        elif month:
             try:
                 year_str, month_str = month.split("-")
                 year = int(year_str)
@@ -1965,23 +1975,26 @@ class WithdrawalSalesList(ListView):
         
         # Apply filters
         show_all = self.request.GET.get("show_all", "").strip()
-        month = self.request.GET.get("month", "").strip()
+        date_filter = self.request.GET.get("date_filter", "").strip()
         channel = self.request.GET.get("channel", "").strip()
         
-        # Month filter
-        if show_all != "true":
-            if month:
-                try:
-                    year_str, month_str = month.split("-")
-                    year = int(year_str)
-                    month_num = int(month_str.lstrip("0"))
-                    qs = qs.filter(date__year=year, date__month=month_num)
-                except ValueError:
-                    pass
-            else:
-                # Default: show only current month
+        if show_all:
+
+            pass
+        elif date_filter:
+
+            try:
+                year_str, month_str = date_filter.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                qs = qs.filter(date__year=year, date__month=month_num)
+            except ValueError:
                 today = timezone.now()
                 qs = qs.filter(date__year=today.year, date__month=today.month)
+        else:
+
+            today = timezone.now()
+            qs = qs.filter(date__year=today.year, date__month=today.month)
         
         # Channel filter
         if channel:
@@ -2024,6 +2037,7 @@ class WithdrawalSalesList(ListView):
         return sorted(withdrawal_orders, key=lambda x: x['date'], reverse=True)
     
     def get_context_data(self, **kwargs):
+        from django.db.models import Sum, Count
         context = super().get_context_data(**kwargs)
         
         # Get unique sales channels for filter
@@ -2033,6 +2047,37 @@ class WithdrawalSalesList(ListView):
             sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
         ).values_list('sales_channel', flat=True).distinct()
         context["channels"] = channels
+
+        today = timezone.now()
+        context['current_month_value'] = today.strftime("%Y-%m")
+
+        filtered_qs = getattr(self, "_full_queryset", Withdrawals.objects.none())
+        
+        from realsproj.models import Sales
+
+        withdrawal_group_ids = filtered_qs.filter(
+            order_group_id__isnull=False
+        ).values_list('order_group_id', flat=True).distinct()
+
+        total_sales_amount = 0
+        total_sales_count = 0
+        
+        if withdrawal_group_ids:
+
+            sales_records = Sales.objects.filter(
+                is_archived=False
+            ).filter(
+                Q(description__icontains="Order #") | Q(description__icontains="order #")
+            )
+            
+            for group_id in withdrawal_group_ids:
+                group_sales = sales_records.filter(description__icontains=f"Order #{group_id}")
+                if group_sales.exists():
+                    total_sales_amount += group_sales.aggregate(total=Sum('amount'))['total'] or 0
+                    total_sales_count += group_sales.count()
+        
+        context['total_withdrawal_sales'] = total_sales_amount
+        context['total_withdrawal_sales_count'] = total_sales_count
         
         return context
 
@@ -2427,6 +2472,14 @@ class ProductInventoryList(ListView):
             queryset = queryset.filter(total_stock=0)
 
         return queryset.order_by("product_id")
+    
+    def get_context_data(self, **kwargs):
+        from django.db.models import Sum
+        context = super().get_context_data(**kwargs)
+        # Calculate total stock across all products
+        total_stock = ProductInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        context['total_product_stock'] = total_stock
+        return context
 
 
 class RawMaterialList(ListView):
@@ -2449,6 +2502,12 @@ class RawMaterialList(ListView):
             )
 
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        total_raw_materials = RawMaterials.objects.filter(is_archived=False).count()
+        context['total_raw_materials'] = total_raw_materials
+        return context
 
     
 class RawMaterialBatchList(ListView):
@@ -2633,6 +2692,13 @@ class RawMaterialInventoryList(ListView):
             queryset = queryset.filter(total_stock=0)
 
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        from django.db.models import Sum
+        context = super().get_context_data(**kwargs)
+        total_stock = RawMaterialInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        context['total_rawmat_stock'] = total_stock
+        return context
 
 class ProductTypeCreateView(CreateView):
     model = ProductTypes
@@ -3140,6 +3206,7 @@ class WithdrawSuccessView(ListView):
         from django.core.cache import cache
         from collections import defaultdict
         from django.core.paginator import Paginator
+        from django.db.models import Sum
         
         context = super().get_context_data(**kwargs)
         
@@ -3149,6 +3216,17 @@ class WithdrawSuccessView(ListView):
         # Group withdrawals by order_group_id or by timestamp for non-grouped items
         # Get all withdrawals (not paginated yet)
         all_withdrawals = self.get_queryset()
+
+        total_withdrawals = all_withdrawals.aggregate(total=Sum('quantity'))['total'] or 0
+        context['total_withdrawals'] = total_withdrawals
+
+        product_withdrawals = all_withdrawals.filter(item_type='PRODUCT')
+        context['product_withdrawals_qty'] = product_withdrawals.aggregate(total=Sum('quantity'))['total'] or 0
+        context['product_withdrawals_count'] = product_withdrawals.count()
+ 
+        rawmat_withdrawals = all_withdrawals.filter(item_type='RAW_MATERIAL')
+        context['rawmat_withdrawals_qty'] = rawmat_withdrawals.aggregate(total=Sum('quantity'))['total'] or 0
+        context['rawmat_withdrawals_count'] = rawmat_withdrawals.count()
         
         grouped_withdrawals = defaultdict(list)
         for withdrawal in all_withdrawals:
@@ -5603,42 +5681,55 @@ def financial_loss(request):
     """View for displaying financial losses from expired and damaged items"""
     from django.core.paginator import Paginator
 
-    date_filter = request.GET.get('date_filter', '').strip()
-    show_all = request.GET.get('show_all', '').strip()
+
+    product_date_filter = request.GET.get('product_date_filter', '').strip()
+    product_show_all = request.GET.get('product_show_all', '').strip()
+    raw_material_date_filter = request.GET.get('raw_material_date_filter', '').strip()
+    raw_material_show_all = request.GET.get('raw_material_show_all', '').strip()
     today = timezone.now()
 
+    # Product withdrawals with separate filter
     product_withdrawals = Withdrawals.objects.filter(
         item_type='PRODUCT',
         reason__in=['EXPIRED', 'DAMAGED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
-    if date_filter:
+    if product_show_all:
+        # Show all product data
+        pass
+    elif product_date_filter:
         try:
-            year_str, month_str = date_filter.split('-')
+            year_str, month_str = product_date_filter.split('-')
             year = int(year_str)
             month_num = int(month_str.lstrip('0'))
             product_withdrawals = product_withdrawals.filter(date__year=year, date__month=month_num)
         except ValueError:
             pass
-    elif not show_all:
+    else:
+        # Default to current month
         product_withdrawals = product_withdrawals.filter(date__year=today.year, date__month=today.month)
 
+    # Raw material withdrawals with separate filter
     raw_material_withdrawals = Withdrawals.objects.filter(
         item_type='RAW_MATERIAL',
         reason__in=['EXPIRED', 'DAMAGED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
-    if date_filter:
+    if raw_material_show_all:
+        # Show all raw material data
+        pass
+    elif raw_material_date_filter:
         try:
-            year_str, month_str = date_filter.split('-')
+            year_str, month_str = raw_material_date_filter.split('-')
             year = int(year_str)
             month_num = int(month_str.lstrip('0'))
             raw_material_withdrawals = raw_material_withdrawals.filter(date__year=year, date__month=month_num)
         except ValueError:
             pass
-    elif not show_all:
+    else:
+
         raw_material_withdrawals = raw_material_withdrawals.filter(date__year=today.year, date__month=today.month)
 
     product_loss_data = []
@@ -6039,9 +6130,10 @@ class PriceHistoryList(ListView):
     model = PriceHistory
     context_object_name = 'price_changes'
     template_name = "price_history.html"
-    paginate_by = 20
+    paginate_by = 10
     
     def get_queryset(self):
+        from datetime import datetime
         qs = PriceHistory.objects.all().select_related('product', 'changed_by_admin')
         
         product_id = self.request.GET.get('product_id')
@@ -6058,18 +6150,52 @@ class PriceHistoryList(ListView):
             qs = qs.filter(changed_at__gte=date_from)
         if date_to:
             qs = qs.filter(changed_at__lte=date_to)
+
+        show_all = self.request.GET.get('show_all')
+        date_created = self.request.GET.get('date_created')
+        
+        # If show_all is not set, apply date filtering
+        if not show_all:
+            if date_created:
+                # User selected a specific month
+                try:
+                    parsed_date = datetime.strptime(date_created, "%Y-%m")
+                    qs = qs.filter(
+                        changed_at__year=parsed_date.year,
+                        changed_at__month=parsed_date.month
+                    )
+                except ValueError:
+                    pass
+            else:
+                # Default to current month if no date selected
+                now = datetime.now()
+                qs = qs.filter(
+                    changed_at__year=now.year,
+                    changed_at__month=now.month
+                )
         
         search = self.request.GET.get('search')
         if search:
             qs = qs.filter(
                 Q(product__product_type__name__icontains=search) |
-                Q(product__variant__name__icontains=search)
+                Q(product__variant__name__icontains=search) |
+                Q(product__size__size_label__icontains=search)
             )
         
         return qs.order_by('-changed_at')
     
     def get_context_data(self, **kwargs):
+        from datetime import datetime
         context = super().get_context_data(**kwargs)
         context['products'] = Products.objects.all().order_by('product_type__name', 'variant__name')
         context['price_types'] = PriceHistory.PRICE_TYPE_CHOICES
+        
+        now = datetime.now()
+        context['current_month_value'] = now.strftime('%Y-%m')
+
+        query_params = self.request.GET.copy()
+        if 'page' in query_params:
+            query_params.pop('page')
+        context['query_params'] = query_params.urlencode()
+        
         return context

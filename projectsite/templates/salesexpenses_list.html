@@ -64,10 +64,10 @@
 
           <div class="card-body">
 
-            <!-- Sales & Expenses Summary -->
+            <!-- Sales Summary -->
             <div class="row mb-3 text-center" id="salesSummary">
               <!-- Manual Sales Card -->
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <div class="card">
                   <div class="card-body">
                     <h5 class="card-title">Manual Sales</h5>
@@ -78,7 +78,7 @@
               </div>
               
               <!-- Withdrawal Sales Card -->
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <div class="card">
                   <div class="card-body">
                     <h5 class="card-title">Withdrawal Sales</h5>
@@ -89,23 +89,12 @@
               </div>
               
               <!-- Total Sales Card -->
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <div class="card">
                   <div class="card-body">
                     <h5 class="card-title">Total Sales</h5>
                     <h3 class="text-success">₱{{ sales_summary.total_sales|floatformat:2|intcomma|default:"0.00" }}</h3>
                     <small class="text-muted">{{ sales_summary.sales_count|default:0 }} record(s)</small>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- Total Expenses Card -->
-              <div class="col-md-3">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Total Expenses</h5>
-                    <h3 class="text-danger">₱{{ expenses_summary.total_expenses|floatformat:2|intcomma|default:"0.00" }}</h3>
-                    <small class="text-muted">{{ expenses_summary.expenses_count|default:0 }} record(s)</small>
                   </div>
                 </div>
               </div>
@@ -206,6 +195,24 @@
             <div class="card-title">Expenses Records</div>
           </div>
           <div class="card-body">
+            <!-- Total Expenses Card -->
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h5 class="card-title mb-1">Total Expenses</h5>
+                        <p class="text-muted mb-0">{{ expenses_summary.expenses_count|default:0 }} record(s)</p>
+                      </div>
+                      <div class="text-right">
+                        <h2 class="mb-0 text-danger">₱{{ expenses_summary.total_expenses|floatformat:2|intcomma|default:"0.00" }}</h2>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <!-- Filters for Expenses -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <!-- Category Filter -->
@@ -1105,16 +1112,20 @@ function toggleShowAll() {
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 900px;
 }
 .table th,
 .table td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
 </style>
 {% endblock %}
