@@ -58,12 +58,12 @@
             <button class="navbar-toggler sidenav-toggler ml-auto" type="button" data-toggle="collapse" data-target="collapse" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <button class="topbar-toggler more"><i class="la la-ellipsis-v"></i></button>
+            <button class="topbar-toggler more" type="button"><i class="la la-ellipsis-v"></i></button>
         </div>
                <nav class="navbar navbar-header navbar-expand-lg">
             <div class="container-fluid">
                 <ul class="navbar-nav topbar-nav ml-md-auto align-items-center">
-                    <li class="nav-item">
+                    <li class="nav-item theme-toggle-item">
                     <button id="themeToggle" class="theme-toggle" role="switch" aria-checked="false" aria-label="Toggle color mode">
                         <span class="track"></span>
                         <span class="knob">
@@ -219,10 +219,10 @@
                 {% if user.is_superuser %}
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#financialMenu" 
-                       aria-expanded="{% if request.resolver_match.url_name in 'monthly-report sales expenses financial-loss' %}true{% else %}false{% endif %}">
+                       aria-expanded="{% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'withdrawalSales' or request.resolver_match.url_name == 'financial-loss' %}true{% else %}false{% endif %}">
                         <i class="la la-dollar"></i><p>Financial Report</p><span class="caret"></span>
                     </a>
-                    <div class="collapse {% if request.resolver_match.url_name in 'monthly-report sales expenses financial-loss' %}show{% endif %}" id="financialMenu">
+                    <div class="collapse {% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'withdrawalSales' or request.resolver_match.url_name == 'financial-loss' %}show{% endif %}" id="financialMenu">
                         <ul class="nav nav-collapse">
                             <li class="{% if request.resolver_match.url_name == 'monthly-report' %}active{% endif %}">
                                <a href="{% url 'monthly-report' %}"><span class="sub-item">Report</span></a>
@@ -334,13 +334,13 @@
 })();
 </script>
 
-<!-- Sidebar Toggle Handler - Backup for mobile -->
+<!-- Sidebar & Topbar Toggle Handlers -->
 <script>
 $(document).ready(function() {
-  // Ensure sidebar toggle works on mobile
+  // Sidebar toggle for mobile
   $('.sidenav-toggler, .navbar-toggler').on('click', function(e) {
     e.preventDefault();
-    console.log('Sidebar toggle clicked!'); // Debug log
+    console.log('Sidebar toggle clicked!');
     
     if ($('html').hasClass('nav_open')) {
       $('html').removeClass('nav_open');
@@ -351,12 +351,62 @@ $(document).ready(function() {
     }
   });
   
+  // Topbar toggle for mobile (3 dots button)
+  $('.topbar-toggler').on('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Topbar toggle clicked!');
+    
+    if ($('html').hasClass('topbar_open')) {
+      $('html').removeClass('topbar_open');
+      $(this).removeClass('toggled');
+    } else {
+      $('html').addClass('topbar_open');
+      $(this).addClass('toggled');
+    }
+  });
+  
+  // Only stop propagation on sidebar wrapper/background, NOT on links
+  $('.sidebar .sidebar-wrapper, .sidebar .scrollbar-inner').on('click', function(e) {
+    // Only stop if clicking on the wrapper itself, not its children
+    if (e.target === this) {
+      e.stopPropagation();
+    }
+  });
+  
+  // Stop propagation on empty areas of sidebar
+  $('.sidebar').on('click', function(e) {
+    // Only stop if clicking directly on sidebar, not on nav items
+    if ($(e.target).hasClass('sidebar') || $(e.target).hasClass('sidebar-wrapper')) {
+      e.stopPropagation();
+    }
+  });
+  
   // Close sidebar when clicking outside on mobile
   $(document).on('click', function(e) {
     if ($('html').hasClass('nav_open')) {
       if (!$(e.target).closest('.sidebar, .sidenav-toggler, .navbar-toggler').length) {
         $('html').removeClass('nav_open');
         $('.sidenav-toggler, .navbar-toggler').removeClass('toggled');
+      }
+    }
+    
+    // Close topbar when clicking outside
+    if ($('html').hasClass('topbar_open')) {
+      if (!$(e.target).closest('.navbar-header, .topbar-toggler').length) {
+        $('html').removeClass('topbar_open');
+        $('.topbar-toggler').removeClass('toggled');
+      }
+    }
+  });
+  
+  // Prevent navbar background clicks from closing topbar on mobile only
+  $('.navbar-header').on('click', function(e) {
+    // Only on mobile screens
+    if ($(window).width() <= 991) {
+      // Only stop propagation if clicking on navbar background
+      if ($(e.target).hasClass('navbar-header') || $(e.target).hasClass('container-fluid') || $(e.target).hasClass('navbar-nav')) {
+        e.stopPropagation();
       }
     }
   });
