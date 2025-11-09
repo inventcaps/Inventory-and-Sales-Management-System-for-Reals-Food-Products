@@ -187,8 +187,8 @@
                                 <tbody>
                                     {% for user in inactive_users %}
                                     <tr>
-                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
-                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.display_username }}</td>
+                                        <td>{{ user.display_email }}</td>
                                         <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm" onclick="showReactivateModal({{ user.id }})">

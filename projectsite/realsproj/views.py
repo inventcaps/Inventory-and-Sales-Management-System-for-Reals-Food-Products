@@ -4911,9 +4911,27 @@ def user_management(request):
     active_users = active_paginator.get_page(active_page_number)
     
     # Get inactive users (deactivated by admin)
-    inactive_users = User.objects.filter(
+    inactive_users_raw = User.objects.filter(
         username__startswith='inactive_user_'
     ).order_by('-date_joined')
+    
+    inactive_users = []
+    for user in inactive_users_raw:
+        if user.first_name and 'ORIGINAL_USERNAME:' in user.first_name:
+            parts = user.first_name.split('|')
+            display_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+        else:
+            display_username = f"User ID {user.id}"
+    
+        if user.last_name and 'ORIGINAL_EMAIL:' in user.last_name:
+            parts = user.last_name.split('|')
+            display_email = parts[0].replace('ORIGINAL_EMAIL:', '')
+        else:
+            display_email = user.email
+        
+        user.display_username = display_username
+        user.display_email = display_email
+        inactive_users.append(user)
     
     # Get deleted users (soft deleted)
     deleted_users_queryset = User.objects.filter(
@@ -5575,33 +5593,36 @@ class UserActivityList(ListView):
     def get_queryset(self):
         from django.utils import timezone
         from datetime import timedelta
+        from django.db.models import Q
         
         query = self.request.GET.get('q')
         status = self.request.GET.get('status')
-        users = User.objects.all().select_related('useractivity').order_by('username')
+        
+        users = User.objects.all().select_related('useractivity').exclude(
+            Q(username__startswith='deleted_user_') | 
+            Q(username__startswith='rejected_user_') | 
+            Q(username__startswith='inactive_user_')
+        ).order_by('username')
         
         if query:
             users = users.filter(username__icontains=query)
         
         if status:
-            if status == 'deleted':
-                users = users.filter(username__startswith='deleted_user')
-            elif status == 'active':
+            if status == 'active':
                 time_threshold = timezone.now() - timedelta(minutes=5)
                 users = users.filter(
                     useractivity__active=True,
                     useractivity__last_activity__gte=time_threshold
-                ).exclude(username__startswith='deleted_user')
+                )
             elif status == 'inactive':
                 time_threshold = timezone.now() - timedelta(minutes=5)
-                from django.db.models import Q
                 users = users.filter(
                     useractivity__active=True
                 ).filter(
                     Q(useractivity__last_activity__lt=time_threshold) | Q(useractivity__last_activity__isnull=True)
-                ).exclude(username__startswith='deleted_user')
+                )
             elif status == 'logged_out':
-                users = users.filter(useractivity__active=False).exclude(username__startswith='deleted_user')
+                users = users.filter(useractivity__active=False)
         
         return users
 
