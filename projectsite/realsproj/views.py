@@ -3363,6 +3363,8 @@ class WithdrawItemView(View):
                             except Discounts.DoesNotExist:
                                 custom_value = discount_val
 
+                        # Initialize all price-related fields
+                        actual_unit_price = None
                         actual_discount_percent = None
                         actual_discount_amount = None
                         final_price_per_unit = None
