@@ -234,6 +234,8 @@ urlpatterns = [
     path('user-activity/', a.UserActivityList.as_view(), name='user-activity'),
 
     path("check-expirations/", a.check_expirations, name="check-expirations"),
+    path("api/check-account-status/", a.check_account_status, name="check-account-status"),
+    path("api/clear-deactivation-flag/", a.clear_deactivation_flag, name="clear-deactivation-flag"),
     
     path('database-backup/', a.database_backup, name='database-backup'),
 

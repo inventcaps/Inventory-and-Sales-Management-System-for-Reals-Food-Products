@@ -3817,6 +3817,13 @@ def login_view(request):
                     is_active=True
                 ).first()
                 
+                # DEBUG: Log the login attempt details
+                print(f"[LOGIN DEBUG] User: {user.username} (ID: {user.id})")
+                print(f"[LOGIN DEBUG] Device Fingerprint: {device_fingerprint}")
+                print(f"[LOGIN DEBUG] Trusted Device Found: {trusted_device is not None}")
+                if trusted_device:
+                    print(f"[LOGIN DEBUG] Trusted Device ID: {trusted_device.id}, Last Used: {trusted_device.last_used}")
+                
                 if trusted_device:
                     # Trusted device - login directly
                     trusted_device.last_used = timezone.now()
@@ -3848,6 +3855,8 @@ def login_view(request):
                     return redirect('home')
                 else:
                     # New device - require OTP for account confirmation
+                    print(f"[OTP DEBUG] Generating OTP for new device login")
+                    print(f"[OTP DEBUG] User: {user.username}, Email: {user.email}")
                     otp_code = str(random.randint(100000, 999999))
                     
                     UserOTP.objects.create(
@@ -3856,6 +3865,7 @@ def login_view(request):
                         expires_at=timezone.now() + timedelta(minutes=5),
                         ip_address=ip_address
                     )
+                    print(f"[OTP DEBUG] OTP created in database: {otp_code}")
                     
                     try:
                         send_mail(
@@ -3865,6 +3875,7 @@ def login_view(request):
                             recipient_list=[user.email],
                             fail_silently=False,
                         )
+                        print(f"[OTP DEBUG] OTP email sent successfully to {user.email}")
                     except Exception as e:
                         print(f"[OTP EMAIL ERROR] Failed to send OTP: {e}")
                     
@@ -4096,7 +4107,7 @@ Real's Food Products Team''',
         
         return JsonResponse({'success': True, 'message': f'User {username} rejected successfully'})
     except User.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'User not found'})
+        return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
@@ -4124,9 +4135,12 @@ def toggle_user_role(request, user_id):
         
         user.save()
         
+        # Don't force logout here - let the JavaScript polling detect the role change
+        # and show the appropriate modal before logging out
+        
         return JsonResponse({
             'success': True, 
-            'message': f'User {user.username} is now a {new_role}',
+            'message': f'User {user.username} is now a {new_role}. They will be notified to log out.',
             'new_role': new_role
         })
     except User.DoesNotExist:
@@ -4291,7 +4305,21 @@ def deactivate_user(request, user_id):
         user.is_active = False
         user.save()
         
-        return JsonResponse({'success': True, 'message': f'User {username} deactivated successfully'})
+        # Set a flag in all user's sessions before deleting them
+        # This will trigger the modal to show on their next request
+        from django.contrib.sessions.models import Session
+        from django.utils import timezone as tz
+        
+        active_sessions = Session.objects.filter(expire_date__gte=tz.now())
+        for session in active_sessions:
+            session_data = session.get_decoded()
+            if session_data.get('_auth_user_id') == str(user.id):
+                # Update session to mark as deactivated
+                session_data['show_deactivated_modal'] = True
+                session.session_data = Session.objects.encode(session_data)
+                session.save()
+        
+        return JsonResponse({'success': True, 'message': f'User {username} deactivated successfully. They will be notified to log out.'})
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found or already inactive'})
     except Exception as e:
@@ -4683,6 +4711,45 @@ def check_expirations(request):
             "status": "error",
             "message": str(e)
         }, status=500)
+
+
+@require_http_methods(["POST"])
+def clear_deactivation_flag(request):
+    """Clear the deactivation modal flag from session"""
+    if 'show_deactivated_modal' in request.session:
+        del request.session['show_deactivated_modal']
+    return JsonResponse({'success': True})
+
+
+def check_account_status(request):
+    """
+    API endpoint to check if the current user's account is still active.
+    Returns JSON with account status.
+    """
+    # Check if user is authenticated
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'is_active': False,
+            'error': 'Not authenticated'
+        }, status=401)
+    
+    # Force check the user from database to get fresh data
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    try:
+        user = User.objects.get(id=request.user.id)
+        is_active = user.is_active
+        is_superuser = user.is_superuser
+    except User.DoesNotExist:
+        is_active = False
+        is_superuser = False
+    
+    return JsonResponse({
+        'is_active': is_active,
+        'is_superuser': is_superuser,
+        'username': request.user.username
+    })
 
 
 @method_decorator(login_required, name='dispatch')
