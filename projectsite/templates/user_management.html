@@ -158,31 +158,7 @@
                             </table>
                         </div>
                         <!-- Pagination for Active Users -->
-                        <div class="pagination-container mt-3">
-                            {% if active_users.has_other_pages %}
-                            <nav>
-                                <ul class="pagination justify-content-center">
-                                    {% if active_users.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?active_page={{ active_users.previous_page_number }}">Previous</a>
-                                    </li>
-                                    {% endif %}
-                                    
-                                    {% for num in active_users.paginator.page_range %}
-                                    <li class="page-item {% if active_users.number == num %}active{% endif %}">
-                                        <a class="page-link" href="?active_page={{ num }}">{{ num }}</a>
-                                    </li>
-                                    {% endfor %}
-                                    
-                                    {% if active_users.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?active_page={{ active_users.next_page_number }}">Next</a>
-                                    </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
-                            {% endif %}
-                        </div>
+                        {% include 'includes/pagination.html' with page_obj=active_users paginator=active_users.paginator is_paginated=active_users.has_other_pages %}
                     </div>
                 </div>
             </div>
@@ -294,31 +270,7 @@
                             </table>
                         </div>
                         <!-- Pagination for Deleted Users -->
-                        <div class="pagination-container mt-3">
-                            {% if deleted_users.has_other_pages %}
-                            <nav>
-                                <ul class="pagination justify-content-center">
-                                    {% if deleted_users.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?deleted_page={{ deleted_users.previous_page_number }}">Previous</a>
-                                    </li>
-                                    {% endif %}
-                                    
-                                    {% for num in deleted_users.paginator.page_range %}
-                                    <li class="page-item {% if deleted_users.number == num %}active{% endif %}">
-                                        <a class="page-link" href="?deleted_page={{ num }}">{{ num }}</a>
-                                    </li>
-                                    {% endfor %}
-                                    
-                                    {% if deleted_users.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?deleted_page={{ deleted_users.next_page_number }}">Next</a>
-                                    </li>
-                                    {% endif %}
-                                </ul>
-                            </nav>
-                            {% endif %}
-                        </div>
+                        {% include 'includes/pagination.html' with page_obj=deleted_users paginator=deleted_users.paginator is_paginated=deleted_users.has_other_pages %}
                         {% else %}
                         <div class="alert alert-info">
                             <i class="la la-info-circle"></i> No deleted users.

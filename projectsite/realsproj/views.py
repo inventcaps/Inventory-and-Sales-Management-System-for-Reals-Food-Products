@@ -4866,45 +4866,6 @@ def register(request):
 
     return render(request, 'registration/register.html', {'form': form})
 
-def user_management(request):
-    """Admin page to manage pending user registrations"""
-    if not request.user.is_superuser:
-        messages.error(request, "You don't have permission to access this page.")
-        return redirect('home')
-    
-    # Get all inactive users (pending approval) - exclude rejected/deleted users
-    from django.db.models import Q
-    pending_users = User.objects.filter(
-        is_active=False
-    ).exclude(
-        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
-    ).order_by('-date_joined')
-    
-    # Get all active users - exclude deleted/inactive users
-    active_users = User.objects.filter(
-        is_active=True
-    ).exclude(
-        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
-    ).order_by('-date_joined')
-    
-    # Get inactive users (deactivated by admin)
-    inactive_users = User.objects.filter(
-        username__startswith='inactive_user_'
-    ).order_by('-date_joined')
-    
-    # Get deleted users (soft deleted)
-    deleted_users = User.objects.filter(
-        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
-    ).order_by('-date_joined')
-    
-    context = {
-        'pending_users': pending_users,
-        'active_users': active_users,
-        'inactive_users': inactive_users,
-        'deleted_users': deleted_users,
-    }
-    return render(request, 'user_management.html', context)
-
 @login_required
 def user_management(request):
     """Admin page to manage pending user registrations"""
@@ -4914,6 +4875,8 @@ def user_management(request):
     
     # Get all inactive users (pending approval) - exclude rejected/deleted users
     from django.db.models import Q
+    from django.core.paginator import Paginator
+    
     pending_users = User.objects.filter(
         is_active=False
     ).exclude(
@@ -4921,11 +4884,16 @@ def user_management(request):
     ).order_by('-date_joined')
     
     # Get all active users - exclude deleted/inactive users
-    active_users = User.objects.filter(
+    active_users_queryset = User.objects.filter(
         is_active=True
     ).exclude(
         Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
     ).order_by('-date_joined')
+    
+    # Paginate active users - 5 per page
+    active_paginator = Paginator(active_users_queryset, 5)
+    active_page_number = request.GET.get('page', 1)
+    active_users = active_paginator.get_page(active_page_number)
     
     # Get inactive users (deactivated by admin)
     inactive_users = User.objects.filter(
@@ -4933,9 +4901,14 @@ def user_management(request):
     ).order_by('-date_joined')
     
     # Get deleted users (soft deleted)
-    deleted_users = User.objects.filter(
+    deleted_users_queryset = User.objects.filter(
         Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
     ).order_by('-date_joined')
+    
+    # Paginate deleted users - 5 per page
+    deleted_paginator = Paginator(deleted_users_queryset, 5)
+    deleted_page_number = request.GET.get('page', 1)
+    deleted_users = deleted_paginator.get_page(deleted_page_number)
     
     context = {
         'pending_users': pending_users,
