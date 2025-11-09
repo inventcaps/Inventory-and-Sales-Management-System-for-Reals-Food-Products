@@ -5,16 +5,18 @@
 {% block content %}
 <div class="content">
   <div class="container-fluid">
-    <h4 class="page-title">Withdrawal Order Details</h4>
+    <h4 class="page-title">
+      <a href="{% url 'withdrawalSales' %}" class="btn btn-link p-0 mr-2" title="Back to Withdrawal Sales">
+        <i class="la la-arrow-left" style="font-size: 24px;"></i>
+      </a>
+      Withdrawal Order Details
+    </h4>
     
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
             <div class="card-title">Order #{{ order_group_id }}</div>
-            <a href="{% url 'withdrawalSales' %}" class="btn btn-secondary btn-sm float-right">
-              <i class="la la-arrow-left"></i> Back to Withdrawal Sales
-            </a>
           </div>
           
           <div class="card-body">
@@ -117,7 +119,7 @@
             {% if payment_status != 'PAID' %}
             <div class="mt-3">
               <button type="button" class="btn btn-success" data-toggle="modal" data-target="#updatePaymentModal">
-                <i class="la la-money"></i> Update Payment Status
+                Update Payment Status
               </button>
             </div>
             {% endif %}

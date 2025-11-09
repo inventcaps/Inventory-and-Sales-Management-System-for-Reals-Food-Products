@@ -11,7 +11,7 @@
           <!-- Header: title + buttons -->
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-              <div class="card-title">Sales from Withdrawals (Orders, Consignment, Reseller)</div>
+              <div class="card-title">Sales from Withdrawals</div>
             </div>
             <!-- <div class="d-flex align-items-center" style="gap:0.5rem;"> -->
               <!-- Link to Withdrawals Page -->
@@ -32,9 +32,10 @@
                   </option>
                 {% endfor %}
               </select>
-              <input type="month" id="dateFilter" class="form-control" style="width:180px;" />
-              <button type="button" onclick="window.location.href='?show_all=true'" class="btn btn-info" title="Show all data">
-                <i class="la la-list"></i> Show All
+              <input type="month" id="dateFilter" name="date_filter" class="form-control" style="width:180px;" 
+                     value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
+                Show All Data
               </button>
               <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
@@ -48,10 +49,19 @@
                   <tr>
                     <th>Customer/Store</th>
                     <th>Sales Channel</th>
-                    <th>Items</th>
-                    <th>Payment Status</th>
+                    <th>Item/s</th>
+                    <th>
+                      <span class="fw-bold me-2">Payment Status</span>
+                      <select id="paymentStatusColumnFilter" name="payment_status"
+                        style="border:none; background:transparent; font-weight:500; cursor:pointer;">
+                        <option value="" {% if not request.GET.payment_status %}selected{% endif %}>All</option>
+                        <option value="PAID" {% if request.GET.payment_status == 'PAID' %}selected{% endif %}>Paid</option>
+                        <option value="UNPAID" {% if request.GET.payment_status == 'UNPAID' %}selected{% endif %}>Unpaid</option>
+                        <option value="PARTIAL" {% if request.GET.payment_status == 'PARTIAL' %}selected{% endif %}>Partial</option>
+                      </select>
+                    </th>
                     <th>Date</th>
-                    <th>Actions</th>
+                    <th>Details</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -59,7 +69,7 @@
                   <tr>
                     <td>{{ order.customer_name|default:"N/A" }}</td>
                     <td>{{ order.sales_channel }}</td>
-                    <td>{{ order.item_count }} Item(s)</td>
+                    <td>{{ order.item_count }} Item/s</td>
                     <td>
                       {% if order.payment_status == 'PAID' %}
                         <span class="badge badge-success">{{ order.payment_status_display }}</span>
@@ -74,11 +84,9 @@
                     <td>{{ order.date|date:"Y-m-d g:i A" }}</td>
                     <td>
                       {% if order.actual_group_id %}
-                        <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" class="btn btn-sm btn-success">
-                          <i class="la la-eye"></i> View Details
+                        <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" title="View Details" style="color: blue;">
+                          <i class="la la-eye la-lg"></i>
                         </a>
-                      {% else %}
-                        <span class="text-muted">Single Item</span>
                       {% endif %}
                     </td>
                   </tr>
@@ -142,29 +150,65 @@ document.getElementById('channelFilter').addEventListener('change', function() {
   window.location = url;
 });
 
+// Payment Status column filter
+document.getElementById('paymentStatusColumnFilter').addEventListener('change', function() {
+  const url = new URL(window.location);
+  if (this.value) {
+    url.searchParams.set('payment_status', this.value);
+  } else {
+    url.searchParams.delete('payment_status');
+  }
+  window.location = url;
+});
+
 // Date filter
 document.getElementById('dateFilter').addEventListener('change', function() {
   const url = new URL(window.location);
   if (this.value) {
-    url.searchParams.set('month', this.value);
+    url.searchParams.set('date_filter', this.value);
+    url.searchParams.delete('show_all'); // Remove show_all when date is selected
   } else {
-    url.searchParams.delete('month');
+    url.searchParams.delete('date_filter');
   }
   window.location = url;
 });
+
+// Toggle Show All Data
+function toggleShowAll() {
+  const params = new URLSearchParams(window.location.search);
+  const dateFilterInput = document.getElementById('dateFilter');
+  
+  if (params.get('show_all')) {
+    // Turn off show_all, go back to current month
+    params.delete('show_all');
+  } else {
+    // Turn on show_all and clear date filter
+    params.set('show_all', '1');
+    params.delete('date_filter');
+    // Clear the date input field
+    if (dateFilterInput) {
+      dateFilterInput.value = '';
+    }
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
+}
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 800px;
 }
 .table th,
 .table td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
 </style>
 {% endblock %}

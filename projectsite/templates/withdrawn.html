@@ -78,8 +78,9 @@
                     <th scope="col">Date</th>
                     <th scope="col">Type</th>
                     <th scope="col">Reason</th>
-                    <th scope="col">Items</th>
-                    <th scope="col">Admin</th>
+                    <th scope="col">Item/s</th>
+                    <th scope="col">By</th>
+                    <th scope="col">Details</th>
                     <th scope="col">Actions</th>
                   </tr>
                 </thead>
@@ -115,11 +116,12 @@
                     <td>{{ group.created_by_admin.username }}</td>
                     <td>
                       {% if not group.is_single %}
-                        <a href="#" data-toggle="modal" data-target="#viewGroupModal{{ group.group_key }}" title="View Details" class="text-info">
+                        <a href="#" data-toggle="modal" data-target="#viewGroupModal{{ group.group_key }}" title="View Details" style="color: blue;">
                           <i class="la la-eye la-lg"></i>
                         </a>
-                        &nbsp;&nbsp;
                       {% endif %}
+                    </td>
+                    <td>
                       {% if group.is_single %}
                         <a href="{% url 'withdraw-edit' group.withdrawals.0.id %}" title="Edit" class="text-primary">
                           <i class="la la-edit la-lg"></i>
@@ -628,24 +630,20 @@ function toggleShowAll() {
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #withdrawalTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 1000px;
 }
 #withdrawalTable th,
 #withdrawalTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-
-#withdrawalTable th:nth-child(1), #withdrawalTable td:nth-child(1) { width: 5%; } 
-#withdrawalTable th:nth-child(2), #withdrawalTable td:nth-child(2) { width: 12%; }
-#withdrawalTable th:nth-child(3), #withdrawalTable td:nth-child(3) { width: 15%; }
-#withdrawalTable th:nth-child(4), #withdrawalTable td:nth-child(4) { width: 10%; }  
-#withdrawalTable th:nth-child(5), #withdrawalTable td:nth-child(5) { width: 25%; }  
-#withdrawalTable th:nth-child(6), #withdrawalTable td:nth-child(6) { width: 13%; } 
-#withdrawalTable th:nth-child(7), #withdrawalTable td:nth-child(7) { width: 20%; }
 </style>
 {% endblock %}

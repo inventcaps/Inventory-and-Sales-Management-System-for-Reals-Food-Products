@@ -72,7 +72,8 @@
                         </div>
 
                         <!-- Table -->
-                        <table class="table table-striped mt-3" id="productsTable">
+                        <div class="table-responsive">
+                            <table class="table table-striped mt-3" id="productsTable">
                             <thead>
                                 <tr>
                                     <th scope="col" style="width: 40px;">
@@ -124,6 +125,7 @@
                                 {% endfor %}
                             </tbody>
                         </table>
+                        </div>
 
                         <!-- Pagination -->
                         <div class="pagination-container">
@@ -706,22 +708,20 @@ function confirmBulkArchive() {
 </div>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #productsTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 1000px;
 }
 #productsTable th,
 #productsTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-#productsTable th:nth-child(2), #productsTable td:nth-child(2) { width: 30%; }
-#productsTable th:nth-child(3), #productsTable td:nth-child(3) { width: 12%; } 
-#productsTable th:nth-child(4), #productsTable td:nth-child(4) { width: 12%; } 
-#productsTable th:nth-child(5), #productsTable td:nth-child(5) { width: 16%; } 
-#productsTable th:nth-child(6), #productsTable td:nth-child(6) { width: 10%; }  
-#productsTable th:nth-child(7), #productsTable td:nth-child(7) { width: 15%; }
 </style>
 {% endblock %}

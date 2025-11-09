@@ -21,11 +21,6 @@
                                 <input type="month" name="date_created" class="form-control" style="width:180px;"
                                        placeholder="Filter by Month"
                                        value="{% if request.GET.date_created %}{{ request.GET.date_created }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" id="dateFilter">
-                                <select name="price_type" class="form-control" style="width:150px;" id="priceTypeFilter">
-                                    <option value="">All</option>
-                                    <option value="UNIT" {% if request.GET.price_type == 'UNIT' %}selected{% endif %}>Unit Price</option>
-                                    <option value="SRP" {% if request.GET.price_type == 'SRP' %}selected{% endif %}>SRP</option>
-                                </select>
                                 <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
                                     Show All Data
                                 </button>
@@ -42,7 +37,15 @@
                                     <tr>
                                         <th>Date & Time</th>
                                         <th>Product</th>
-                                        <th class="text-center">Price Type</th>
+                                        <th class="text-center">
+                                            <span class="fw-bold me-2">Price Type</span>
+                                            <select id="priceTypeColumnFilter" name="price_type"
+                                                style="border:none; background:transparent; font-weight:500; cursor:pointer;">
+                                                <option value="" {% if not request.GET.price_type %}selected{% endif %}>All</option>
+                                                <option value="UNIT" {% if request.GET.price_type == 'UNIT' %}selected{% endif %}>Unit</option>
+                                                <option value="SRP" {% if request.GET.price_type == 'SRP' %}selected{% endif %}>SRP</option>
+                                            </select>
+                                        </th>
                                         <th>Old Price</th>
                                         <th>New Price</th>
                                         <th>Change</th>
@@ -135,7 +138,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('filterForm');
     const searchInput = form.querySelector('input[name="search"]');
     const dateInput = document.getElementById('dateFilter');
-    const priceTypeSelect = form.querySelector('select[name="price_type"]');
+    const priceTypeColumnFilter = document.getElementById('priceTypeColumnFilter');
     const tableBody = document.querySelector('.table tbody');
     const pagination = document.querySelector('.pagination-container');
     const showAllBtn = document.getElementById('showAllBtn');
@@ -162,9 +165,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 params.delete("date_created");
             }
             
-            // Update or remove price type filter
-            if (priceTypeSelect.value) {
-                params.set("price_type", priceTypeSelect.value);
+            // Update or remove price type column filter
+            if (priceTypeColumnFilter && priceTypeColumnFilter.value) {
+                params.set("price_type", priceTypeColumnFilter.value);
             } else {
                 params.delete("price_type");
             }
@@ -200,7 +203,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners
     searchInput.addEventListener('keyup', () => fetchPriceHistory(true));
     dateInput.addEventListener('change', () => fetchPriceHistory(true));
-    priceTypeSelect.addEventListener('change', () => fetchPriceHistory(true));
+    if (priceTypeColumnFilter) {
+        priceTypeColumnFilter.addEventListener('change', () => fetchPriceHistory(true));
+    }
     
     // Handle pagination clicks
     document.addEventListener('click', function(e) {
@@ -236,23 +241,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 1000px;
 }
 .table th,
 .table td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-.table th:nth-child(1), .table td:nth-child(1) { width: 12%; } 
-.table th:nth-child(2), .table td:nth-child(2) { width: 25%; } 
-.table th:nth-child(3), .table td:nth-child(3) { width: 10%; }  
-.table th:nth-child(4), .table td:nth-child(4) { width: 12%; }  
-.table th:nth-child(5), .table td:nth-child(5) { width: 12%; }  
-.table th:nth-child(6), .table td:nth-child(6) { width: 15%; } 
-.table th:nth-child(7), .table td:nth-child(7) { width: 14%; }  
 </style>
 {% endblock %}

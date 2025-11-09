@@ -200,21 +200,20 @@ function toggleShowAll() {
 <script src="{% static 'js/stock_changes_search.js' %}"></script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #stockChangesTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 800px;
 }
 #stockChangesTable th,
 #stockChangesTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-#stockChangesTable th:nth-child(1), #stockChangesTable td:nth-child(1) { width: 35%; } 
-#stockChangesTable th:nth-child(2), #stockChangesTable td:nth-child(2) { width: 15%; }  
-#stockChangesTable th:nth-child(3), #stockChangesTable td:nth-child(3) { width: 15%; } 
-#stockChangesTable th:nth-child(4), #stockChangesTable td:nth-child(4) { width: 20%; } 
-#stockChangesTable th:nth-child(5), #stockChangesTable td:nth-child(5) { width: 15%; }  
 </style>
 {% endblock %}

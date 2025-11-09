@@ -139,4 +139,22 @@
     }
   });
   </script>
+  
+  <style>
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #inventoryTable {
+    table-layout: auto;
+    width: 100%;
+    min-width: 700px;
+  }
+  #inventoryTable th,
+  #inventoryTable td {
+    white-space: nowrap;
+    vertical-align: top;
+    padding: 12px;
+  }
+  </style>
   {% endblock %}

@@ -425,32 +425,23 @@ function toggleShowAll() {
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #productsLossTable,
 #rawMaterialsLossTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 950px;
 }
 #productsLossTable th,
 #productsLossTable td,
 #rawMaterialsLossTable th,
 #rawMaterialsLossTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-#productsLossTable th:nth-child(1), #productsLossTable td:nth-child(1) { width: 15%; } 
-#productsLossTable th:nth-child(2), #productsLossTable td:nth-child(2) { width: 30%; }  
-#productsLossTable th:nth-child(3), #productsLossTable td:nth-child(3) { width: 12%; } 
-#productsLossTable th:nth-child(4), #productsLossTable td:nth-child(4) { width: 13%; } 
-#productsLossTable th:nth-child(5), #productsLossTable td:nth-child(5) { width: 12%; } 
-#productsLossTable th:nth-child(6), #productsLossTable td:nth-child(6) { width: 18%; } 
-
-#rawMaterialsLossTable th:nth-child(1), #rawMaterialsLossTable td:nth-child(1) { width: 15%; }  
-#rawMaterialsLossTable th:nth-child(2), #rawMaterialsLossTable td:nth-child(2) { width: 30%; } 
-#rawMaterialsLossTable th:nth-child(3), #rawMaterialsLossTable td:nth-child(3) { width: 12%; }  
-#rawMaterialsLossTable th:nth-child(4), #rawMaterialsLossTable td:nth-child(4) { width: 13%; }  
-#rawMaterialsLossTable th:nth-child(5), #rawMaterialsLossTable td:nth-child(5) { width: 12%; }  
-#rawMaterialsLossTable th:nth-child(6), #rawMaterialsLossTable td:nth-child(6) { width: 18%; }  
 </style>
 {% endblock %}

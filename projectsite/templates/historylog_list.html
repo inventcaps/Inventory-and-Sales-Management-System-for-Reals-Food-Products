@@ -231,21 +231,32 @@
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 #historyTable {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 900px;
 }
 #historyTable th,
 #historyTable td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-#historyTable th:nth-child(1), #historyTable td:nth-child(1) { width: 12%; }  
-#historyTable th:nth-child(2), #historyTable td:nth-child(2) { width: 10%; }  
-#historyTable th:nth-child(3), #historyTable td:nth-child(3) { width: 25%; } 
-#historyTable th:nth-child(4), #historyTable td:nth-child(4) { width: 33%; } 
-#historyTable th:nth-child(5), #historyTable td:nth-child(5) { width: 20%; } 
+#historyTable th:nth-child(3),
+#historyTable td:nth-child(3) {
+  max-width: 150px;
+  white-space: normal;
+  word-wrap: break-word;
+}
+#historyTable th:nth-child(4),
+#historyTable td:nth-child(4) {
+  max-width: 200px;
+  white-space: normal;
+  word-wrap: break-word;
+}
 </style>
 {% endblock %}

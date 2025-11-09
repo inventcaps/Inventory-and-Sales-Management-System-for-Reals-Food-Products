@@ -969,16 +969,20 @@ function confirmBulkArchiveExpenses() {
 <script src="{% static 'js/sales_search.js' %}"></script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 900px;
 }
 .table th,
 .table td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
 </style>
 {% endblock %}

@@ -181,20 +181,20 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table {
-  table-layout: fixed;
+  table-layout: auto;
   width: 100%;
+  min-width: 700px;
 }
 .table th,
 .table td {
-  word-wrap: break-word;
-  word-break: break-word;
-  white-space: normal;
+  white-space: nowrap;
   vertical-align: top;
+  padding: 12px;
 }
-
-.table th:nth-child(1), .table td:nth-child(1) { width: 40%; }
-.table th:nth-child(2), .table td:nth-child(2) { width: 20%; } 
-.table th:nth-child(3), .table td:nth-child(3) { width: 20%; }  
 </style>
 {% endblock %}
