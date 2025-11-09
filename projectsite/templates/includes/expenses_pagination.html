@@ -1,0 +1,70 @@
+{% if expenses_is_paginated %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center">
+        {% if expenses_page_obj.number > 1 %}
+        <li class="page-item">
+            <a class="page-link" href="?expense_page=1{% for key, value in request.GET.items %}{% if key != 'expense_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="First">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;&laquo;</span>
+        </li>
+        {% endif %}
+
+        {% if expenses_page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?expense_page={{ expenses_page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'expense_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Previous">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&laquo;</span>
+        </li>
+        {% endif %}
+
+        {% for page_num in expenses_paginator.page_range %}
+            {% if expenses_page_obj.number == page_num %}
+            <li class="page-item active">
+                <span class="page-link">{{ page_num }}</span>
+            </li>
+            {% elif page_num > expenses_page_obj.number|add:'-3' and page_num < expenses_page_obj.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?expense_page={{ page_num }}{% for key, value in request.GET.items %}{% if key != 'expense_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                    {{ page_num }}
+                </a>
+            </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if expenses_page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?expense_page={{ expenses_page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'expense_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Next">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;</span>
+        </li>
+        {% endif %}
+
+        {% if expenses_page_obj.number != expenses_paginator.num_pages %}
+        <li class="page-item">
+            <a class="page-link" href="?expense_page={{ expenses_paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'expense_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" aria-label="Last">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% else %}
+        <li class="page-item disabled">
+            <span class="page-link">&raquo;&raquo;</span>
+        </li>
+        {% endif %}
+    </ul>
+    <div class="text-center text-muted">
+        Page {{ expenses_page_obj.number }} of {{ expenses_paginator.num_pages }}
+    </div>
+</nav>
+{% endif %}

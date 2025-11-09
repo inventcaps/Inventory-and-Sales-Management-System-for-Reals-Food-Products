@@ -42,7 +42,9 @@ class Command(BaseCommand):
         ).filter(
             Q(is_expired=False) | Q(is_expired__isnull=True),
             is_archived=False,
-            quantity__gt=0
+            quantity__gt=0,
+            expiration_date__isnull=False,
+            expiration_date__lte=one_month
         ).order_by('expiration_date')
         
         for batch in product_batches:
@@ -128,7 +130,8 @@ class Command(BaseCommand):
             Q(is_expired=False) | Q(is_expired__isnull=True),
             is_archived=False,
             quantity__gt=0,
-            expiration_date__isnull=False
+            expiration_date__isnull=False,
+            expiration_date__lte=one_month
         ).order_by('expiration_date')
         
         for batch in material_batches:

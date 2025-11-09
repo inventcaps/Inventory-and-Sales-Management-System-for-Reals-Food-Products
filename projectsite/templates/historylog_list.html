@@ -71,7 +71,7 @@
                       <td>{{ object.log_type.category }}</td>
                       <td>{{ object.get_entity_display }}</td>
                       <td>{{ object.get_details_display }}</td>
-                      <td>{{ object.log_date|date:"M j, Y h:i A" }}</td>
+                      <td>{{ object.log_date|date:"Y-m-d g:i A" }}</td>
                     </tr>
                     {% endfor %}
                   {% else %}
@@ -230,4 +230,33 @@
   }
 </script>
 
+<style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#historyTable {
+  table-layout: auto;
+  width: 100%;
+  min-width: 900px;
+}
+#historyTable th,
+#historyTable td {
+  white-space: nowrap;
+  vertical-align: top;
+  padding: 12px;
+}
+#historyTable th:nth-child(3),
+#historyTable td:nth-child(3) {
+  max-width: 150px;
+  white-space: normal;
+  word-wrap: break-word;
+}
+#historyTable th:nth-child(4),
+#historyTable td:nth-child(4) {
+  max-width: 200px;
+  white-space: normal;
+  word-wrap: break-word;
+}
+</style>
 {% endblock %}

@@ -29,7 +29,7 @@
           </div>
 
           <div class="card-body">
-            <!-- Date Filter -->
+            <!-- Filters -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
               <button type="button" class="btn btn-info" onclick="toggleShowAll()">
@@ -170,6 +170,18 @@ function handleArchiveSubmit(event, stockChangeName) {
     });
 }
 
+document.getElementById('dateFilter').addEventListener('change', function() {
+  const params = new URLSearchParams(window.location.search);
+  if (this.value) {
+    params.set('date_filter', this.value);
+    params.delete('show_all');
+  } else {
+    params.delete('date_filter');
+  }
+  params.delete('page');
+  window.location.href = window.location.pathname + '?' + params.toString();
+});
+
 function toggleShowAll() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('show_all')) {
@@ -178,9 +190,30 @@ function toggleShowAll() {
     params.set('show_all', '1');
     params.delete('date_filter');
   }
+
+  params.delete('page');
   window.location.href = window.location.pathname + '?' + params.toString();
 }
+
 </script>
 
 <script src="{% static 'js/stock_changes_search.js' %}"></script>
+
+<style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#stockChangesTable {
+  table-layout: auto;
+  width: 100%;
+  min-width: 800px;
+}
+#stockChangesTable th,
+#stockChangesTable td {
+  white-space: nowrap;
+  vertical-align: top;
+  padding: 12px;
+}
+</style>
 {% endblock %}

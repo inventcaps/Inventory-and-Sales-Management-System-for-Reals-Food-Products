@@ -31,19 +31,13 @@
           </div>
 
           <div class="card-body">
-            <form class="row mb-3" id="filterForm">
-              <div class="col-auto">
+            <form id="filterForm">
+              <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
                 <input type="text" id="searchInput" class="form-control" name= "q" placeholder="Search raw batches..." value="{{ request.GET.q }}" style="width: 350px;"/>
-              </div>
-              <div class="col-auto">
                 <input type="month" name="date_filter" class="form-control" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" id="rawDateFilter" style="width: 180px;">
-              </div>
-              <div class="col-auto">
                 <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
                   Show All Data
                 </button>
-              </div>
-              <div class="col-auto">
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
@@ -70,7 +64,7 @@
                     <th scope="col" style="width: 40px;">
                         <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                     </th>
-                    <th scope="col">Batch Date</th>
+                    <th scope="col">Date</th>
                     <th scope="col">Material</th>
                     <th scope="col">Quantity</th>
                     <th scope="col">Received Date</th>
@@ -552,4 +546,21 @@ function handleDeleteSubmit(event, batchName) {
     });
 }
 </script>
+<style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#batchTable {
+  table-layout: auto;
+  width: 100%;
+  min-width: 900px;
+}
+#batchTable th,
+#batchTable td {
+  white-space: nowrap;
+  vertical-align: top;
+  padding: 12px;
+}
+</style>
 {% endblock %}

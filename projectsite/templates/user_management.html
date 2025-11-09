@@ -6,7 +6,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <h4 class="page-title mb-0">User Management</h4>
             <button class="btn btn-primary" data-toggle="modal" data-target="#createAdminModal">
-                <i class="la la-user-plus"></i> Create New Admin User
+                Create New Admin User
             </button>
         </div>
         
@@ -45,7 +45,7 @@
                                                 <span class="badge bg-secondary">User</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm" onclick="showApproveModal({{ user.id }}, '{{ user.username }}')">
                                                 <i class="la la-check"></i> Approve
@@ -58,6 +58,32 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Pagination for Pending Users -->
+                        <div class="pagination-container mt-3">
+                            {% if pending_users.has_other_pages %}
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    {% if pending_users.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?pending_page={{ pending_users.previous_page_number }}">Previous</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in pending_users.paginator.page_range %}
+                                    <li class="page-item {% if pending_users.number == num %}active{% endif %}">
+                                        <a class="page-link" href="?pending_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endfor %}
+                                    
+                                    {% if pending_users.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?pending_page={{ pending_users.next_page_number }}">Next</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
                         </div>
                         {% else %}
                         <div class="alert alert-info">
@@ -105,7 +131,7 @@
                                                 <span class="badge bg-secondary">User</span>
                                             {% endif %}
                                         </td>
-                                        <td>{{ user.last_login|date:"M d, Y H:i"|default:"Never" }}</td>
+                                        <td>{{ user.last_login|date:"Y-m-d g:i A"|default:"Never" }}</td>
                                         <td>
                                             {% if user.id != request.user.id %}
                                                 <button class="btn btn-warning btn-sm" onclick="showToggleRoleModal({{ user.id }}, '{{ user.username }}', {{ user.is_superuser|yesno:'true,false' }})">
@@ -131,6 +157,32 @@
                                 </tbody>
                             </table>
                         </div>
+                        <!-- Pagination for Active Users -->
+                        <div class="pagination-container mt-3">
+                            {% if active_users.has_other_pages %}
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    {% if active_users.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?active_page={{ active_users.previous_page_number }}">Previous</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in active_users.paginator.page_range %}
+                                    <li class="page-item {% if active_users.number == num %}active{% endif %}">
+                                        <a class="page-link" href="?active_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endfor %}
+                                    
+                                    {% if active_users.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?active_page={{ active_users.next_page_number }}">Next</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -150,7 +202,6 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>User ID</th>
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th>Deactivated</th>
@@ -160,10 +211,9 @@
                                 <tbody>
                                     {% for user in inactive_users %}
                                     <tr>
-                                        <td><strong>{{ user.id }}</strong></td>
                                         <td>{{ user.first_name }} {{ user.last_name }}</td>
                                         <td>{{ user.email }}</td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm" onclick="showReactivateModal({{ user.id }})">
                                                 <i class="la la-check-circle"></i> Reactivate
@@ -176,6 +226,32 @@
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Pagination for Inactive Users -->
+                        <div class="pagination-container mt-3">
+                            {% if inactive_users.has_other_pages %}
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    {% if inactive_users.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?inactive_page={{ inactive_users.previous_page_number }}">Previous</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in inactive_users.paginator.page_range %}
+                                    <li class="page-item {% if inactive_users.number == num %}active{% endif %}">
+                                        <a class="page-link" href="?inactive_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endfor %}
+                                    
+                                    {% if inactive_users.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?inactive_page={{ inactive_users.next_page_number }}">Next</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
                         </div>
                         {% else %}
                         <div class="alert alert-info">
@@ -201,7 +277,6 @@
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
-                                        <th>User ID</th>
                                         <th>Name</th>
                                         <th>Email</th>
                                         <th>Deleted</th>
@@ -210,14 +285,39 @@
                                 <tbody>
                                     {% for user in deleted_users %}
                                     <tr>
-                                        <td><strong>{{ user.id }}</strong></td>
                                         <td>{{ user.first_name }} {{ user.last_name }}</td>
                                         <td>{{ user.email }}</td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Pagination for Deleted Users -->
+                        <div class="pagination-container mt-3">
+                            {% if deleted_users.has_other_pages %}
+                            <nav>
+                                <ul class="pagination justify-content-center">
+                                    {% if deleted_users.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?deleted_page={{ deleted_users.previous_page_number }}">Previous</a>
+                                    </li>
+                                    {% endif %}
+                                    
+                                    {% for num in deleted_users.paginator.page_range %}
+                                    <li class="page-item {% if deleted_users.number == num %}active{% endif %}">
+                                        <a class="page-link" href="?deleted_page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endfor %}
+                                    
+                                    {% if deleted_users.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?deleted_page={{ deleted_users.next_page_number }}">Next</a>
+                                    </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                            {% endif %}
                         </div>
                         {% else %}
                         <div class="alert alert-info">
@@ -230,6 +330,49 @@
         </div>
     </div>
 </div>
+
+<style>
+/* Horizontal scrolling for tables */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    display: block;
+    width: 100%;
+}
+
+.table {
+    table-layout: auto;
+    width: 100%;
+    min-width: 800px; /* Minimum width to trigger horizontal scroll */
+}
+
+.table th,
+.table td {
+    white-space: nowrap;
+    vertical-align: middle;
+    padding: 12px;
+}
+
+/* Pagination styling */
+.pagination-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #1572E8;
+    border-color: #1572E8;
+}
+
+.pagination .page-link {
+    color: #1572E8;
+}
+
+.pagination .page-link:hover {
+    background-color: #f0f0f0;
+}
+</style>
 
 <!-- Create Admin User Modal -->
 <div class="modal fade" id="createAdminModal" tabindex="-1" role="dialog">

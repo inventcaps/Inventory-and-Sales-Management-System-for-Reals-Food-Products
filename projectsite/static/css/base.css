@@ -1009,3 +1009,50 @@ html[data-theme="dark"] .list-group-item {
   border-color: rgba(119, 178, 84, 0.2) !important;
   color: #e8f5e9 !important;
 }
+
+/* ===== RESPONSIVE Z-INDEX FIX ===== */
+/* Fix para sa mobile sidebar toggle - burger button hindi ma-click */
+@media screen and (max-width: 991px) {
+  /* Main header dapat mas mataas ang z-index kaysa sidebar */
+  .main-header {
+    z-index: 10001 !important;
+  }
+  
+  /* Logo header (kung saan yung burger button) */
+  .main-header .logo-header {
+    z-index: 10002 !important;
+    position: relative;
+  }
+  
+  /* Burger button mismo - IMPORTANT: Make it visible and clickable! */
+  .main-header .logo-header .navbar-toggler,
+  .main-header .logo-header .sidenav-toggler {
+    z-index: 10003 !important;
+    position: relative;
+    opacity: 1 !important; /* Override default opacity: 0 */
+    pointer-events: auto !important; /* Ensure it's clickable */
+    cursor: pointer !important;
+    display: block !important;
+  }
+  
+  /* Sidebar dapat mas mababa ang z-index kaysa header */
+  .sidebar {
+    z-index: 9999 !important;
+  }
+  
+  /* Pag naka-open ang sidebar, dapat visible pa rin ang close button */
+  .nav_open .main-header {
+    z-index: 10001 !important;
+  }
+  
+  .nav_open .main-header .logo-header {
+    z-index: 10002 !important;
+  }
+  
+  .nav_open .main-header .logo-header .navbar-toggler,
+  .nav_open .main-header .logo-header .sidenav-toggler {
+    z-index: 10003 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+}

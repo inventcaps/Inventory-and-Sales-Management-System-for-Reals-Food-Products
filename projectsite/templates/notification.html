@@ -12,11 +12,22 @@
             </div>
 
             <div class="card-body">
-              <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+              <div class="d-flex align-items-center mb-3 flex-wrap" style="gap:0.5rem;">
+                <select id="categoryFilter" name="category" class="form-control" style="width:200px;">
+                  <option value="">All Categories</option>
+                  <option value="low_stock" {% if request.GET.category == 'low_stock' %}selected{% endif %}>Low Stock</option>
+                  <option value="out_of_stock" {% if request.GET.category == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
+                  <option value="expired" {% if request.GET.category == 'expired' %}selected{% endif %}>Expired</option>
+                  <option value="expire_week" {% if request.GET.category == 'expire_week' %}selected{% endif %}>Expire in a Week</option>
+                  <option value="expire_month" {% if request.GET.category == 'expire_month' %}selected{% endif %}>Expire in a Month</option>
+                </select>
+                
                 <input type="month" id="dateFilter" name="date_filter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+                
                 <button type="button" class="btn btn-info" onclick="toggleShowAll()">
                   Show All Data
                 </button>
+                
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
@@ -34,7 +45,7 @@
                     {% for object in object_list %}
                     <tr>
                       <td>{{ object.formatted_message }}</td>
-                      <td>{{ object.notification_timestamp|date:"M d, Y, h:i a" }}</td>
+                      <td>{{ object.notification_timestamp|date:"Y-m-d g:i A" }}</td>
                       <td>
                           <a href="#" data-toggle="modal" data-target="#deleteNotificationModal{{ object.id }}" class="text-danger" title="Delete">
                             <i class="la la-trash la-lg"></i>
@@ -92,11 +103,14 @@
       params.set('show_all', '1');
       params.delete('date_filter');
     }
+    params.delete('page'); 
     window.location.href = window.location.pathname + '?' + params.toString();
   }
   
   document.addEventListener('DOMContentLoaded', function() {
     const dateFilter = document.getElementById('dateFilter');
+    const categoryFilter = document.getElementById('categoryFilter');
+    
     if (dateFilter) {
       dateFilter.addEventListener('change', function() {
         const params = new URLSearchParams(window.location.search);
@@ -106,9 +120,41 @@
         } else {
           params.delete('date_filter');
         }
+        params.delete('page');
+        window.location.href = window.location.pathname + '?' + params.toString();
+      });
+    }
+    
+    if (categoryFilter) {
+      categoryFilter.addEventListener('change', function() {
+        const params = new URLSearchParams(window.location.search);
+        if (this.value) {
+          params.set('category', this.value);
+        } else {
+          params.delete('category');
+        }
+        params.delete('page');
         window.location.href = window.location.pathname + '?' + params.toString();
       });
     }
   });
   </script>
+  
+  <style>
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  #inventoryTable {
+    table-layout: auto;
+    width: 100%;
+    min-width: 700px;
+  }
+  #inventoryTable th,
+  #inventoryTable td {
+    white-space: nowrap;
+    vertical-align: top;
+    padding: 12px;
+  }
+  </style>
   {% endblock %}

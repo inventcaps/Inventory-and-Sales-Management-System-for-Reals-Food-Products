@@ -6,6 +6,3 @@ class RealsprojConfig(AppConfig):
     
     def ready(self):
         import realsproj.signals
-        
-        # Expiration checks are now handled by Supabase pg_cron
-        # No need for APScheduler anymore

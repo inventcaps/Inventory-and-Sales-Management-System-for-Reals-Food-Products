@@ -6,6 +6,64 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">Withdrawals</h4>
+    
+    <!-- Withdrawal Summary Cards -->
+    <div class="row mb-3">
+      <!-- Total Withdrawals Card -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Total Withdrawals</h5>
+                <p class="text-muted mb-0">All withdrawal quantities</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Product Withdrawals Card -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Product Withdrawals</h5>
+                <p class="text-muted mb-0">{{ product_withdrawals_count }} withdrawal(s)</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Raw Material Withdrawals Card -->
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Raw Material Withdrawals</h5>
+                <p class="text-muted mb-0">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
+              </div>
+              <div class="text-right">
+                <h2 class="mb-0 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
+                <small class="text-muted">units</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
     <div class="row">
       <div class="col-md-12">
         <div class="card">
@@ -31,37 +89,30 @@
             </div>
           </div>
           <div class="card-body">
-            <form method="get" id="filterForm" class="d-flex align-items-center" style="gap:0.5rem;">
-              <!-- Admin Filter -->
-              <select id="adminFilter" class="form-control" style="width:180px;">
-                <option value="">All Admins</option>
-                {% for admin in admins %}
-                  <option value="{{ admin }}">{{ admin }}</option>
-                {% endfor %}
-              </select>
-              <!-- Item Type Filter -->
+            <!-- Filters -->
+            <div class="d-flex align-items-center mb-3" style="gap:0.5rem; flex-wrap: wrap;">
               <select id="itemTypeFilter" class="form-control" style="width:180px;">
-                <option value="">All Types</option>
-                {% for value, label in withdrawals.model.ITEM_TYPE_CHOICES %}
-                  <option value="{{ label }}">{{ label }}</option>
-                {% endfor %}
+                <option value="">All Item Types</option>
+                <option value="PRODUCT" {% if request.GET.item_type == 'PRODUCT' %}selected{% endif %}>Product</option>
+                <option value="RAW_MATERIAL" {% if request.GET.item_type == 'RAW_MATERIAL' %}selected{% endif %}>Raw Material</option>
               </select>
-              <!-- Reason Filter -->
+              
               <select id="reasonFilter" class="form-control" style="width:180px;">
                 <option value="">All Reasons</option>
                 {% for value, label in withdrawals.model.REASON_CHOICES %}
-                  <option value="{{ label }}">{{ label }}</option>
+                  <option value="{{ value }}" {% if request.GET.reason == value %}selected{% endif %}>{{ label }}</option>
                 {% endfor %}
               </select>
-              <!-- Month-Year Filter -->
-              <input id="dateFilter" type="month" class="form-control" style="width:180px;" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+              
+              <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
+              
               <button type="button" class="btn btn-info" onclick="toggleShowAll()">
                 Show All Data
               </button>
               <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
               </button>
-            </form>
+            </div>
             
             <!-- Bulk Action Buttons -->
             <div class="mb-3">
@@ -74,9 +125,7 @@
                     <i class="la la-archive"></i> Archive Selected
                 </button>
             </div>
-          </div>
 
-          <div class="card-body">
             <div class="table-responsive">
               <table class="table table-striped" id="withdrawalTable">
                 <thead>
@@ -87,8 +136,9 @@
                     <th scope="col">Date</th>
                     <th scope="col">Type</th>
                     <th scope="col">Reason</th>
-                    <th scope="col">Items</th>
-                    <th scope="col">Withdrawn By</th>
+                    <th scope="col">Item/s</th>
+                    <th scope="col">By</th>
+                    <th scope="col">Details</th>
                     <th scope="col">Actions</th>
                   </tr>
                 </thead>
@@ -124,11 +174,12 @@
                     <td>{{ group.created_by_admin.username }}</td>
                     <td>
                       {% if not group.is_single %}
-                        <a href="#" data-toggle="modal" data-target="#viewGroupModal{{ group.group_key }}" title="View Details" class="text-info">
+                        <a href="#" data-toggle="modal" data-target="#viewGroupModal{{ group.group_key }}" title="View Details" style="color: blue;">
                           <i class="la la-eye la-lg"></i>
                         </a>
-                        &nbsp;&nbsp;
                       {% endif %}
+                    </td>
+                    <td>
                       {% if group.is_single %}
                         <a href="{% url 'withdraw-edit' group.withdrawals.0.id %}" title="Edit" class="text-primary">
                           <i class="la la-edit la-lg"></i>
@@ -422,130 +473,6 @@ document.addEventListener('DOMContentLoaded', function() {
     showToast(withdrawalSuccess, 'success');
     sessionStorage.removeItem('withdrawalSuccess');
   }
-  
-  const adminFilter = document.getElementById('adminFilter');
-  const itemTypeFilter = document.getElementById('itemTypeFilter');
-  const reasonFilter = document.getElementById('reasonFilter');
-  const dateFilter = document.getElementById('dateFilter');
-  const tableBody = document.getElementById('withdrawalTableBody');
-  const pagination = document.querySelector('.pagination-container');
-  
-  let timeout;
-  
-  function fetchWithdrawals(resetPage = true) {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => {
-      const params = new URLSearchParams(window.location.search);
-      
-      // Update or remove filters
-      if (adminFilter.value) {
-        params.set("admin", adminFilter.value);
-      } else {
-        params.delete("admin");
-      }
-      
-      if (itemTypeFilter.value) {
-        params.set("item_type", itemTypeFilter.value);
-      } else {
-        params.delete("item_type");
-      }
-      
-      if (reasonFilter.value) {
-        params.set("reason", reasonFilter.value);
-      } else {
-        params.delete("reason");
-      }
-      
-      if (dateFilter.value) {
-        params.set("date", dateFilter.value);
-      } else {
-        params.delete("date");
-      }
-      
-      // Reset to page 1 when filters change
-      if (resetPage) {
-        params.delete("page");
-      }
-      
-      const url = "/withdrawals/?" + params.toString();
-      
-      fetch(url)
-        .then(response => response.text())
-        .then(html => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, "text/html");
-          
-          // Replace table body
-          const newRows = doc.querySelector("#withdrawalTableBody");
-          if (newRows) tableBody.innerHTML = newRows.innerHTML;
-          
-          // Replace pagination
-          const newPagination = doc.querySelector(".pagination-container");
-          if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
-          
-          // Replace modals
-          const newModals = doc.querySelector('#withdrawalModalsContainer');
-          const currentModals = document.querySelector('#withdrawalModalsContainer');
-          if (newModals && currentModals) currentModals.innerHTML = newModals.innerHTML;
-          
-          // Clean up any lingering modal backdrops
-          $('.modal-backdrop').remove();
-          $('body').removeClass('modal-open');
-          $('body').css('padding-right', '');
-          
-          // Update URL without page reload
-          window.history.pushState({}, '', url);
-        })
-        .catch(err => console.error("Error fetching withdrawals:", err));
-    }, 300);
-  }
-  
-  // Event listeners for filters
-  adminFilter.addEventListener('change', () => fetchWithdrawals(true));
-  itemTypeFilter.addEventListener('change', () => fetchWithdrawals(true));
-  reasonFilter.addEventListener('change', () => fetchWithdrawals(true));
-  dateFilter.addEventListener('change', () => fetchWithdrawals(true));
-  
-  // Handle pagination clicks
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('.pagination a')) {
-      e.preventDefault();
-      const link = e.target.closest('a');
-      const url = link.getAttribute('href');
-      
-      fetch(url)
-        .then(response => response.text())
-        .then(html => {
-          const parser = new DOMParser();
-          const doc = parser.parseFromString(html, "text/html");
-          
-          // Replace table body
-          const newRows = doc.querySelector("#withdrawalTableBody");
-          if (newRows) tableBody.innerHTML = newRows.innerHTML;
-          
-          // Replace pagination
-          const newPagination = doc.querySelector(".pagination-container");
-          if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
-          
-          // Replace modals
-          const newModals = doc.querySelector('#withdrawalModalsContainer');
-          const currentModals = document.querySelector('#withdrawalModalsContainer');
-          if (newModals && currentModals) currentModals.innerHTML = newModals.innerHTML;
-          
-          // Clean up any lingering modal backdrops
-          $('.modal-backdrop').remove();
-          $('body').removeClass('modal-open');
-          $('body').css('padding-right', '');
-          
-          // Update URL without page reload
-          window.history.pushState({}, '', url);
-          
-          // Scroll to top of table
-          document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
-        })
-        .catch(err => console.error("Error fetching withdrawals:", err));
-    }
-  });
 });
 
 // Handle archive form submission with toast
@@ -716,6 +643,37 @@ function bulkArchiveWithdrawal() {
     });
 }
 
+document.getElementById('dateFilter').addEventListener('change', function() {
+  const params = new URLSearchParams(window.location.search);
+  if (this.value) {
+    params.set('date_filter', this.value);
+    params.delete('show_all');
+  } else {
+    params.delete('date_filter');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
+});
+
+document.getElementById('itemTypeFilter').addEventListener('change', function() {
+  const params = new URLSearchParams(window.location.search);
+  if (this.value) {
+    params.set('item_type', this.value);
+  } else {
+    params.delete('item_type');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
+});
+
+document.getElementById('reasonFilter').addEventListener('change', function() {
+  const params = new URLSearchParams(window.location.search);
+  if (this.value) {
+    params.set('reason', this.value);
+  } else {
+    params.delete('reason');
+  }
+  window.location.href = window.location.pathname + '?' + params.toString();
+});
+
 function toggleShowAll() {
   const params = new URLSearchParams(window.location.search);
   if (params.get('show_all')) {
@@ -726,5 +684,24 @@ function toggleShowAll() {
   }
   window.location.href = window.location.pathname + '?' + params.toString();
 }
+
 </script>
+
+<style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#withdrawalTable {
+  table-layout: auto;
+  width: 100%;
+  min-width: 1000px;
+}
+#withdrawalTable th,
+#withdrawalTable td {
+  white-space: nowrap;
+  vertical-align: top;
+  padding: 12px;
+}
+</style>
 {% endblock %}

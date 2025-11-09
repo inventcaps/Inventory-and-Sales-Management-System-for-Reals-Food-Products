@@ -1,0 +1,260 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="content">
+    <div class="container-fluid">
+        <h4 class="page-title">Price Change Log</h4>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Price Change History</div>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Filters -->
+                        <form method="get" id="filterForm" class="mb-3">
+                            <!-- First Row: Search, Date, Price Type, Show All, Reset -->
+                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                                <input type="text" name="search" class="form-control" style="width: 350px;"
+                                    placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
+                                <input type="month" name="date_created" class="form-control" style="width:180px;"
+                                       placeholder="Filter by Month"
+                                       value="{% if request.GET.date_created %}{{ request.GET.date_created }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" id="dateFilter">
+                                <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
+                                    Show All Data
+                                </button>
+                                <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
+                                    <i class="la la-times"></i>
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Table -->
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date & Time</th>
+                                        <th>Product</th>
+                                        <th class="text-center">
+                                            <span class="fw-bold me-2">Price Type</span>
+                                            <select id="priceTypeColumnFilter" name="price_type"
+                                                style="border:none; background:transparent; font-weight:500; cursor:pointer;">
+                                                <option value="" {% if not request.GET.price_type %}selected{% endif %}>All</option>
+                                                <option value="UNIT" {% if request.GET.price_type == 'UNIT' %}selected{% endif %}>Unit</option>
+                                                <option value="SRP" {% if request.GET.price_type == 'SRP' %}selected{% endif %}>SRP</option>
+                                            </select>
+                                        </th>
+                                        <th>Old Price</th>
+                                        <th>New Price</th>
+                                        <th>Change</th>
+                                        <th>By</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for change in price_changes %}
+                                    <tr>
+                                        <td>{{ change.changed_at|date:"Y-m-d g:i A" }}</td>
+                                        <td>
+                                            {{ change.product }}
+                                        </td>
+                                        <td class="text-center">
+                                            <span class="badge {% if change.price_type == 'UNIT' %}badge-info{% else %}badge-primary{% endif %}">
+                                                {{ change.get_price_type_display }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            {% if change.old_price %}
+                                                ₱{{ change.old_price|floatformat:2 }}
+                                            {% else %}
+                                                <span class="text-muted">N/A</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <strong>₱{{ change.new_price|floatformat:2 }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if change.price_change_amount %}
+                                                {% if change.price_change_amount > 0 %}
+                                                    <span class="text-success">
+                                                        <i class="la la-arrow-up"></i> +₱{{ change.price_change_amount|floatformat:2 }}
+                                                        {% if change.price_change_percent %}
+                                                            (+{{ change.price_change_percent }}%)
+                                                        {% endif %}
+                                                    </span>
+                                                {% elif change.price_change_amount < 0 %}
+                                                    <span class="text-danger">
+                                                        <i class="la la-arrow-down"></i> ₱{{ change.price_change_amount|floatformat:2 }}
+                                                        {% if change.price_change_percent %}
+                                                            ({{ change.price_change_percent }}%)
+                                                        {% endif %}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted">No change</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">New Price</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if change.changed_by_admin %}
+                                                {{ change.changed_by_admin.username }}
+                                            {% else %}
+                                                <span class="text-muted">System</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center">No price changes found.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        <div class="pagination-container">
+                            {% include 'includes/pagination.html' with price_changes=price_changes query_params=query_params %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle Show All Data
+function toggleShowAll() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('show_all', 'true');
+    params.delete('date_created');
+    window.location.href = `${window.location.pathname}?${params.toString()}`;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('filterForm');
+    const searchInput = form.querySelector('input[name="search"]');
+    const dateInput = document.getElementById('dateFilter');
+    const priceTypeColumnFilter = document.getElementById('priceTypeColumnFilter');
+    const tableBody = document.querySelector('.table tbody');
+    const pagination = document.querySelector('.pagination-container');
+    const showAllBtn = document.getElementById('showAllBtn');
+    
+    let typingTimer;
+    const debounceTime = 600;
+    
+    function fetchPriceHistory(resetPage = true) {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            const params = new URLSearchParams(window.location.search);
+            
+            // Update or remove search query
+            if (searchInput.value) {
+                params.set("search", searchInput.value);
+            } else {
+                params.delete("search");
+            }
+            
+            // Update or remove date filter
+            if (dateInput.value) {
+                params.set("date_created", dateInput.value);
+            } else {
+                params.delete("date_created");
+            }
+            
+            // Update or remove price type column filter
+            if (priceTypeColumnFilter && priceTypeColumnFilter.value) {
+                params.set("price_type", priceTypeColumnFilter.value);
+            } else {
+                params.delete("price_type");
+            }
+            
+            // Reset to page 1 when filters change
+            if (resetPage) {
+                params.delete("page");
+            }
+            
+            const url = "/price-history/?" + params.toString();
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    
+                    // Replace table body
+                    const newRows = doc.querySelector(".table tbody");
+                    if (newRows && tableBody) tableBody.innerHTML = newRows.innerHTML;
+                    
+                    // Replace pagination
+                    const newPagination = doc.querySelector(".pagination-container");
+                    if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
+                    
+                    // Update URL without page reload
+                    window.history.pushState({}, '', url);
+                })
+                .catch(err => console.error("Error fetching price history:", err));
+        }, debounceTime);
+    }
+    
+    // Event listeners
+    searchInput.addEventListener('keyup', () => fetchPriceHistory(true));
+    dateInput.addEventListener('change', () => fetchPriceHistory(true));
+    if (priceTypeColumnFilter) {
+        priceTypeColumnFilter.addEventListener('change', () => fetchPriceHistory(true));
+    }
+    
+    // Handle pagination clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.pagination a')) {
+            e.preventDefault();
+            const link = e.target.closest('a');
+            const url = link.getAttribute('href');
+            
+            fetch(url)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, "text/html");
+                    
+                    // Replace table body
+                    const newRows = doc.querySelector(".table tbody");
+                    if (newRows && tableBody) tableBody.innerHTML = newRows.innerHTML;
+                    
+                    // Replace pagination
+                    const newPagination = doc.querySelector(".pagination-container");
+                    if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
+                    
+                    // Update URL without page reload
+                    window.history.pushState({}, '', url);
+                    
+                    // Scroll to top of table
+                    document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
+                })
+                .catch(err => console.error("Error fetching price history:", err));
+        }
+    });
+});
+</script>
+
+<style>
+.table-responsive {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table {
+  table-layout: auto;
+  width: 100%;
+  min-width: 1000px;
+}
+.table th,
+.table td {
+  white-space: nowrap;
+  vertical-align: top;
+  padding: 12px;
+}
+</style>
+{% endblock %}

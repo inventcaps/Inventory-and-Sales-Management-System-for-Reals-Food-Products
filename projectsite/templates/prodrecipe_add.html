@@ -4,7 +4,12 @@
 {% block content %}
 <div class="content">
   <div class="container-fluid">
-    <h4 class="page-title">Bulk Add Recipes for {{ product.product_type.name }} - {{ product.variant.name }}</h4>
+    <h4 class="page-title">
+      <a href="{% url 'recipe-list' product.id %}" class="btn btn-link p-0 mr-2" title="Back to Materials">
+        <i class="la la-arrow-left" style="font-size: 24px;"></i>
+      </a>
+      Bulk Add Materials for {{ product.product_type.name }} - {{ product.variant.name }} ({{ product.size.size_label }} {{ product.size_unit.unit_name }})
+    </h4>
 
     <div class="card">
       <div class="card-body">
@@ -50,8 +55,7 @@
             <button type="button" class="btn btn-sm btn-info" id="add-row">+ Add Row</button>
           </div>
 
-          <button type="submit" class="btn btn-primary">Save All</button>
-          <a href="{% url 'recipe-list' product.id %}" class="btn btn-secondary">Cancel</a>
+          <button type="submit" class="btn btn-primary">Save</button>
         </form>
       </div>
     </div>
