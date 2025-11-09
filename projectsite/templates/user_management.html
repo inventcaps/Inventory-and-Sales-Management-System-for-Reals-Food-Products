@@ -187,8 +187,8 @@
                                 <tbody>
                                     {% for user in inactive_users %}
                                     <tr>
-                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
-                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.display_username }}</td>
+                                        <td>{{ user.display_email }}</td>
                                         <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <button class="btn btn-success btn-sm" onclick="showReactivateModal({{ user.id }})">
@@ -553,6 +553,9 @@ function showDeactivateModal(userId, username) {
     currentUsername = username;
     document.getElementById('deactivateModalMessage').textContent = `Are you sure you want to deactivate ${username}? They will not be able to log in until reactivated.`;
     $('#deactivateModal').modal('show');
+
+
+
 }
 
 // Show Reactivate Modal
@@ -643,18 +646,11 @@ function deactivateUser() {
     .then(data => {
         $('#deactivateModal').modal('hide');
         if (data.success) {
-            if (typeof showToast === 'function') {
-                showToast(data.message, 'success');
-            }
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
-            if (typeof showToast === 'function') {
-                showToast('Error: ' + data.message, 'error');
-            } else {
-                alert('Error: ' + data.message);
-            }
+            alert('Error: ' + data.message);
         }
-    });
+    })
 }
 
 // Reactivate User
@@ -670,17 +666,14 @@ function reactivateUser() {
     .then(data => {
         $('#reactivateModal').modal('hide');
         if (data.success) {
-            if (typeof showToast === 'function') {
-                showToast(data.message, 'success');
-            }
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
-            if (typeof showToast === 'function') {
-                showToast('Error: ' + data.message, 'error');
-            } else {
-                alert('Error: ' + data.message);
-            }
+            alert('Error: ' + data.message);
         }
+    })
+    .catch(error => {
+        $('#reactivateModal').modal('hide');
+        alert('Error reactivating user');
     });
 }
 
@@ -697,17 +690,14 @@ function deleteUser() {
     .then(data => {
         $('#deleteModal').modal('hide');
         if (data.success) {
-            if (typeof showToast === 'function') {
-                showToast(data.message, 'success');
-            }
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
-            if (typeof showToast === 'function') {
-                showToast('Error: ' + data.message, 'error');
-            } else {
-                alert('Error: ' + data.message);
-            }
+            alert('Error: ' + data.message);
         }
+    })
+    .catch(error => {
+        $('#deleteModal').modal('hide');
+        alert('Error deleting user');
     });
 }
 
@@ -760,18 +750,11 @@ document.getElementById('createAdminForm').addEventListener('submit', function(e
     .then(data => {
         if (data.success) {
             $('#createAdminModal').modal('hide');
-            // Reset form and hide errors
             document.getElementById('createAdminForm').reset();
             errorDiv.style.display = 'none';
             
-            if (typeof showToast === 'function') {
-                showToast(data.message, 'success');
-            } else {
-                alert(data.message);
-            }
-            setTimeout(() => location.reload(), 1000);
+            location.reload();
         } else {
-            // Show error in modal
             errorMessage.textContent = data.message;
             errorDiv.style.display = 'block';
         }

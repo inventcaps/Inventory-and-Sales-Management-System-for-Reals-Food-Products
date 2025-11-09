@@ -43,7 +43,6 @@
                                                 <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
                                                 <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
                                                 <option value="logged_out" {% if request.GET.status == 'logged_out' %}selected{% endif %}>Logged Out</option>
-                                                <option value="deleted" {% if request.GET.status == 'deleted' %}selected{% endif %}>Deleted</option>
                                             </select>
                                         </th>
                                         <th scope="col">Last Login</th>
@@ -53,28 +52,11 @@
                         </form>
                             <tbody id="userTableBody">
                                 {% for user in users %}
-                                <tr {% if user.username|slice:":12" == "deleted_user" %}class="table-secondary"{% endif %}>
+                                <tr>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
                                     <td>
-                                        {% if user.username|slice:":12" == "deleted_user" %}
-                                            <span class="text-muted">
-                                                <i class="fas fa-user-slash me-1"></i>
-                                                [Deleted User #{{ user.username|slice:"13:14" }}]
-                                            </span>
-                                        {% else %}
-                                            {{ user.username }}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if user.email|slice:"-14:" == "@deleted.local" %}
-                                            <span class="text-muted fst-italic">Account Deleted</span>
-                                        {% else %}
-                                            {{ user.email }}
-                                        {% endif %}
-                                    </td>
-                                    <td class="col-status">
-                                        {% if user.username|slice:":12" == "deleted_user" %}
-                                            <span class="badge bg-danger">Deleted</span>
-                                        {% elif user.useractivity.is_truly_active %}
+                                        {% if user.useractivity.is_truly_active %}
                                             <span class="badge bg-success">Active</span>
                                         {% elif user.useractivity.active %}
                                             <span class="badge bg-warning text-dark">Inactive</span>

@@ -22,6 +22,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 from django.forms import modelformset_factory
+import threading
 from realsproj.forms import (
     ProductsForm,
     RawMaterialsForm,
@@ -4727,7 +4728,7 @@ def login_view(request):
 
         if user is not None:
             if user.is_active:
-                from realsproj.models import User2FASettings, UserOTP, TrustedDevice, LoginAttempt
+                from realsproj.models import UserOTP, TrustedDevice, LoginAttempt
                 import random
                 from datetime import timedelta
                 from django.utils import timezone
@@ -4738,87 +4739,39 @@ def login_view(request):
                 device_info = get_device_info(request)
                 ip_address = request.META.get('REMOTE_ADDR', '0.0.0.0')
                 
-                try:
-                    twofa_settings = User2FASettings.objects.get(user=user, is_enabled=True)
+                # Check if this is a trusted device (for ALL users, not just 2FA enabled)
+                trusted_device = TrustedDevice.objects.filter(
+                    user=user,
+                    device_fingerprint=device_fingerprint,
+                    is_active=True
+                ).first()
+                
+                # DEBUG: Log the login attempt details
+                print(f"[LOGIN DEBUG] User: {user.username} (ID: {user.id})")
+                print(f"[LOGIN DEBUG] Device Fingerprint: {device_fingerprint}")
+                print(f"[LOGIN DEBUG] Trusted Device Found: {trusted_device is not None}")
+                if trusted_device:
+                    print(f"[LOGIN DEBUG] Trusted Device ID: {trusted_device.id}, Last Used: {trusted_device.last_used}")
+                
+                if trusted_device:
+                    # Trusted device - login directly
+                    trusted_device.last_used = timezone.now()
+                    trusted_device.save()
                     
-                    trusted_device = TrustedDevice.objects.filter(
+                    LoginAttempt.objects.create(
                         user=user,
+                        username=user.username,
+                        ip_address=ip_address,
                         device_fingerprint=device_fingerprint,
-                        is_active=True
-                    ).first()
+                        browser=device_info['browser'],
+                        os=device_info['os'],
+                        success=True,
+                        required_otp=False,
+                        is_trusted_device=True
+                    )
                     
-                    if trusted_device:
-                        trusted_device.last_used = timezone.now()
-                        trusted_device.save()
-                        
-                        LoginAttempt.objects.create(
-                            user=user,
-                            username=user.username,
-                            ip_address=ip_address,
-                            device_fingerprint=device_fingerprint,
-                            browser=device_info['browser'],
-                            os=device_info['os'],
-                            success=True,
-                            required_otp=False,
-                            is_trusted_device=True
-                        )
-                        
-                        send_login_notification(user, device_info, ip_address, is_new_device=False)
-                        
-                        login(request, user)
-                        
-                        remember_me = request.POST.get('remember', False)
-                        if remember_me:
-                            request.session.set_expiry(2592000)  
-                        else:
-                            request.session.set_expiry(0)  
-                        
-                        messages.success(request, f"✅ Welcome back! Logged in from trusted device.")
-                        return redirect('home')
-                    else:
-                        otp_code = str(random.randint(100000, 999999))
-                        
-                        UserOTP.objects.create(
-                            user=user,
-                            otp_code=otp_code,
-                            expires_at=timezone.now() + timedelta(minutes=5),
-                            ip_address=ip_address
-                        )
-                        
-                        email_to = twofa_settings.backup_email if twofa_settings.backup_email else user.email
-                        
-                        try:
-                            send_mail(
-                                subject='🔐 New Device Login - OTP Required',
-                                message=f'Hello {user.username},\n\nA login attempt was made from a new device:\n\nDevice: {device_info["device_name"]}\nIP Address: {ip_address}\n\nYour OTP code is: {otp_code}\n\nThis code will expire in 5 minutes.\n\nIf this wasn\'t you, please secure your account immediately.\n\nReals Food Products Security Team',
-                                from_email=settings.EMAIL_HOST_USER,
-                                recipient_list=[email_to],
-                                fail_silently=False,
-                            )
-                        except Exception:
-                            pass
-                        
-                        LoginAttempt.objects.create(
-                            user=user,
-                            username=user.username,
-                            ip_address=ip_address,
-                            device_fingerprint=device_fingerprint,
-                            browser=device_info['browser'],
-                            os=device_info['os'],
-                            success=False,
-                            required_otp=True,
-                            is_trusted_device=False
-                        )
-                        
-                        request.session['2fa_user_id'] = user.id
-                        remember_me = request.POST.get('remember', False)
-                        request.session['remember_me'] = bool(remember_me)
-                        
-                        masked_email = mask_email(email_to)
-                        messages.info(request, f"📧 New device detected! OTP sent to {masked_email}")
-                        return render(request, '2fa_verify.html', {'user_email': masked_email})
-                        
-                except User2FASettings.DoesNotExist:
+                    send_login_notification(user, device_info, ip_address, is_new_device=False)
+                    
                     login(request, user)
                     
                     remember_me = request.POST.get('remember', False)
@@ -4827,26 +4780,102 @@ def login_view(request):
                     else:
                         request.session.set_expiry(0)  
                     
+                    messages.success(request, f" Welcome back! Logged in from trusted device.")
                     return redirect('home')
-                except Exception as e:
-                    messages.error(request, f"Failed to process login: {str(e)}")
-                    return render(request, 'login.html')
+                else:
+                    # New device - require OTP for account confirmation
+                    print(f"[OTP DEBUG] Generating OTP for new device login")
+                    print(f"[OTP DEBUG] User: {user.username}, Email: {user.email}")
+                    otp_code = str(random.randint(100000, 999999))
+                    
+                    UserOTP.objects.create(
+                        user=user,
+                        otp_code=otp_code,
+                        expires_at=timezone.now() + timedelta(minutes=5),
+                        ip_address=ip_address
+                    )
+                    print(f"[OTP DEBUG] OTP created in database: {otp_code}")
+                    
+                    try:
+                        send_mail(
+                            subject='🔐 Account Confirmation Required - Real\'s Food Products',
+                            message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 5 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
+                            from_email=settings.EMAIL_HOST_USER,
+                            recipient_list=[user.email],
+                            fail_silently=False,
+                        )
+                        print(f"[OTP DEBUG] OTP email sent successfully to {user.email}")
+                    except Exception as e:
+                        print(f"[OTP EMAIL ERROR] Failed to send OTP: {e}")
+                    
+                    LoginAttempt.objects.create(
+                        user=user,
+                        username=user.username,
+                        ip_address=ip_address,
+                        device_fingerprint=device_fingerprint,
+                        browser=device_info['browser'],
+                        os=device_info['os'],
+                        success=False,
+                        required_otp=True,
+                        is_trusted_device=False
+                    )
+                    
+                    request.session['2fa_user_id'] = user.id
+                    remember_me = request.POST.get('remember', False)
+                    request.session['remember_me'] = bool(remember_me)
+                    
+                    masked_email = mask_email(user.email)
+                    messages.info(request, f" Account confirmation required! OTP sent to {masked_email}")
+                    return render(request, '2fa_verify.html', {'user_email': masked_email})
             else:
-                messages.error(request, "Your account is not active.")
+                messages.error(request, "❌ Your account is inactive. Please contact the administrator.")
+                return render(request, 'login.html')
         else:
-            messages.error(request, "Invalid username or password.")
+            messages.error(request, "❌ Invalid username or password. Please try again.")
+            return render(request, 'login.html')
     return render(request, 'login.html')
 
 def register(request):
     if request.method == 'POST':
         form = CustomUserCreationForm(request.POST)
         if form.is_valid():
-            user = form.save()  
-            login(request, user)
-            messages.success(request, 'Your account has been created successfully! Please wait for an admin approval before you can login.')
+            user = form.save()
+            
+            # Send email notification to user
+            from django.core.mail import send_mail
+            from django.conf import settings
+            
+            try:
+                send_mail(
+                    subject='📝 Registration Pending Approval - Real\'s Food Products',
+                    message=f'''Hello {user.username},
+
+Thank you for registering at Real's Food Products Inventory System!
+
+Your account has been created and is currently pending approval from an administrator.
+
+Account Details:
+- Username: {user.username}
+- Email: {user.email}
+- Name: {user.first_name} {user.last_name}
+
+You will receive another email once your account has been approved. After approval, you can log in using your username and password.
+
+If you have any questions, please contact the administrator.
+
+Real's Food Products Team''',
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+                print(f"[REGISTRATION] Confirmation email sent to {user.email}")
+            except Exception as e:
+                print(f"[REGISTRATION ERROR] Failed to send email: {e}")
+            
+            # Don't auto-login inactive users
+            messages.success(request, 'Your account has been created successfully! Please check your email and wait for admin approval before you can log in.')
             return redirect('login')  
-        else:
-            messages.error(request, 'There were errors in your form. Please check the fields and try again.')
+        # If form is invalid, just re-render with errors (no generic message needed)
     else:
         form = CustomUserCreationForm() 
 
@@ -4882,9 +4911,27 @@ def user_management(request):
     active_users = active_paginator.get_page(active_page_number)
     
     # Get inactive users (deactivated by admin)
-    inactive_users = User.objects.filter(
+    inactive_users_raw = User.objects.filter(
         username__startswith='inactive_user_'
     ).order_by('-date_joined')
+    
+    inactive_users = []
+    for user in inactive_users_raw:
+        if user.first_name and 'ORIGINAL_USERNAME:' in user.first_name:
+            parts = user.first_name.split('|')
+            display_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+        else:
+            display_username = f"User ID {user.id}"
+    
+        if user.last_name and 'ORIGINAL_EMAIL:' in user.last_name:
+            parts = user.last_name.split('|')
+            display_email = parts[0].replace('ORIGINAL_EMAIL:', '')
+        else:
+            display_email = user.email
+        
+        user.display_username = display_username
+        user.display_email = display_email
+        inactive_users.append(user)
     
     # Get deleted users (soft deleted)
     deleted_users_queryset = User.objects.filter(
@@ -4913,11 +4960,39 @@ def approve_user(request, user_id):
     
     try:
         user = User.objects.get(id=user_id, is_active=False)
+        username = user.username
+        user_email = user.email
+        
         user.is_active = True
         user.save()
         
-        messages.success(request, f'User {user.username} has been approved and can now log in.')
-        return JsonResponse({'success': True, 'message': f'User {user.username} approved successfully'})
+        # Send approval email to user
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        try:
+            send_mail(
+                subject='✅ Account Approved - Real\'s Food Products',
+                message=f'''Hello {username},
+
+Great news! Your account has been approved by an administrator.
+
+You can now log in to the Real's Food Products Inventory System using your credentials
+
+Login URL: {request.build_absolute_uri('/login/')}
+
+Welcome to the team!
+
+Real's Food Products Team''',
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[user_email],
+                fail_silently=True,
+            )
+            print(f"[APPROVAL] Notification email sent to {user_email}")
+        except Exception as e:
+            print(f"[APPROVAL ERROR] Failed to send email: {e}")
+        
+        return JsonResponse({'success': True, 'message': f'User {username} approved successfully'})
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
@@ -4934,6 +5009,31 @@ def reject_user(request, user_id):
         from datetime import datetime
         user = User.objects.get(id=user_id, is_active=False)
         username = user.username
+        user_email = user.email
+        
+        # Send rejection email before anonymizing data
+        from django.core.mail import send_mail
+        from django.conf import settings
+        
+        try:
+            send_mail(
+                subject='❌ Account Registration Rejected - Real\'s Food Products',
+                message=f'''Hello {username},
+
+We regret to inform you that your registration request for Real's Food Products Inventory System has been rejected by an administrator.
+
+If you believe this was a mistake or have any questions, please contact the administrator directly.
+
+Thank you for your interest.
+
+Real's Food Products Team''',
+                from_email=settings.EMAIL_HOST_USER,
+                recipient_list=[user_email],
+                fail_silently=True,
+            )
+            print(f"[REJECTION] Notification email sent to {user_email}")
+        except Exception as e:
+            print(f"[REJECTION ERROR] Failed to send email: {e}")
         
         # Soft delete: anonymize user data instead of hard delete to preserve foreign key integrity
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -4945,10 +5045,9 @@ def reject_user(request, user_id):
         user.is_active = False
         user.save()
         
-        messages.success(request, f'User {username} has been rejected and removed.')
         return JsonResponse({'success': True, 'message': f'User {username} rejected successfully'})
     except User.DoesNotExist:
-        return JsonResponse({'success': False, 'message': 'User not found'})
+        return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
@@ -4976,9 +5075,12 @@ def toggle_user_role(request, user_id):
         
         user.save()
         
+        # Don't force logout here - let the JavaScript polling detect the role change
+        # and show the appropriate modal before logging out
+        
         return JsonResponse({
             'success': True, 
-            'message': f'User {user.username} is now a {new_role}',
+            'message': f'User {user.username} is now a {new_role}. They will be notified to log out.',
             'new_role': new_role
         })
     except User.DoesNotExist:
@@ -5015,6 +5117,15 @@ def create_admin_user(request):
         if User.objects.filter(email=email).exists():
             return JsonResponse({'success': False, 'message': f'Email "{email}" is already in use'})
         
+        # Check if email belongs to a deactivated user
+        deactivated_user = User.objects.filter(
+            last_name=f"ORIGINAL_EMAIL:{email}",
+            username__startswith='inactive_user_'
+        ).first()
+        
+        if deactivated_user:
+            return JsonResponse({'success': False, 'message': f'Email "{email}" belongs to a deactivated account. Please reactivate it or use a different email.'})
+        
         # Create user
         user = User.objects.create(
             username=username,
@@ -5038,11 +5149,63 @@ def create_admin_user(request):
         
         return JsonResponse({
             'success': True,
-            'message': f'{role_name} account "{username}" created successfully and is immediately active'
+            'message': f'{role_name} account "{username}" created successfully and is immediately active.'
         })
     
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+def send_deactivation_email_async(username, email):
+    """Send deactivation email in background thread"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    try:
+        send_mail(
+            subject='⚠️ Account Deactivated - Real\'s Food Products',
+            message=f'''Hello {username},
+
+Your account at Real's Food Products Inventory System has been deactivated by an administrator.
+
+You will no longer be able to log in until your account is reactivated.
+
+If you believe this was a mistake or have any questions, please contact the administrator.
+
+Real's Food Products Team''',
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        print(f"[DEACTIVATION] Notification email sent to {email}")
+    except Exception as e:
+        print(f"[DEACTIVATION ERROR] Failed to send email: {e}")
+
+def send_reactivation_email_async(username, email):
+    """Send reactivation email in background thread"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    try:
+        send_mail(
+            subject='✅ Account Reactivated - Real\'s Food Products',
+            message=f'''Hello {username},
+
+Good news! Your account at Real's Food Products Inventory System has been reactivated by an administrator.
+
+You can now log in again using your original credentials.
+
+Username: {username}
+
+If you have any questions, please contact the administrator.
+
+Real's Food Products Team''',
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        print(f"[REACTIVATION] Notification email sent to {email}")
+    except Exception as e:
+        print(f"[REACTIVATION ERROR] Failed to send email: {e}")
 
 @login_required
 @require_http_methods(["POST"])
@@ -5061,16 +5224,42 @@ def deactivate_user(request, user_id):
         
         username = user.username
         original_email = user.email
+        original_first_name = user.first_name
+        original_last_name = user.last_name
+        
+        # Send deactivation email asynchronously (non-blocking)
+        email_thread = threading.Thread(
+            target=send_deactivation_email_async,
+            args=(username, original_email)
+        )
+        email_thread.daemon = True
+        email_thread.start()
         
         # Soft deactivate: mark as inactive and prefix username
+        # Store original data: username, email, first_name, last_name
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.first_name = f"ORIGINAL_USERNAME:{username}|FNAME:{original_first_name}"
+        user.last_name = f"ORIGINAL_EMAIL:{original_email}|LNAME:{original_last_name}"
         user.username = f"inactive_user_{user.id}_{timestamp}"
         user.email = f"inactive_{user.id}_{timestamp}@deactivated.local"
         user.is_active = False
         user.save()
         
-        messages.success(request, f'User {username} has been deactivated.')
-        return JsonResponse({'success': True, 'message': f'User {username} deactivated successfully'})
+        # Set a flag in all user's sessions before deleting them
+        # This will trigger the modal to show on their next request
+        from django.contrib.sessions.models import Session
+        from django.utils import timezone as tz
+        
+        active_sessions = Session.objects.filter(expire_date__gte=tz.now())
+        for session in active_sessions:
+            session_data = session.get_decoded()
+            if session_data.get('_auth_user_id') == str(user.id):
+                # Update session to mark as deactivated
+                session_data['show_deactivated_modal'] = True
+                session.session_data = Session.objects.encode(session_data)
+                session.save()
+        
+        return JsonResponse({'success': True, 'message': f'User {username} deactivated successfully. They will be notified to log out.'})
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found or already inactive'})
     except Exception as e:
@@ -5089,18 +5278,46 @@ def reactivate_user(request, user_id):
         if not user.username.startswith('inactive_user_'):
             return JsonResponse({'success': False, 'message': 'User is not in inactive state'})
         
-        # Extract original username from the inactive username pattern
-        # Pattern: inactive_user_{id}_{timestamp}
-        # We'll need to ask admin to provide new username or restore from a stored field
-        # For now, we'll just activate and let them change username manually
+        # Restore original username, email, first_name, last_name from stored fields
+        # Parse first_name field: "ORIGINAL_USERNAME:username|FNAME:first_name"
+        if user.first_name.startswith('ORIGINAL_USERNAME:'):
+            parts = user.first_name.split('|')
+            original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+            original_first_name = parts[1].replace('FNAME:', '') if len(parts) > 1 else ''
+        else:
+            original_username = f"user_{user.id}"
+            original_first_name = ''
+        
+        # Parse last_name field: "ORIGINAL_EMAIL:email|LNAME:last_name"
+        if user.last_name.startswith('ORIGINAL_EMAIL:'):
+            parts = user.last_name.split('|')
+            original_email = parts[0].replace('ORIGINAL_EMAIL:', '')
+            original_last_name = parts[1].replace('LNAME:', '') if len(parts) > 1 else ''
+        else:
+            original_email = f"user_{user.id}@reactivated.local"
+            original_last_name = ''
+        
+        # Check if original username is already taken by another active user
+        if User.objects.filter(username=original_username, is_active=True).exclude(id=user.id).exists():
+            return JsonResponse({'success': False, 'message': f'Cannot reactivate: Username "{original_username}" is already in use'})
+        
+        # Restore user data
         user.is_active = True
-        # Remove the inactive prefix - restore to a basic username
-        user.username = f"user_{user.id}"
-        user.email = f"user_{user.id}@reactivated.local"
+        user.username = original_username
+        user.email = original_email
+        user.first_name = original_first_name
+        user.last_name = original_last_name
         user.save()
         
-        messages.success(request, f'User has been reactivated. Please update their username and email.')
-        return JsonResponse({'success': True, 'message': 'User reactivated successfully'})
+        # Send reactivation email asynchronously (non-blocking)
+        email_thread = threading.Thread(
+            target=send_reactivation_email_async,
+            args=(original_username, original_email)
+        )
+        email_thread.daemon = True
+        email_thread.start()
+        
+        return JsonResponse({'success': True, 'message': f'User {original_username} reactivated successfully'})
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found'})
     except Exception as e:
@@ -5108,6 +5325,7 @@ def reactivate_user(request, user_id):
 
 @login_required
 @require_http_methods(["POST"])
+@transaction.atomic
 def delete_user(request, user_id):
     """Permanently delete a user (soft delete)"""
     if not request.user.is_superuser:
@@ -5115,6 +5333,7 @@ def delete_user(request, user_id):
     
     try:
         from datetime import datetime
+        import random
         user = User.objects.get(id=user_id)
         
         # Prevent deleting own account
@@ -5124,9 +5343,12 @@ def delete_user(request, user_id):
         username = user.username
         
         # Soft delete: anonymize user data
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        user.email = f"deleted_{user.id}_{timestamp}@deleted.local"
-        user.username = f"deleted_user_{user.id}_{timestamp}"
+        # Add microseconds and random suffix to ensure uniqueness
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S%f')  # Added microseconds
+        random_suffix = random.randint(1000, 9999)
+        
+        user.email = f"deleted_{user.id}_{timestamp}_{random_suffix}@deleted.local"
+        user.username = f"deleted_user_{user.id}_{timestamp}_{random_suffix}"
         user.first_name = "Deleted"
         user.last_name = "User"
         user.set_unusable_password()
@@ -5135,13 +5357,15 @@ def delete_user(request, user_id):
         user.is_superuser = False
         user.save()
         
-        messages.success(request, f'User {username} has been deleted.')
         return JsonResponse({'success': True, 'message': f'User {username} deleted successfully'})
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)})
-    
+        import traceback
+        error_trace = traceback.format_exc()
+        print(f"[DELETE USER ERROR] Full traceback:\n{error_trace}")
+        return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
+
 @login_required
 def edit_profile(request):
     user = request.user
@@ -5220,6 +5444,41 @@ def edit_profile(request):
             user.set_password(new_password)
             user.save()
             update_session_auth_hash(request, user)
+            
+            # Send email notification about password change
+            from django.core.mail import send_mail
+            from django.conf import settings
+            from django.utils import timezone
+            
+            try:
+                send_mail(
+                    subject='🔐 Password Changed Successfully - Real\'s Food Products',
+                    message=f'''Hello {user.username},
+
+Your password has been changed successfully.
+
+Change Details:
+- Date & Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
+- Account: {user.email}
+
+If you did not make this change, please contact our support team immediately or reset your password.
+
+For security reasons, we recommend:
+- Using a strong, unique password
+- Enabling two-factor authentication (2FA)
+- Not sharing your password with anyone
+
+Thank you for keeping your account secure.
+
+Real's Food Products Security Team''',
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                # Log the error but don't prevent the password change
+                print(f"Failed to send password change email: {e}")
+            
             messages.success(request, "Password updated successfully.")
 
         messages.success(request, "Profile updated successfully!")
@@ -5228,7 +5487,6 @@ def edit_profile(request):
     # GET
     form = UserChangeForm(instance=user)
     return render(request, "editprofile.html", {"form": form, "active_tab": "account-general"})
-
 
 def export_sales(request):
     filter_type = request.GET.get('filter', 'date')
@@ -5335,33 +5593,36 @@ class UserActivityList(ListView):
     def get_queryset(self):
         from django.utils import timezone
         from datetime import timedelta
+        from django.db.models import Q
         
         query = self.request.GET.get('q')
         status = self.request.GET.get('status')
-        users = User.objects.all().select_related('useractivity').order_by('username')
+        
+        users = User.objects.all().select_related('useractivity').exclude(
+            Q(username__startswith='deleted_user_') | 
+            Q(username__startswith='rejected_user_') | 
+            Q(username__startswith='inactive_user_')
+        ).order_by('username')
         
         if query:
             users = users.filter(username__icontains=query)
         
         if status:
-            if status == 'deleted':
-                users = users.filter(username__startswith='deleted_user')
-            elif status == 'active':
+            if status == 'active':
                 time_threshold = timezone.now() - timedelta(minutes=5)
                 users = users.filter(
                     useractivity__active=True,
                     useractivity__last_activity__gte=time_threshold
-                ).exclude(username__startswith='deleted_user')
+                )
             elif status == 'inactive':
                 time_threshold = timezone.now() - timedelta(minutes=5)
-                from django.db.models import Q
                 users = users.filter(
                     useractivity__active=True
                 ).filter(
                     Q(useractivity__last_activity__lt=time_threshold) | Q(useractivity__last_activity__isnull=True)
-                ).exclude(username__startswith='deleted_user')
+                )
             elif status == 'logged_out':
-                users = users.filter(useractivity__active=False).exclude(username__startswith='deleted_user')
+                users = users.filter(useractivity__active=False)
         
         return users
 
@@ -5383,6 +5644,43 @@ def set_user_inactive(sender, user, request, **kwargs):
     except UserActivity.DoesNotExist:
         pass
 
+@require_http_methods(["POST"])
+def clear_deactivation_flag(request):
+    """Clear the deactivation modal flag from session"""
+    if 'show_deactivated_modal' in request.session:
+        del request.session['show_deactivated_modal']
+    return JsonResponse({'success': True})
+
+
+def check_account_status(request):
+    """
+    API endpoint to check if the current user's account is still active.
+    Returns JSON with account status.
+    """
+    # Check if user is authenticated
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'is_active': False,
+            'error': 'Not authenticated'
+        }, status=401)
+    
+    # Force check the user from database to get fresh data
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    
+    try:
+        user = User.objects.get(id=request.user.id)
+        is_active = user.is_active
+        is_superuser = user.is_superuser
+    except User.DoesNotExist:
+        is_active = False
+        is_superuser = False
+    
+    return JsonResponse({
+        'is_active': is_active,
+        'is_superuser': is_superuser,
+        'username': request.user.username
+    })
 
 class BestSellerProductsView(LoginRequiredMixin, TemplateView):
     template_name = "bestseller_products.html"

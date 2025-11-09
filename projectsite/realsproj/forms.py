@@ -655,6 +655,17 @@ class CustomUserCreationForm(forms.ModelForm):
         email = self.cleaned_data.get('email')
         if User.objects.filter(email=email).exists():
             raise ValidationError("This email address is already in use.")
+        
+        if User.objects.filter(username=email).exists():
+            raise ValidationError("This email address is already in use.")
+        
+        deactivated_user = User.objects.filter(
+            last_name = f"ORIGINAL_EMAIL:{email}",
+            username_startswith= 'inactive_user_'
+        ).first()
+        if deactivated_user:
+            raise ValidationError("This email address is already in use.")
+
         return email
 
     def clean_password2(self):

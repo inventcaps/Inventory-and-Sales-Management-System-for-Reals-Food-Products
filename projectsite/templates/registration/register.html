@@ -122,8 +122,9 @@
       const numberValid = /\d/.test(password);
       const uppercaseValid = /[A-Z]/.test(password);
       const lowercaseValid = /[a-z]/.test(password);
+      const specialCharValid = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
-      return lengthValid && numberValid && uppercaseValid && lowercaseValid;
+      return lengthValid && numberValid && uppercaseValid && lowercaseValid && specialCharValid;
     }
 
     // Show error message under specific field
@@ -174,7 +175,6 @@
       password2Input.style.borderColor = '';
     }
 
-    // Listen to submit event to prevent submission if password doesn't meet requirements
     const form = document.getElementById('register-form');
     form.addEventListener('submit', function (e) {
       // Hide previous errors
@@ -202,7 +202,7 @@
       // Check password requirements
       if (!checkPasswordRequirements(password1Input.value)) {
         e.preventDefault();
-        showPassword1Error("Password must contain at least 8 characters, one number, one uppercase letter, and one lowercase letter.");
+        showPassword1Error("Password must contain at least 8 characters, one number, one uppercase letter, and one lowercase letter, and one special character.");
         hasError = true;
       }
 

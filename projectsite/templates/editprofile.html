@@ -5,46 +5,76 @@
 <link rel="stylesheet" href="{% static 'css/profile.css' %}">
 
 <div class="container container-p-y profile-page">
-    <h4 class="font-weight-bold py-3 mb-4">
+    <h4 class="page-title">
         <a href="{% url 'profile' %}" class="btn btn-link p-0 mr-2" title="Back to Profile">
             <i class="la la-arrow-left" style="font-size: 24px;"></i>
         </a>
         Edit Profile
     </h4>
 
-    <div class="card overflow-hidden">
+    <div class="card overflow-hidden edit-profile-card">
         <div class="row no-gutters row-bordered row-border-light">
             <div class="col-md-3 pt-0">
-                <div class="list-group list-group-flush account-settings-links">
-                    <a class="list-group-item list-group-item-action {% if active_tab == 'account-general' %}active{% endif %}" data-toggle="list" href="#account-general">General</a>
-                    <a class="list-group-item list-group-item-action {% if active_tab == 'account-change-password' %}active{% endif %}" data-toggle="list" href="#account-change-password">Change Password</a>
+                <div class="edit-profile-sidebar">
+                    <h6 class="sidebar-title">Settings</h6>
+                    <div class="list-group list-group-flush account-settings-links">
+                        <a class="list-group-item list-group-item-action {% if active_tab == 'account-general' %}active{% endif %}" data-toggle="list" href="#account-general">
+                            <i class="bi bi-person-circle"></i>
+                            <span>General</span>
+                        </a>
+                        <a class="list-group-item list-group-item-action {% if active_tab == 'account-change-password' %}active{% endif %}" data-toggle="list" href="#account-change-password">
+                            <i class="bi bi-shield-lock"></i>
+                            <span>Change Password</span>
+                        </a>
+                    </div>
                 </div>
             </div>
 
             <div class="col-md-9">
-                <div class="card-body">
+                <div class="card-body edit-profile-content">
                     <form method="POST" id="edit-profile-form" onsubmit="return validateForm()">
                         {% csrf_token %}
                         <div class="tab-content">
                             <div class="tab-pane fade {% if active_tab == 'account-general' %}show active{% endif %}" id="account-general">
-                                <div class="form-group">
-                                    <label class="form-label">Username</label>
-                                    {{ form.username }}  <!-- Render the Django form field -->
+                                <h5 class="section-title">
+                                    <i class="bi bi-person-badge"></i> Account Information
+                                </h5>
+                                <p class="text-muted mb-4">Update your personal information and email address.</p>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-person-circle"></i>
+                                        <span>Username</span>
+                                    </label>
+                                    {{ form.username }}
+                                    <small class="form-text text-muted">Your unique username for login.</small>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">First Name</label>
-                                    {{ form.first_name }}  <!-- Render the Django form field for first name -->
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-person"></i>
+                                        <span>First Name</span>
+                                    </label>
+                                    {{ form.first_name }}
                                 </div>
 
-                                <div class="form-group">
-                                    <label class="form-label">Last Name</label>
-                                    {{ form.last_name }}  <!-- Render the Django form field for last name -->
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-person-fill"></i>
+                                        <span>Last Name</span>
+                                    </label>
+                                    {{ form.last_name }}
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">E-mail</label>
-                                    {{ form.email }}  <!-- Render the Django form field -->
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-envelope"></i>
+                                        <span>Email Address</span>
+                                    </label>
+                                    {{ form.email }}
                                     {% if form.email.errors %}
                                         <div class="alert alert-warning mt-3">
+                                            <i class="bi bi-exclamation-triangle"></i>
                                             Your email is not confirmed. Please check your inbox.<br>
                                             <a href="javascript:void(0)">Resend confirmation</a>
                                         </div>
@@ -53,26 +83,78 @@
                             </div>
 
                             <div class="tab-pane fade {% if active_tab == 'account-change-password' %}show active{% endif %}" id="account-change-password">
-                                <div class="form-group">
-                                    <label class="form-label">Current Password</label>
-                                    <input type="password" class="form-control" name="current_password" id="current_password">
+                                <h5 class="section-title">
+                                    <i class="bi bi-shield-lock"></i> Change Password
+                                </h5>
+                                <p class="text-muted mb-4">Ensure your account is using a strong password to stay secure.</p>
+                                
+                                <div class="password-requirements">
+                                    <div class="requirements-header">
+                                        <i class="bi bi-info-circle"></i>
+                                        <strong>Password Requirements:</strong>
+                                    </div>
+                                    <ul class="requirements-list">
+                                        <li id="req-length" class="requirement-item">
+                                            <i class="bi bi-circle"></i>
+                                            <span>At least 8 characters long</span>
+                                        </li>
+                                        <li id="req-uppercase" class="requirement-item">
+                                            <i class="bi bi-circle"></i>
+                                            <span>Contains uppercase letter (A-Z)</span>
+                                        </li>
+                                        <li id="req-lowercase" class="requirement-item">
+                                            <i class="bi bi-circle"></i>
+                                            <span>Contains lowercase letter (a-z)</span>
+                                        </li>
+                                        <li id="req-number" class="requirement-item">
+                                            <i class="bi bi-circle"></i>
+                                            <span>Contains number (0-9)</span>
+                                        </li>
+                                        <li id="req-special" class="requirement-item">
+                                            <i class="bi bi-circle"></i>
+                                            <span>Contains special character (!@#$%^&*)</span>
+                                        </li>
+                                    </ul>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">New Password</label>
-                                    <input type="password" class="form-control" name="new_password" id="new_password">
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-lock"></i>
+                                        <span>Current Password</span>
+                                    </label>
+                                    <input type="password" class="form-control" name="current_password" id="current_password" placeholder="Enter your current password">
+                                    <div class="d-flex justify-content-between align-items-center mt-2">
+                                        <small class="form-text text-muted">Enter your current password to verify it's you.</small>
+                                        <a href="{% url 'password_reset' %}" class="forgot-password-link">
+                                            <i class="bi bi-question-circle"></i> Forgot Password?
+                                        </a>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label class="form-label">Repeat New Password</label>
-                                    <input type="password" class="form-control" name="repeat_new_password" id="repeat_new_password">
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-key"></i>
+                                        <span>New Password</span>
+                                    </label>
+                                    <input type="password" class="form-control" name="new_password" id="new_password" placeholder="Enter your new password">
                                 </div>
-                                <div id="password-error" class="text-danger" style="display: none;">
-                                    <p>Please fill out all password fields correctly.</p>
+                                
+                                <div class="form-group-modern">
+                                    <label class="form-label-modern">
+                                        <i class="bi bi-key-fill"></i>
+                                        <span>Confirm New Password</span>
+                                    </label>
+                                    <input type="password" class="form-control" name="repeat_new_password" id="repeat_new_password" placeholder="Confirm your new password">
+                                </div>
+                                
+                                <div id="password-error" class="alert alert-danger" style="display: none;">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                    <span id="password-error-text">Please fill out all password fields correctly.</span>
                                 </div>
                             </div>
 
-                            <div class="text-right mt-3">
-                                <button type="submit" class="btn btn-primary btn-rounded">Save Changes</button>&nbsp;
-                                <a href="{% url 'profile' %}" class="btn btn-secondary btn-rounded">Cancel</a>
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-rounded">Save</button>
                             </div>
                         </div>
                     </form>
@@ -82,10 +164,65 @@
     </div>
 </div>
 
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.0/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
+    // Real-time password validation
+    document.addEventListener('DOMContentLoaded', function() {
+        const newPasswordInput = document.getElementById('new_password');
+        const repeatPasswordInput = document.getElementById('repeat_new_password');
+        
+        // Password requirements validation
+        function validatePasswordRequirements(password) {
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                number: /[0-9]/.test(password),
+                special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
+            };
+            
+            // Update UI for each requirement
+            updateRequirement('req-length', requirements.length);
+            updateRequirement('req-uppercase', requirements.uppercase);
+            updateRequirement('req-lowercase', requirements.lowercase);
+            updateRequirement('req-number', requirements.number);
+            updateRequirement('req-special', requirements.special);
+            
+            // Return true if all requirements are met
+            return Object.values(requirements).every(req => req);
+        }
+        
+        function updateRequirement(elementId, isMet) {
+            const element = document.getElementById(elementId);
+            const icon = element.querySelector('i');
+            
+            if (isMet) {
+                element.classList.add('requirement-met');
+                element.classList.remove('requirement-unmet');
+                icon.className = 'bi bi-check-circle-fill';
+            } else {
+                element.classList.remove('requirement-met');
+                element.classList.add('requirement-unmet');
+                icon.className = 'bi bi-x-circle-fill';
+            }
+        }
+        
+        // Add event listener for real-time validation
+        if (newPasswordInput) {
+            newPasswordInput.addEventListener('input', function() {
+                if (this.value.length > 0) {
+                    validatePasswordRequirements(this.value);
+                } else {
+                    // Reset all requirements to default state
+                    ['req-length', 'req-uppercase', 'req-lowercase', 'req-number', 'req-special'].forEach(id => {
+                        const element = document.getElementById(id);
+                        element.classList.remove('requirement-met', 'requirement-unmet');
+                        element.querySelector('i').className = 'bi bi-circle';
+                    });
+                }
+            });
+        }
+    });
+
     // JavaScript function to validate the form before submitting
     function validateForm() {
         var currentPassword = document.getElementById("current_password").value;
@@ -97,13 +234,27 @@
         if (currentPassword !== "" || newPassword !== "" || repeatPassword !== "") {
             // If any password field is filled, all must be filled
             if (currentPassword === "" || newPassword === "" || repeatPassword === "") {
-                errorDiv.innerHTML = "<p>Please fill out all password fields or leave them all empty.</p>";
+                document.getElementById("password-error-text").innerHTML = "Please fill out all password fields or leave them all empty.";
                 errorDiv.style.display = "block";
                 return false;
             }
+            
+            // Validate password requirements
+            const hasLength = newPassword.length >= 8;
+            const hasUppercase = /[A-Z]/.test(newPassword);
+            const hasLowercase = /[a-z]/.test(newPassword);
+            const hasNumber = /[0-9]/.test(newPassword);
+            const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+            
+            if (!hasLength || !hasUppercase || !hasLowercase || !hasNumber || !hasSpecial) {
+                document.getElementById("password-error-text").innerHTML = "New password does not meet all requirements. Please check the requirements above.";
+                errorDiv.style.display = "block";
+                return false;
+            }
+            
             // Check if new passwords match
             if (newPassword !== repeatPassword) {
-                errorDiv.innerHTML = "<p>New passwords do not match.</p>";
+                document.getElementById("password-error-text").innerHTML = "New passwords do not match.";
                 errorDiv.style.display = "block";
                 return false;
             }
