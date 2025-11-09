@@ -5404,3 +5404,65 @@ def delete_account(request):
     
     # GET request - show confirmation page
     return render(request, 'delete_account_confirm.html')
+
+@login_required
+def direct_password_reset(request):
+    """Direct password reset for logged-in users who forgot their current password"""
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password1', '').strip()
+        confirm_password = request.POST.get('new_password2', '').strip()
+        
+        # Validate passwords match
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'direct_password_reset.html')
+        
+        # Validate password requirements
+        try:
+            validate_password(new_password, user=request.user)
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, msg)
+            return render(request, 'direct_password_reset.html')
+        
+        # Set new password
+        request.user.set_password(new_password)
+        request.user.save()
+        update_session_auth_hash(request, request.user)
+        
+        # Send email notification
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.utils import timezone
+        
+        try:
+            send_mail(
+                subject='🔐 Password Reset Successfully - Real\'s Food Products',
+                message=f'''Hello {request.user.username},
+
+Your password has been reset successfully.
+
+Reset Details:
+- Date & Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
+- Account: {request.user.email}
+
+If you did not make this change, please contact our support team immediately.
+
+For security reasons, we recommend:
+✓ Using a strong, unique password
+✓ Enabling two-factor authentication
+✓ Never sharing your password with anyone
+
+Thank you,
+Real's Food Products Team''',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[request.user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+        
+        messages.success(request, "✅ Your password has been reset successfully!")
+        return redirect('profile')
+    
+    return render(request, 'direct_password_reset.html')
