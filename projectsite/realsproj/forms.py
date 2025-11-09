@@ -661,7 +661,7 @@ class CustomUserCreationForm(forms.ModelForm):
         
         deactivated_user = User.objects.filter(
             last_name = f"ORIGINAL_EMAIL:{email}",
-            username_startswith= 'inactive_user_'
+            username__startswith= 'inactive_user_'
         ).first()
         if deactivated_user:
             raise ValidationError("This email address is already in use.")
