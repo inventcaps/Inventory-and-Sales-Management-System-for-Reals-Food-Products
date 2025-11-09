@@ -771,11 +771,46 @@ class ProductsUpdateView(UpdateView):
         auth_user = AuthUser.objects.get(username=self.request.user.username)
         form.instance.created_by_admin = auth_user
         
+        # Get the old instance before saving
+        old_instance = Products.objects.get(pk=self.object.pk)
+        
+        # Capture before state
+        before_data = {
+            'product_type_id': old_instance.product_type_id,
+            'variant_id': old_instance.variant_id,
+            'size_id': old_instance.size_id,
+            'size_unit_id': old_instance.size_unit_id,
+            'unit_price_id': old_instance.unit_price_id,
+            'srp_price_id': old_instance.srp_price_id,
+        }
+        
         # Check if photo should be deleted
         if self.request.POST.get('delete_photo_flag') == '1':
             form.instance.photo = None
         
         product = form.save()
+        
+        # Capture after state
+        after_data = {
+            'product_type_id': product.product_type_id,
+            'variant_id': product.variant_id,
+            'size_id': product.size_id,
+            'size_unit_id': product.size_unit_id,
+            'unit_price_id': product.unit_price_id,
+            'srp_price_id': product.srp_price_id,
+        }
+        
+        # Create history log only if something changed
+        if before_data != after_data:
+            create_history_log(
+                admin=auth_user,
+                log_category="Product Updated",
+                entity_type="product",
+                entity_id=product.id,
+                before=before_data,
+                after=after_data
+            )
+        
         messages.success(self.request, "✅ Product updated successfully.")
         
         # Use get_success_url() to maintain the page number
@@ -1673,7 +1708,39 @@ class SalesUpdateView(UpdateView):
     success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
+        # Get the old instance before saving
+        old_instance = Sales.objects.get(pk=self.object.pk)
+        
+        # Capture before state
+        before_data = {
+            'category': old_instance.category,
+            'amount': str(old_instance.amount),
+            'date': str(old_instance.date),
+            'description': old_instance.description,
+        }
+        
         response = super().form_valid(form)
+        
+        # Capture after state
+        after_data = {
+            'category': self.object.category,
+            'amount': str(self.object.amount),
+            'date': str(self.object.date),
+            'description': self.object.description,
+        }
+        
+        # Create history log only if something changed
+        if before_data != after_data:
+            auth_user = AuthUser.objects.get(id=self.request.user.id)
+            create_history_log(
+                admin=auth_user,
+                log_category="Sale Updated",
+                entity_type="sale",
+                entity_id=self.object.id,
+                before=before_data,
+                after=after_data
+            )
+        
         messages.success(self.request, "✏️ Sale updated successfully.")
         return response
 
@@ -2192,7 +2259,39 @@ class ExpensesUpdateView(UpdateView):
     success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
+        # Get the old instance before saving
+        old_instance = Expenses.objects.get(pk=self.object.pk)
+        
+        # Capture before state
+        before_data = {
+            'category': old_instance.category,
+            'amount': str(old_instance.amount),
+            'date': str(old_instance.date),
+            'description': old_instance.description,
+        }
+        
         response = super().form_valid(form)
+        
+        # Capture after state
+        after_data = {
+            'category': self.object.category,
+            'amount': str(self.object.amount),
+            'date': str(self.object.date),
+            'description': self.object.description,
+        }
+        
+        # Create history log only if something changed
+        if before_data != after_data:
+            auth_user = AuthUser.objects.get(id=self.request.user.id)
+            create_history_log(
+                admin=auth_user,
+                log_category="Expense Updated",
+                entity_type="expense",
+                entity_id=self.object.id,
+                before=before_data,
+                after=after_data
+            )
+        
         messages.success(self.request, "✏️ Expense updated successfully.")
         return response
 
