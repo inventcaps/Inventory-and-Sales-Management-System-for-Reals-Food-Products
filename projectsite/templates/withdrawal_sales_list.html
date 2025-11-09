@@ -74,7 +74,7 @@
                     <th>Customer/Store</th>
                     <th>Sales Channel</th>
                     <th>Item/s</th>
-                    <th>
+                    <th class="col-payment-details">
                       <span class="fw-bold me-2">Payment Status</span>
                       <select id="paymentStatusColumnFilter" name="payment_status"
                         style="border:none; background:transparent; font-weight:500; cursor:pointer;">
@@ -94,7 +94,7 @@
                     <td>{{ order.customer_name|default:"N/A" }}</td>
                     <td>{{ order.sales_channel }}</td>
                     <td>{{ order.item_count }} Item/s</td>
-                    <td>
+                    <td class="col-payment-details">
                       {% if order.payment_status == 'PAID' %}
                         <span class="badge badge-success">{{ order.payment_status_display }}</span>
                       {% elif order.payment_status == 'PARTIAL' %}
