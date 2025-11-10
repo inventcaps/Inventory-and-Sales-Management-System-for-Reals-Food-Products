@@ -91,7 +91,11 @@ DATABASES = {
        'PASSWORD': 'Reals_db_123',
        'HOST': 'db.rczsumkmhoxjaycvggzt.supabase.co',
        'PORT': '5432',
-       'CONN_MAX_AGE': 600, 
+       'CONN_MAX_AGE': 60,  # Keep connections for 60 seconds (balance between speed and connection limits)
+       'CONN_HEALTH_CHECKS': True,
+       'OPTIONS': {
+           'connect_timeout': 10,
+       },
    }
 }
 
