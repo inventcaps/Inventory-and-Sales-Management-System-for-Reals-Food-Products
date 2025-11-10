@@ -37,7 +37,7 @@
                                     <tr>
                                         <th>Date & Time</th>
                                         <th>Product</th>
-                                        <th class="text-center">
+                                        <th class="col-price-type">
                                             <span class="fw-bold me-2">Price Type</span>
                                             <select id="priceTypeColumnFilter" name="price_type"
                                                 style="border:none; background:transparent; font-weight:500; cursor:pointer;">
@@ -59,7 +59,7 @@
                                         <td>
                                             {{ change.product }}
                                         </td>
-                                        <td class="text-center">
+                                        <td class="col-price-type">
                                             <span class="badge {% if change.price_type == 'UNIT' %}badge-info{% else %}badge-primary{% endif %}">
                                                 {{ change.get_price_type_display }}
                                             </span>

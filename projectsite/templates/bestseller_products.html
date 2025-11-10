@@ -43,7 +43,7 @@
                                         <tr>
                                             <th>Rank</th>
                                             <th>Product</th>
-                                            <th>Total Sold</th>
+                                            <th class="col-total-sold">Total Sold</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -59,7 +59,7 @@
                                                     ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
                                                 </small>
                                             </td>
-                                            <td>
+                                            <td class="col-total-sold">
                                                 <span class="badge badge-primary">{{ product.total_quantity|floatformat:0 }} units</span>
                                             </td>
                                         </tr>
@@ -92,7 +92,7 @@
                                         <tr>
                                             <th>Rank</th>
                                             <th>Product</th>
-                                            <th>Total Sold</th>
+                                            <th class="col-total-sold">Total Sold</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -108,7 +108,7 @@
                                                     ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
                                                 </small>
                                             </td>
-                                            <td>
+                                            <td class="col-total-sold">
                                                 <span class="badge badge-secondary">{{ product.total_quantity|floatformat:0 }} units</span>
                                             </td>
                                         </tr>

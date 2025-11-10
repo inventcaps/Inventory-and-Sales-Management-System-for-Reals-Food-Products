@@ -265,31 +265,124 @@ class HistoryLog(models.Model):
                 return f"Entity #{self.entity_id}"
 
         except Exception:
-            # Check log type category for better context
-            log_category = self.log_type.category.lower() if self.log_type else ""
+            # Entity doesn't exist in database - try to get info from details
+            # Check both 'before' (for updates/deletes) and 'after' (for creates) fields
+            entity_data = None
+            if self.details:
+                if 'before' in self.details:
+                    entity_data = self.details['before']
+                elif 'after' in self.details:
+                    entity_data = self.details['after']
             
-            if "delete" in log_category or "deleted" in log_category:
-                # Try to get entity info from details
-                if self.details and 'before' in self.details:
-                    before_data = self.details['before']
-
-                    if self.entity_type == "product":
-                        try:
-                            product_type = before_data.get('product_type_id', '')
-                            variant = before_data.get('variant_id', '')
-                            size = before_data.get('size_id', '')
-                            size_unit = before_data.get('size_unit_id', '')
-                            product_type_name = ProductTypes.objects.get(id=product_type).name if product_type else ''
-                            variant_name = ProductVariants.objects.get(id=variant).name if variant else ''
-                            size_label = Sizes.objects.get(id=size).size_label if size else ''
-                            size_unit_name = SizeUnits.objects.get(id=size_unit).unit_name if size_unit else ''
-                            
-                            return f"Deleted ({product_type_name} - {variant_name} ({size_label} {size_unit_name}))"
-                        except:
-                            pass
-                    
-                    return f"Deleted ({self.entity_type.replace('_', ' ').title()})"
-                return "Deleted Entity"
+            if entity_data:
+                if self.entity_type == "product":
+                    try:
+                        product_type = entity_data.get('product_type_id', '')
+                        variant = entity_data.get('variant_id', '')
+                        size = entity_data.get('size_id', '')
+                        size_unit = entity_data.get('size_unit_id', '')
+                        product_type_name = ProductTypes.objects.get(id=product_type).name if product_type else ''
+                        variant_name = ProductVariants.objects.get(id=variant).name if variant else ''
+                        size_label = Sizes.objects.get(id=size).size_label if size else ''
+                        size_unit_name = SizeUnits.objects.get(id=size_unit).unit_name if size_unit else ''
+                        
+                        return f"Deleted ({product_type_name} - {variant_name} ({size_label} {size_unit_name}))"
+                    except:
+                        pass
+                
+                elif self.entity_type == "raw_material":
+                    try:
+                        name = entity_data.get('name', '')
+                        unit_id = entity_data.get('unit_id', '')
+                        price = entity_data.get('price_per_unit', '')
+                        unit_name = SizeUnits.objects.get(id=unit_id).unit_name if unit_id else ''
+                        return f"Deleted ({name} ({unit_name}) - ₱{price})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "product_batch":
+                    try:
+                        product_id = entity_data.get('product_id', '')
+                        if product_id:
+                            p = Products.objects.select_related(
+                                "product_type", "variant", "size_unit", "size"
+                            ).get(pk=product_id)
+                            return f"Deleted ({p.product_type.name} - {p.variant.name} ({p.size.size_label if p.size else ''} {p.size_unit.unit_name}))"
+                    except:
+                        pass
+                
+                elif self.entity_type == "raw_material_batch":
+                    try:
+                        material_id = entity_data.get('material_id', '')
+                        if material_id:
+                            rm = RawMaterials.objects.get(pk=material_id)
+                            return f"Deleted ({rm.name})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "expense":
+                    try:
+                        category = entity_data.get('category', '')
+                        if category:
+                            return f"{category}"
+                        return "Deleted (Expense)"
+                    except:
+                        pass
+                
+                elif self.entity_type == "sale":
+                    try:
+                        category = entity_data.get('category', '')
+                        if category:
+                            formatted_category = category.replace('_', ' ').title()
+                            return f"{formatted_category}"
+                        return "Deleted (Sale)"
+                    except:
+                        pass
+                
+                elif self.entity_type == "product_type":
+                    try:
+                        name = entity_data.get('name', '')
+                        return f"Deleted ({name})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "product_variant":
+                    try:
+                        name = entity_data.get('name', '')
+                        return f"Deleted ({name})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "size":
+                    try:
+                        size_label = entity_data.get('size_label', '')
+                        return f"Deleted ({size_label})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "size_unit":
+                    try:
+                        unit_name = entity_data.get('unit_name', '')
+                        return f"Deleted (Size Unit: {unit_name})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "unit_price":
+                    try:
+                        unit_price = entity_data.get('unit_price', '')
+                        return f"Deleted (Unit Price: ₱{unit_price})"
+                    except:
+                        pass
+                
+                elif self.entity_type == "srp_price":
+                    try:
+                        srp_price = entity_data.get('srp_price', '')
+                        return f"Deleted (SRP Price: ₱{srp_price})"
+                    except:
+                        pass
+                
+                # Generic fallback for any entity type with details
+                return f"Deleted ({self.entity_type.replace('_', ' ').title()})"
             
             return f"Entity #{self.entity_id}"
 

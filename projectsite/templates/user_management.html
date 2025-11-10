@@ -27,9 +27,9 @@
                                         <th>Username</th>
                                         <th>Name</th>
                                         <th>Email</th>
-                                        <th>Role</th>
+                                        <th class="col-role">Role</th>
                                         <th>Registered</th>
-                                        <th>Actions</th>
+                                        <th class="col-actions">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -38,7 +38,7 @@
                                         <td><strong>{{ user.username }}</strong></td>
                                         <td>{{ user.first_name }} {{ user.last_name }}</td>
                                         <td>{{ user.email }}</td>
-                                        <td>
+                                        <td class="col-role">
                                             {% if user.is_staff %}
                                                 <span class="badge bg-primary">Staff</span>
                                             {% else %}
@@ -46,7 +46,7 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
-                                        <td>
+                                        <td class="col-actions">
                                             <button class="btn btn-success btn-sm" onclick="showApproveModal({{ user.id }}, '{{ user.username }}')">
                                                 <i class="la la-check"></i> Approve
                                             </button>
@@ -111,9 +111,9 @@
                                         <th>Username</th>
                                         <th>Name</th>
                                         <th>Email</th>
-                                        <th>Role</th>
+                                        <th class="col-role">Role</th>
                                         <th>Last Login</th>
-                                        <th>Actions</th>
+                                        <th class="col-actions">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -122,7 +122,7 @@
                                         <td><strong>{{ user.username }}</strong></td>
                                         <td>{{ user.first_name }} {{ user.last_name }}</td>
                                         <td>{{ user.email }}</td>
-                                        <td>
+                                        <td class="col-role">
                                             {% if user.is_superuser %}
                                                 <span class="badge bg-danger">Administrator</span>
                                             {% elif user.is_staff %}
@@ -132,7 +132,7 @@
                                             {% endif %}
                                         </td>
                                         <td>{{ user.last_login|date:"Y-m-d g:i A"|default:"Never" }}</td>
-                                        <td>
+                                        <td class="col-actions">
                                             {% if user.id != request.user.id %}
                                                 <button class="btn btn-warning btn-sm" onclick="showToggleRoleModal({{ user.id }}, '{{ user.username }}', {{ user.is_superuser|yesno:'true,false' }})">
                                                     <i class="la la-exchange"></i> 

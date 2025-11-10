@@ -57,7 +57,7 @@
                       <th>Material</th>
                       <th>Current Stock</th>
                       <th>Restock Threshold</th>
-                      <th>
+                      <th class="col-status">
                         <span class="fw-bold me-2">Status</span>
                         <select id="statusFilter" name="status"
                           style="border:none; background:transparent; font-weight:500; cursor:pointer;">
@@ -76,7 +76,7 @@
                       <td>{{ item.material.name }}</td>
                       <td>{{ item.total_stock|floatformat:0 }}</td>
                       <td>{{ item.reorder_threshold|floatformat:0 }}</td>
-                      <td>
+                      <td class="col-status">
                         {% if item.total_stock == 0 %}
                           <span class="badge bg-danger">Out of Stock</span>
                         {% elif item.total_stock < item.reorder_threshold %}

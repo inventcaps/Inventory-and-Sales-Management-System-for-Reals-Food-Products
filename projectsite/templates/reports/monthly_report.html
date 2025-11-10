@@ -55,7 +55,7 @@
                     <th>Profit</th>
                     <th>Revenue Change</th>
                     <th>Profit Change</th>
-                    <th>Trend</th>
+                    <th class="col-trend">Trend</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -87,7 +87,7 @@
                         -
                       {% endif %}
                     </td>
-                    <td>
+                    <td class="col-trend">
                       {% if row.revenue_change and row.profit_change %}
                         {% if row.revenue_change > 0 and row.profit_change > 0 %}
                           <span class="badge bg-success">Revenue & Profit Increased</span>
