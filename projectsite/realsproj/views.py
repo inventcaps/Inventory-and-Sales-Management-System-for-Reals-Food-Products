@@ -536,8 +536,29 @@ def check_barcode_availability(request):
 class ProductArchiveView(View):
     def post(self, request, pk):
         product = get_object_or_404(Products, pk=pk)
+        
+        # Prepare product data for history log
+        product_data = {
+            'product_type': product.product_type.name,
+            'variant': product.variant.name,
+            'size': f"{product.size.size_label} {product.size_unit.unit_name}",
+            'unit_price': str(product.unit_price.unit_price),
+            'srp_price': str(product.srp_price.srp_price),
+            'date_created': str(product.date_created),
+        }
+        
         product.is_archived = True
         product.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Product Archived",
+            entity_type="product",
+            entity_id=product.id,
+            after=product_data
+        )
+        
         page = request.POST.get('page')
         if page:
             return redirect(f"{reverse('product-list')}?page={page}")
@@ -555,14 +576,56 @@ class ArchivedProductsListView(ListView):
 class ProductUnarchiveView(View):
     def post(self, request, pk):
         product = get_object_or_404(Products, pk=pk)
+        
+        # Prepare product data for history log
+        product_data = {
+            'product_type': product.product_type.name,
+            'variant': product.variant.name,
+            'size': f"{product.size.size_label} {product.size_unit.unit_name}",
+            'unit_price': str(product.unit_price.unit_price),
+            'srp_price': str(product.srp_price.srp_price),
+            'date_created': str(product.date_created),
+        }
+        
         product.is_archived = False
         product.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Product Restored",
+            entity_type="product",
+            entity_id=product.id,
+            after=product_data
+        )
+        
         return redirect('products-archived-list')
 
 class ProductArchiveOldView(View):
     def post(self, request):
         one_year_ago = timezone.now() - timedelta(days=365)
-        Products.objects.filter(is_archived=False, date_created__lt=one_year_ago).update(is_archived=True)
+        old_products = Products.objects.filter(is_archived=False, date_created__lt=one_year_ago)
+        
+        # Log each archived product
+        for product in old_products:
+            product_data = {
+                'product_type': product.product_type.name,
+                'variant': product.variant.name,
+                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
+                'unit_price': str(product.unit_price.unit_price),
+                'srp_price': str(product.srp_price.srp_price),
+                'date_created': str(product.date_created),
+            }
+            
+            create_history_log(
+                admin=request.user,
+                log_category="Product Archived (Old Data)",
+                entity_type="product",
+                entity_id=product.id,
+                after=product_data
+            )
+        
+        old_products.update(is_archived=True)
         return redirect('product-list')
 
 @require_http_methods(["POST"])
@@ -591,7 +654,29 @@ def product_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No products selected'})
         
-        archived_count = Products.objects.filter(id__in=ids).update(is_archived=True)
+        # Get products before archiving to log them
+        products = Products.objects.filter(id__in=ids)
+        
+        # Log each archived product
+        for product in products:
+            product_data = {
+                'product_type': product.product_type.name,
+                'variant': product.variant.name,
+                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
+                'unit_price': str(product.unit_price.unit_price),
+                'srp_price': str(product.srp_price.srp_price),
+                'date_created': str(product.date_created),
+            }
+            
+            create_history_log(
+                admin=request.user,
+                log_category="Product Bulk Archived",
+                entity_type="product",
+                entity_id=product.id,
+                after=product_data
+            )
+        
+        archived_count = products.update(is_archived=True)
         return JsonResponse({
             'success': True,
             'message': f'Successfully archived {archived_count} product(s)'
@@ -608,7 +693,29 @@ def product_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No products selected'})
         
-        restored_count = Products.objects.filter(id__in=ids).update(is_archived=False)
+        # Get products before restoring to log them
+        products = Products.objects.filter(id__in=ids)
+        
+        # Log each restored product
+        for product in products:
+            product_data = {
+                'product_type': product.product_type.name,
+                'variant': product.variant.name,
+                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
+                'unit_price': str(product.unit_price.unit_price),
+                'srp_price': str(product.srp_price.srp_price),
+                'date_created': str(product.date_created),
+            }
+            
+            create_history_log(
+                admin=request.user,
+                log_category="Product Bulk Restored",
+                entity_type="product",
+                entity_id=product.id,
+                after=product_data
+            )
+        
+        restored_count = products.update(is_archived=False)
         return JsonResponse({
             'success': True,
             'message': f'Successfully restored {restored_count} product(s)'
@@ -958,6 +1065,18 @@ class RawMaterialArchiveView(View):
         item = get_object_or_404(RawMaterials, pk=pk)
         item.is_archived = True
         item.save()
+        
+        # Delete any "Raw Material Updated" logs created by mistake
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=2)
+        HistoryLog.objects.filter(
+            entity_type='raw_material',
+            entity_id=pk,
+            log_type__category='Raw Material Updated',
+            log_date__gte=recent_time
+        ).delete()
+        
         return redirect('rawmaterials-list')
 
 class RawMaterialArchiveOldView(View):
@@ -992,7 +1111,31 @@ def rawmaterial_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No raw materials selected'})
         
+        # Archive raw materials (this will trigger database trigger)
         archived_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=True)
+        
+        # Delete the trigger-created logs
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=5)
+        HistoryLog.objects.filter(
+            entity_type='raw_material',
+            entity_id__in=ids,
+            log_type__category='Raw Material Archived',
+            log_date__gte=recent_time
+        ).delete()
+        
+        # Manually create "Raw Material Bulk Archived" logs
+        for material_id in ids:
+            create_history_log(
+                admin=request.user,
+                log_category="Raw Material Bulk Archived",
+                entity_type="raw_material",
+                entity_id=material_id,
+                before={'is_archived': False},
+                after={'is_archived': True}
+            )
+        
         return JsonResponse({
             'success': True,
             'message': f'Successfully archived {archived_count} raw material(s)'
@@ -1009,7 +1152,31 @@ def rawmaterial_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No raw materials selected'})
         
+        # Restore raw materials (this will trigger database trigger)
         restored_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=False)
+        
+        # Delete the trigger-created logs
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=5)
+        HistoryLog.objects.filter(
+            entity_type='raw_material',
+            entity_id__in=ids,
+            log_type__category='Raw Material Restored',
+            log_date__gte=recent_time
+        ).delete()
+        
+        # Manually create "Raw Material Bulk Restored" logs
+        for material_id in ids:
+            create_history_log(
+                admin=request.user,
+                log_category="Raw Material Bulk Restored",
+                entity_type="raw_material",
+                entity_id=material_id,
+                before={'is_archived': True},
+                after={'is_archived': False}
+            )
+        
         return JsonResponse({
             'success': True,
             'message': f'Successfully restored {restored_count} raw material(s)'
@@ -1031,6 +1198,18 @@ class RawMaterialUnarchiveView(View):
         item = get_object_or_404(RawMaterials, pk=pk)
         item.is_archived = False
         item.save()
+        
+        # Delete any "Raw Material Updated" logs created by mistake
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=2)
+        HistoryLog.objects.filter(
+            entity_type='raw_material',
+            entity_id=pk,
+            log_type__category='Raw Material Updated',
+            log_date__gte=recent_time
+        ).delete()
+        
         return redirect('rawmaterials-archived-list')
 
 class RawMaterialsCreateView(CreateView):
@@ -2425,8 +2604,21 @@ class ProductBatchDeleteView(DeleteView):
 class ProductBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
+        # Note: Database triggers will automatically create history log
         batch.is_archived = True
         batch.save()
+        
+        # Delete any "Product Batch Updated" logs created by mistake
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=2)
+        HistoryLog.objects.filter(
+            entity_type='product_batch',
+            entity_id=pk,
+            log_type__category='Product Batch Updated',
+            log_date__gte=recent_time
+        ).delete()
+        
         messages.success(request, "📦 Product Batch archived successfully.")
         page = request.GET.get('page')
         if page:
@@ -2447,8 +2639,21 @@ class ArchivedProductBatchListView(ListView):
 class ProductBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
+        # Note: Database triggers will automatically create history log
         batch.is_archived = False
         batch.save()
+        
+        # Delete any "Product Batch Updated" logs created by mistake
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=2)
+        HistoryLog.objects.filter(
+            entity_type='product_batch',
+            entity_id=pk,
+            log_type__category='Product Batch Updated',
+            log_date__gte=recent_time
+        ).delete()
+        
         messages.success(request, "✅ Product Batch restored successfully.")
         return redirect('product-batch-archived-list')
 
@@ -2457,6 +2662,7 @@ class ProductBatchArchiveOldView(View):
     def post(self, request):
         from datetime import timedelta
         one_year_ago = timezone.now() - timedelta(days=365)
+        # Note: Database triggers will automatically create history logs
         archived_count = ProductBatches.objects.filter(is_archived=False, batch_date__lt=one_year_ago).update(is_archived=True)
         messages.success(request, f"📦 {archived_count} product batch(es) older than 1 year have been archived.")
         return redirect('product-batch')
@@ -2487,7 +2693,34 @@ def product_batch_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        archived_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=True)
+        # Get batches before archiving to log them
+        batches = ProductBatches.objects.filter(id__in=ids).select_related('product', 'product__product_type', 'product__variant', 'product__size', 'product__size_unit')
+        
+        # Archive batches (this will trigger "Product Batch Archived" from database trigger)
+        archived_count = batches.update(is_archived=True)
+        
+        # Delete the trigger-created logs for these batches
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=5)
+        HistoryLog.objects.filter(
+            entity_type='product_batch',
+            entity_id__in=ids,
+            log_type__category='Product Batch Archived',
+            log_date__gte=recent_time
+        ).delete()
+        
+        # Manually create "Product Batch Bulk Archived" logs
+        for batch in ProductBatches.objects.filter(id__in=ids):
+            create_history_log(
+                admin=request.user,
+                log_category="Product Batch Bulk Archived",
+                entity_type="product_batch",
+                entity_id=batch.id,
+                before={'is_archived': False},
+                after={'is_archived': True}
+            )
+        
         return JsonResponse({
             'success': True,
             'message': f'Successfully archived {archived_count} batch(es)'
@@ -2504,7 +2737,34 @@ def product_batch_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        restored_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=False)
+        # Get batches before restoring to log them
+        batches = ProductBatches.objects.filter(id__in=ids).select_related('product', 'product__product_type', 'product__variant', 'product__size', 'product__size_unit')
+        
+        # Restore batches (this will trigger "Product Batch Restored" from database trigger)
+        restored_count = batches.update(is_archived=False)
+        
+        # Delete the trigger-created logs for these batches
+        from django.utils import timezone
+        from datetime import timedelta
+        recent_time = timezone.now() - timedelta(seconds=5)
+        HistoryLog.objects.filter(
+            entity_type='product_batch',
+            entity_id__in=ids,
+            log_type__category='Product Batch Restored',
+            log_date__gte=recent_time
+        ).delete()
+        
+        # Manually create "Product Batch Bulk Restored" logs
+        for batch in ProductBatches.objects.filter(id__in=ids):
+            create_history_log(
+                admin=request.user,
+                log_category="Product Batch Bulk Restored",
+                entity_type="product_batch",
+                entity_id=batch.id,
+                before={'is_archived': True},
+                after={'is_archived': False}
+            )
+        
         return JsonResponse({
             'success': True,
             'message': f'Successfully restored {restored_count} batch(es)'
@@ -2834,30 +3094,42 @@ class ProductAttributesView(LoginRequiredMixin, TemplateView):
 @method_decorator(login_required, name='dispatch')
 class ProductTypeAddView(View):
     def post(self, request):
-        from django.db import IntegrityError
-        name = request.POST.get('name')
-        if name:
-            try:
-                auth_user = AuthUser.objects.get(id=request.user.id)
-                ProductTypes.objects.create(name=name, created_by_admin=auth_user)
-                messages.success(request, 'Product Type added successfully!')
-            except IntegrityError:
-                messages.error(request, '❌ This Product Type already exists!')
+        name = request.POST.get('name', '').strip()
+        
+        if not name:
+            messages.error(request, '❌ Please enter a product type name!')
+            return redirect('product-attributes')
+        
+        # Check for duplicates (case-insensitive)
+        if ProductTypes.objects.filter(name__iexact=name).exists():
+            messages.error(request, f'❌ Product Type "{name}" already exists!')
+            return redirect('product-attributes')
+        
+        try:
+            auth_user = AuthUser.objects.get(id=request.user.id)
+            ProductTypes.objects.create(name=name, created_by_admin=auth_user)
+            messages.success(request, f'✅ Product Type "{name}" added successfully!')
+        except Exception as e:
+            messages.error(request, f'❌ Error adding Product Type. Please try again.')
+        
         return redirect('product-attributes')
 
 @method_decorator(login_required, name='dispatch')
 class ProductTypeEditView(View):
     def post(self, request, pk):
-        from django.db import IntegrityError
         product_type = get_object_or_404(ProductTypes, pk=pk)
-        name = request.POST.get('name')
-        if name:
-            try:
-                product_type.name = name
-                product_type.save()
-                messages.success(request, 'Product Type updated successfully!')
-            except IntegrityError:
-                messages.error(request, '❌ This Product Type name already exists!')
+        name = request.POST.get('name', '').strip()
+        
+        if name and name != product_type.name:
+            # Check for duplicates (case-insensitive), excluding current record
+            if ProductTypes.objects.filter(name__iexact=name).exclude(pk=pk).exists():
+                messages.error(request, f'❌ Product Type "{name}" already exists!')
+                return redirect('product-attributes')
+            
+            product_type.name = name
+            product_type.save()
+            messages.success(request, '✅ Product Type updated successfully!')
+        
         return redirect('product-attributes')
 
 @method_decorator(login_required, name='dispatch')
@@ -2877,30 +3149,42 @@ class ProductTypeDeleteView(View):
 @method_decorator(login_required, name='dispatch')
 class ProductVariantAddView(View):
     def post(self, request):
-        from django.db import IntegrityError
-        name = request.POST.get('name')
-        if name:
-            try:
-                auth_user = AuthUser.objects.get(id=request.user.id)
-                ProductVariants.objects.create(name=name, created_by_admin=auth_user)
-                messages.success(request, 'Product Variant added successfully!')
-            except IntegrityError:
-                messages.error(request, '❌ This Product Variant already exists!')
+        name = request.POST.get('name', '').strip()
+        
+        if not name:
+            messages.error(request, '❌ Please enter a variant name!')
+            return redirect('product-attributes')
+        
+        # Check for duplicates (case-insensitive)
+        if ProductVariants.objects.filter(name__iexact=name).exists():
+            messages.error(request, f'❌ Variant "{name}" already exists!')
+            return redirect('product-attributes')
+        
+        try:
+            auth_user = AuthUser.objects.get(id=request.user.id)
+            ProductVariants.objects.create(name=name, created_by_admin=auth_user)
+            messages.success(request, f'✅ Variant "{name}" added successfully!')
+        except Exception as e:
+            messages.error(request, f'❌ Error adding Variant. Please try again.')
+        
         return redirect('product-attributes')
 
 @method_decorator(login_required, name='dispatch')
 class ProductVariantEditView(View):
     def post(self, request, pk):
-        from django.db import IntegrityError
-        product_variant = get_object_or_404(ProductVariants, pk=pk)
-        name = request.POST.get('name')
-        if name:
-            try:
-                product_variant.name = name
-                product_variant.save()
-                messages.success(request, 'Product Variant updated successfully!')
-            except IntegrityError:
-                messages.error(request, '❌ This Product Variant name already exists!')
+        variant = get_object_or_404(ProductVariants, pk=pk)
+        name = request.POST.get('name', '').strip()
+        
+        if name and name != variant.name:
+            # Check for duplicates (case-insensitive), excluding current record
+            if ProductVariants.objects.filter(name__iexact=name).exclude(pk=pk).exists():
+                messages.error(request, f'❌ Variant "{name}" already exists!')
+                return redirect('product-attributes')
+            
+            variant.name = name
+            variant.save()
+            messages.success(request, '✅ Variant updated successfully!')
+        
         return redirect('product-attributes')
 
 @method_decorator(login_required, name='dispatch')
@@ -2920,30 +3204,42 @@ class ProductVariantDeleteView(View):
 @method_decorator(login_required, name='dispatch')
 class SizeAddView(View):
     def post(self, request):
-        from django.db import IntegrityError
-        size_label = request.POST.get('size_label')
-        if size_label:
-            try:
-                auth_user = AuthUser.objects.get(id=request.user.id)
-                Sizes.objects.create(size_label=size_label, created_by_admin=auth_user)
-                messages.success(request, 'Size added successfully!')
-            except IntegrityError:
-                messages.error(request, '❌ This Size already exists!')
+        size_label = request.POST.get('size_label', '').strip()
+        
+        if not size_label:
+            messages.error(request, '❌ Please enter a size label!')
+            return redirect('product-attributes')
+        
+        # Check for duplicates (case-insensitive)
+        if Sizes.objects.filter(size_label__iexact=size_label).exists():
+            messages.error(request, f'❌ Size "{size_label}" already exists!')
+            return redirect('product-attributes')
+        
+        try:
+            auth_user = AuthUser.objects.get(id=request.user.id)
+            Sizes.objects.create(size_label=size_label, created_by_admin=auth_user)
+            messages.success(request, f'✅ Size "{size_label}" added successfully!')
+        except Exception as e:
+            messages.error(request, f'❌ Error adding Size. Please try again.')
+        
         return redirect('product-attributes')
 
 @method_decorator(login_required, name='dispatch')
 class SizeEditView(View):
     def post(self, request, pk):
-        from django.db import IntegrityError
         size = get_object_or_404(Sizes, pk=pk)
-        size_label = request.POST.get('size_label')
-        if size_label:
-            try:
-                size.size_label = size_label
-                size.save()
-                messages.success(request, 'Size updated successfully!')
-            except IntegrityError:
-                messages.error(request, '❌ This Size already exists!')
+        size_label = request.POST.get('size_label', '').strip()
+        
+        if size_label and size_label != size.size_label:
+            # Check for duplicates (case-insensitive), excluding current record
+            if Sizes.objects.filter(size_label__iexact=size_label).exclude(pk=pk).exists():
+                messages.error(request, f'❌ Size "{size_label}" already exists!')
+                return redirect('product-attributes')
+            
+            size.size_label = size_label
+            size.save()
+            messages.success(request, '✅ Size updated successfully!')
+        
         return redirect('product-attributes')
 
 @method_decorator(login_required, name='dispatch')
