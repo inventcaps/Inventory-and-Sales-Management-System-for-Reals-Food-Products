@@ -3338,9 +3338,12 @@ class NotificationsList(ListView):
         Notifications.objects.filter(is_read=False).update(is_read=True)
         return super().get(request, *args, **kwargs)
 
-class NotificationsDeleteView(DeleteView):
+class NotificationsDeleteView(UserPassesTestMixin, DeleteView):
     model = Notifications
     success_url = reverse_lazy('notifications')
+
+    def test_func(self):
+        return self.request.user.is_superuser
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Notification deleted successfully.")

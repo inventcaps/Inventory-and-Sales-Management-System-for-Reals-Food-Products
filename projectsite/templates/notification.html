@@ -24,7 +24,9 @@
                     <tr>
                       <th scope="col">Message</th>
                       <th scope="col">Timestamp</th>
+                      {% if user.is_superuser %}
                       <th scope="col">Action</th>
+                      {% endif %}
                     </tr>
                   </thead>
                   <tbody id="inventoryTableBody">
@@ -32,6 +34,7 @@
                     <tr>
                       <td>{{ object.formatted_message }}</td>
                       <td>{{ object.notification_timestamp|date:"M d, Y, h:i a" }}</td>
+                      {% if user.is_superuser %}
                       <td>
                           <a href="#" data-toggle="modal" data-target="#deleteNotificationModal{{ object.id }}" class="text-danger" title="Delete">
                             <i class="la la-trash la-lg"></i>
@@ -60,13 +63,13 @@
                                 </div>
                               </div>
                             </div>
-                          </div>                     
-
+                          </div>
                       </td>
+                      {% endif %}
                     </tr>
                     {% empty %}
                     <tr>
-                      <td colspan="4" class="text-center">No notifications available</td>
+                      <td colspan="{% if user.is_superuser %}3{% else %}2{% endif %}" class="text-center">No notifications available</td>
                     </tr>
                     {% endfor %}
                   </tbody>
