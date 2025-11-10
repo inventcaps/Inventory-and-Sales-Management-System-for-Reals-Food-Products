@@ -141,6 +141,11 @@
       color: white;
     }
     
+    html[data-theme="dark"] .mobile-menu-header {
+      background: linear-gradient(135deg, #1a2e1a 10%, #2d4a2d 100%);
+      color: #f1f8f4;
+    }
+    
     .mobile-menu-header img {
       margin-right: 12px;
       border: 2px solid white;
@@ -229,7 +234,7 @@
     }
     
     .theme-toggle-mobile[aria-checked="true"] {
-      background: #667eea;
+      background: #5d8f42;
     }
     
     .theme-toggle-mobile[aria-checked="true"] .knob {
@@ -533,19 +538,16 @@
                 {% if user.is_superuser %}
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#financialMenu" 
-                       aria-expanded="{% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'withdrawalSales' or request.resolver_match.url_name == 'financial-loss' %}true{% else %}false{% endif %}">
+                       aria-expanded="{% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'financial-loss' %}true{% else %}false{% endif %}">
                         <i class="la la-dollar"></i><p>Financial Report</p><span class="caret"></span>
                     </a>
-                    <div class="collapse {% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'withdrawalSales' or request.resolver_match.url_name == 'financial-loss' %}show{% endif %}" id="financialMenu">
+                    <div class="collapse {% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'financial-loss' %}show{% endif %}" id="financialMenu">
                         <ul class="nav nav-collapse">
                             <li class="{% if request.resolver_match.url_name == 'monthly-report' %}active{% endif %}">
                                <a href="{% url 'monthly-report' %}"><span class="sub-item">Report</span></a>
                             </li>
                             <li class="{% if request.resolver_match.url_name == 'salesexpenses' %}active{% endif %}">
                                 <a href="{% url 'salesexpenses' %}"><span class="sub-item">Sales & Expenses</span></a>
-                            </li>
-                            <li class="{% if request.resolver_match.url_name == 'withdrawalSales' %}active{% endif %}">
-                                <a href="{% url 'withdrawalSales' %}"><span class="sub-item">Withdrawal Sales</span></a>
                             </li>
                             <li class="{% if request.resolver_match.url_name == 'financial-loss' %}active{% endif %}">
                                 <a href="{% url 'financial-loss' %}"><span class="sub-item">Financial Loss</span></a>
