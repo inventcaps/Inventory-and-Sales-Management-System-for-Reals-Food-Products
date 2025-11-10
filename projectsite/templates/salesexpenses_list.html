@@ -67,7 +67,7 @@
             <!-- Sales Summary -->
             <div class="row mb-3 text-center" id="salesSummary">
               <!-- Manual Sales Card -->
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <div class="card">
                   <div class="card-body">
                     <h5 class="card-title">Manual Sales</h5>
@@ -77,19 +77,8 @@
                 </div>
               </div>
               
-              <!-- Withdrawal Sales Card -->
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Withdrawal Sales</h5>
-                    <h3 class="text-info">₱{{ withdrawal_sales_summary.total_sales|floatformat:2|intcomma|default:"0.00" }}</h3>
-                    <small class="text-muted">{{ withdrawal_sales_summary.sales_count|default:0 }} record(s)</small>
-                  </div>
-                </div>
-              </div>
-              
               <!-- Total Sales Card -->
-              <div class="col-md-4">
+              <div class="col-md-6">
                 <div class="card">
                   <div class="card-body">
                     <h5 class="card-title">Total Sales</h5>
@@ -186,6 +175,177 @@
             <div class="pagination-container">
               {% include 'includes/pagination.html' %}
             </div>
+          </div>
+        </div>
+
+        <!-- Withdrawal Sales Table -->
+        <div class="card mt-4">
+          <div class="card-header">
+            <div class="card-title">Sales from Withdrawals</div>
+          </div>
+          <div class="card-body">
+            <!-- Summary Cards -->
+            <div class="row mb-3 text-center">
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title text-muted">Total Withdrawal Sales</h5>
+                    <h3 class="text-success">₱{{ withdrawal_sales_total|floatformat:2|intcomma|default:"0.00" }}</h3>
+                    <small class="text-muted">{{ withdrawal_sales_count|default:0 }} sale(s)</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title text-muted">Total Withdrawal Sales Records</h5>
+                    <h3 class="text-primary">{{ withdrawal_orders|length }}</h3>
+                    <small class="text-muted">Record(s)</small>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Filters -->
+            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+              <select id="withdrawalChannelFilter" class="form-control" style="width:180px;">
+                <option value="">All Channels</option>
+                {% for channel in channels %}
+                  <option value="{{ channel }}" {% if request.GET.withdrawal_channel == channel %}selected{% endif %}>
+                    {{ channel|title }}
+                  </option>
+                {% endfor %}
+              </select>
+              <input type="month" id="withdrawalDateFilter" name="withdrawal_date_filter" class="form-control" style="width:180px;" 
+                     value="{% if request.GET.withdrawal_date_filter %}{{ request.GET.withdrawal_date_filter }}{% elif not request.GET.withdrawal_show_all %}{{ current_month_value }}{% endif %}" />
+              <button type="button" id="withdrawalShowAllBtn" class="btn btn-info" onclick="toggleWithdrawalShowAll()">
+                Show All Data
+              </button>
+              <button type="button" onclick="resetWithdrawalFilters()" class="btn btn-secondary" title="Reset filters">
+                <i class="la la-times"></i>
+              </button>
+            </div>
+
+            <!-- Grouped Orders Table -->
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>Customer/Store</th>
+                    <th>Sales Channel</th>
+                    <th>Item/s</th>
+                    <th class="col-payment-details">
+                      <span class="fw-bold me-2">Payment Status</span>
+                      <select id="withdrawalPaymentStatusFilter" name="withdrawal_payment_status"
+                        style="border:none; background:transparent; font-weight:500; cursor:pointer;">
+                        <option value="" {% if not request.GET.withdrawal_payment_status %}selected{% endif %}>All</option>
+                        <option value="PAID" {% if request.GET.withdrawal_payment_status == 'PAID' %}selected{% endif %}>Paid</option>
+                        <option value="UNPAID" {% if request.GET.withdrawal_payment_status == 'UNPAID' %}selected{% endif %}>Unpaid</option>
+                        <option value="PARTIAL" {% if request.GET.withdrawal_payment_status == 'PARTIAL' %}selected{% endif %}>Partial</option>
+                      </select>
+                    </th>
+                    <th>Date & Time</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for order in withdrawal_orders %}
+                  <tr>
+                    <td>{{ order.customer_name|default:"N/A" }}</td>
+                    <td>{{ order.sales_channel }}</td>
+                    <td>{{ order.item_count }} Item/s</td>
+                    <td class="col-payment-details">
+                      {% if order.payment_status == 'PAID' %}
+                        <span class="badge badge-success">{{ order.payment_status_display }}</span>
+                      {% elif order.payment_status == 'PARTIAL' %}
+                        <span class="badge badge-warning">{{ order.payment_status_display }}</span>
+                      {% elif order.payment_status == 'UNPAID' %}
+                        <span class="badge badge-secondary">{{ order.payment_status_display }}</span>
+                      {% else %}
+                        <span class="badge badge-secondary">N/A</span>
+                      {% endif %}
+                    </td>
+                    <td>{{ order.date|date:"Y-m-d g:i A" }}</td>
+                    <td>
+                      {% if order.actual_group_id %}
+                        <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" title="View Details" style="color: blue;">
+                          <i class="la la-eye la-lg"></i>
+                        </a>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td colspan="6" class="text-center text-muted">No withdrawal sales found</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination for Withdrawal Orders -->
+            {% if withdrawal_is_paginated %}
+            <div class="pagination-container">
+              <nav aria-label="Withdrawal orders pagination">
+                <ul class="pagination justify-content-center">
+                  {% if withdrawal_page_obj.has_previous %}
+                    <li class="page-item">
+                      <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'withdrawal_page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}withdrawal_page=1" aria-label="First">
+                        <span aria-hidden="true">&laquo;&laquo;</span>
+                      </a>
+                    </li>
+                    <li class="page-item">
+                      <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'withdrawal_page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}withdrawal_page={{ withdrawal_page_obj.previous_page_number }}" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                      </a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled">
+                      <span class="page-link">&laquo;&laquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                      <span class="page-link">&laquo;</span>
+                    </li>
+                  {% endif %}
+
+                  {% for num in withdrawal_paginator.page_range %}
+                    {% if withdrawal_page_obj.number == num %}
+                      <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                      </li>
+                    {% elif num > withdrawal_page_obj.number|add:'-3' and num < withdrawal_page_obj.number|add:'3' %}
+                      <li class="page-item">
+                        <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'withdrawal_page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}withdrawal_page={{ num }}">{{ num }}</a>
+                      </li>
+                    {% endif %}
+                  {% endfor %}
+
+                  {% if withdrawal_page_obj.has_next %}
+                    <li class="page-item">
+                      <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'withdrawal_page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}withdrawal_page={{ withdrawal_page_obj.next_page_number }}" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                      </a>
+                    </li>
+                    <li class="page-item">
+                      <a class="page-link" href="?{% for key, value in request.GET.items %}{% if key != 'withdrawal_page' %}{{ key }}={{ value }}&{% endif %}{% endfor %}withdrawal_page={{ withdrawal_paginator.num_pages }}" aria-label="Last">
+                        <span aria-hidden="true">&raquo;&raquo;</span>
+                      </a>
+                    </li>
+                  {% else %}
+                    <li class="page-item disabled">
+                      <span class="page-link">&raquo;</span>
+                    </li>
+                    <li class="page-item disabled">
+                      <span class="page-link">&raquo;&raquo;</span>
+                    </li>
+                  {% endif %}
+                </ul>
+              </nav>
+              <p class="text-center text-muted" style="font-size: 0.875rem;">
+                Page {{ withdrawal_page_obj.number }} of {{ withdrawal_paginator.num_pages }}
+              </p>
+            </div>
+            {% endif %}
           </div>
         </div>
 
@@ -1108,6 +1268,75 @@ function toggleShowAll() {
         params.delete('month');
     }
     window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+// Withdrawal Sales Filter Functions
+document.addEventListener('DOMContentLoaded', function() {
+    const withdrawalChannelFilter = document.getElementById('withdrawalChannelFilter');
+    const withdrawalDateFilter = document.getElementById('withdrawalDateFilter');
+    const withdrawalPaymentStatusFilter = document.getElementById('withdrawalPaymentStatusFilter');
+    
+    if (withdrawalChannelFilter) {
+        withdrawalChannelFilter.addEventListener('change', function() {
+            const url = new URL(window.location);
+            if (this.value) {
+                url.searchParams.set('withdrawal_channel', this.value);
+            } else {
+                url.searchParams.delete('withdrawal_channel');
+            }
+            window.location = url;
+        });
+    }
+    
+    if (withdrawalPaymentStatusFilter) {
+        withdrawalPaymentStatusFilter.addEventListener('change', function() {
+            const url = new URL(window.location);
+            if (this.value) {
+                url.searchParams.set('withdrawal_payment_status', this.value);
+            } else {
+                url.searchParams.delete('withdrawal_payment_status');
+            }
+            window.location = url;
+        });
+    }
+    
+    if (withdrawalDateFilter) {
+        withdrawalDateFilter.addEventListener('change', function() {
+            const url = new URL(window.location);
+            if (this.value) {
+                url.searchParams.set('withdrawal_date_filter', this.value);
+                url.searchParams.delete('withdrawal_show_all');
+            } else {
+                url.searchParams.delete('withdrawal_date_filter');
+            }
+            window.location = url;
+        });
+    }
+});
+
+function toggleWithdrawalShowAll() {
+    const params = new URLSearchParams(window.location.search);
+    const dateFilterInput = document.getElementById('withdrawalDateFilter');
+    
+    if (params.get('withdrawal_show_all')) {
+        params.delete('withdrawal_show_all');
+    } else {
+        params.set('withdrawal_show_all', '1');
+        params.delete('withdrawal_date_filter');
+        if (dateFilterInput) {
+            dateFilterInput.value = '';
+        }
+    }
+    window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function resetWithdrawalFilters() {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('withdrawal_channel');
+    params.delete('withdrawal_date_filter');
+    params.delete('withdrawal_payment_status');
+    params.delete('withdrawal_show_all');
+    window.location.href = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
 }
 </script>
 

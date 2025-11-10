@@ -1617,23 +1617,42 @@ class SalesExpensesList(ListView):
         context['expense_categories'] = expense_categories
 
         # Add withdrawal-based sales grouped by order_group_id
-        month = self.request.GET.get("month", "").strip()
+        # Get withdrawal-specific filter parameters
+        withdrawal_channel = self.request.GET.get("withdrawal_channel", "").strip()
+        withdrawal_date_filter = self.request.GET.get("withdrawal_date_filter", "").strip()
+        withdrawal_payment_status = self.request.GET.get("withdrawal_payment_status", "").strip()
+        withdrawal_show_all = self.request.GET.get("withdrawal_show_all", "").strip()
+        
         withdrawal_sales_qs = Withdrawals.objects.filter(
             reason='SOLD',
             is_archived=False,
             sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
         ).select_related("created_by_admin").order_by("-date")
         
-        # Apply same month filter as regular sales
-        if month:
+        # Apply channel filter
+        if withdrawal_channel:
+            withdrawal_sales_qs = withdrawal_sales_qs.filter(sales_channel=withdrawal_channel)
+        
+        # Apply payment status filter
+        if withdrawal_payment_status:
+            withdrawal_sales_qs = withdrawal_sales_qs.filter(payment_status=withdrawal_payment_status)
+        
+        # Apply month filter
+        if withdrawal_show_all:
+            # Show all data - no date filter
+            pass
+        elif withdrawal_date_filter:
             try:
-                year_str, month_str = month.split("-")
+                year_str, month_str = withdrawal_date_filter.split("-")
                 year = int(year_str)
                 month_num = int(month_str.lstrip("0"))
                 withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=year, date__month=month_num)
             except ValueError:
-                pass
+                # Default to current month if invalid format
+                today = timezone.now()
+                withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=today.year, date__month=today.month)
         else:
+            # Default to current month
             today = timezone.now()
             withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=today.year, date__month=today.month)
         
@@ -1655,12 +1674,17 @@ class SalesExpensesList(ListView):
             is_single = isinstance(group_id, str) and group_id.startswith('single_')
             actual_group_id = group_id if not is_single else None
             
+            # Format sales channel to title case (e.g., "Order" instead of "ORDER")
+            sales_channel_display = first_withdrawal.get_sales_channel_display()
+            if sales_channel_display:
+                sales_channel_display = sales_channel_display.title()
+            
             withdrawal_orders.append({
                 'group_id': group_id,
                 'actual_group_id': actual_group_id,
                 'is_single': is_single,
                 'customer_name': first_withdrawal.customer_name,
-                'sales_channel': first_withdrawal.get_sales_channel_display(),
+                'sales_channel': sales_channel_display,
                 'payment_status': first_withdrawal.payment_status,
                 'payment_status_display': first_withdrawal.get_payment_status_display() if first_withdrawal.payment_status else 'N/A',
                 'paid_amount': first_withdrawal.paid_amount,
@@ -1669,7 +1693,75 @@ class SalesExpensesList(ListView):
                 'withdrawals': withdrawals,
             })
         
-        context['withdrawal_orders'] = sorted(withdrawal_orders, key=lambda x: x['date'], reverse=True)
+        # Sort withdrawal orders by date
+        sorted_withdrawal_orders = sorted(withdrawal_orders, key=lambda x: x['date'], reverse=True)
+        
+        # Add pagination for withdrawal orders
+        from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+        withdrawal_page = self.request.GET.get('withdrawal_page', 1)
+        withdrawal_paginator = Paginator(sorted_withdrawal_orders, 10)  # 10 orders per page
+        
+        try:
+            withdrawal_page_obj = withdrawal_paginator.page(withdrawal_page)
+        except PageNotAnInteger:
+            withdrawal_page_obj = withdrawal_paginator.page(1)
+        except EmptyPage:
+            withdrawal_page_obj = withdrawal_paginator.page(withdrawal_paginator.num_pages)
+        
+        context['withdrawal_orders'] = withdrawal_page_obj
+        context['withdrawal_paginator'] = withdrawal_paginator
+        context['withdrawal_page_obj'] = withdrawal_page_obj
+        context['withdrawal_is_paginated'] = withdrawal_paginator.num_pages > 1
+        
+        # Calculate withdrawal sales totals from Sales table (same logic as the card sa taas)
+        # This ensures custom prices, partial payments, and payment status changes are reflected
+        withdrawal_sales_from_sales = Sales.objects.filter(
+            is_archived=False
+        ).filter(
+            Q(description__icontains="Order #") | Q(description__icontains="order #")
+        )
+        
+        # Apply withdrawal-specific filters
+        # Filter by channel - extract from category field in Sales table
+        if withdrawal_channel:
+            # Sales category format: "Order - CustomerName" or "Consignment - CustomerName"
+            withdrawal_sales_from_sales = withdrawal_sales_from_sales.filter(
+                category__icontains=withdrawal_channel.title()
+            )
+        
+        # Filter by date
+        if withdrawal_show_all:
+            pass
+        elif withdrawal_date_filter:
+            try:
+                year_str, month_str = withdrawal_date_filter.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                withdrawal_sales_from_sales = withdrawal_sales_from_sales.filter(date__year=year, date__month=month_num)
+            except ValueError:
+                today = timezone.now()
+                withdrawal_sales_from_sales = withdrawal_sales_from_sales.filter(date__year=today.year, date__month=today.month)
+        else:
+            today = timezone.now()
+            withdrawal_sales_from_sales = withdrawal_sales_from_sales.filter(date__year=today.year, date__month=today.month)
+        
+        # Sum the sales amounts (this includes custom prices, partial payments, final payments)
+        withdrawal_sales_agg = withdrawal_sales_from_sales.aggregate(
+            total=Sum('amount'),
+            count=Count('id')
+        )
+        
+        context['withdrawal_sales_total'] = withdrawal_sales_agg['total'] or 0
+        context['withdrawal_sales_count'] = withdrawal_sales_agg['count'] or 0
+        
+        # Add available sales channels for the filter dropdown (only channels that exist in data)
+        # Get unique channels from actual withdrawal sales records
+        existing_channels = Withdrawals.objects.filter(
+            reason='SOLD',
+            is_archived=False,
+            sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
+        ).values_list('sales_channel', flat=True).distinct().order_by('sales_channel')
+        context['channels'] = list(existing_channels)
         
         # Add current month value for default display
         today = timezone.now()
@@ -1752,7 +1844,7 @@ class SalesDeleteView(DeleteView):
         # Restrict to superusers only
         if not request.user.is_superuser:
             messages.error(request, "❌ You don't have permission to delete sales records.")
-            return redirect('withdrawalSales')
+            return redirect('salesexpenses')
         return super().dispatch(request, *args, **kwargs)
 
     def get_success_url(self):
@@ -1773,7 +1865,7 @@ class WithdrawalOrderDetailView(View):
         
         if not withdrawals.exists():
             messages.error(request, "Order not found.")
-            return redirect('withdrawalSales')
+            return redirect('salesexpenses')
         
         first_withdrawal = withdrawals.first()
         
@@ -2030,136 +2122,7 @@ class WithdrawalOrderUpdatePaymentView(View):
         else:  # UNPAID
             messages.success(request, "✅ Order marked as UNPAID. No sales recorded.")
         
-        return redirect('withdrawalSales')
-
-
-class WithdrawalSalesList(ListView):
-    """View for displaying sales generated from withdrawals with grouped orders"""
-    model = Withdrawals
-    context_object_name = 'withdrawal_orders'
-    template_name = 'withdrawal_sales_list.html'
-    paginate_by = 20
-    
-    def get_queryset(self):
-        # Get withdrawals that are sold through orders/consignment/reseller
-        qs = Withdrawals.objects.filter(
-            reason='SOLD',
-            is_archived=False,
-            sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
-        ).select_related("created_by_admin").order_by("-date")
-        
-        # Apply filters
-        show_all = self.request.GET.get("show_all", "").strip()
-        date_filter = self.request.GET.get("date_filter", "").strip()
-        channel = self.request.GET.get("channel", "").strip()
-        
-        if show_all:
-
-            pass
-        elif date_filter:
-
-            try:
-                year_str, month_str = date_filter.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                qs = qs.filter(date__year=year, date__month=month_num)
-            except ValueError:
-                today = timezone.now()
-                qs = qs.filter(date__year=today.year, date__month=today.month)
-        else:
-
-            today = timezone.now()
-            qs = qs.filter(date__year=today.year, date__month=today.month)
-        
-        # Channel filter
-        if channel:
-            qs = qs.filter(sales_channel=channel)
-        
-        # Payment status filter
-        payment_status = self.request.GET.get("payment_status", "").strip()
-        if payment_status:
-            qs = qs.filter(payment_status=payment_status)
-        
-        self._full_queryset = qs
-        
-        # Group by order_group_id
-        from collections import defaultdict
-        grouped_orders = defaultdict(list)
-        for withdrawal in qs:
-            if withdrawal.order_group_id:
-                grouped_orders[withdrawal.order_group_id].append(withdrawal)
-            else:
-                # For withdrawals without order_group_id, treat each as individual
-                grouped_orders[f"single_{withdrawal.id}"].append(withdrawal)
-        
-        # Convert to list of dicts for template
-        withdrawal_orders = []
-        for group_id, withdrawals in grouped_orders.items():
-            first_withdrawal = withdrawals[0]
-            # Check if this is a real order group or a single withdrawal
-            is_single = isinstance(group_id, str) and group_id.startswith('single_')
-            actual_group_id = group_id if not is_single else None
-            
-            withdrawal_orders.append({
-                'group_id': group_id,
-                'actual_group_id': actual_group_id,
-                'is_single': is_single,
-                'customer_name': first_withdrawal.customer_name,
-                'sales_channel': first_withdrawal.get_sales_channel_display(),
-                'payment_status': first_withdrawal.payment_status,
-                'payment_status_display': first_withdrawal.get_payment_status_display() if first_withdrawal.payment_status else 'N/A',
-                'paid_amount': first_withdrawal.paid_amount,
-                'date': first_withdrawal.date,
-                'item_count': len(withdrawals),
-                'withdrawals': withdrawals,
-            })
-        
-        return sorted(withdrawal_orders, key=lambda x: x['date'], reverse=True)
-    
-    def get_context_data(self, **kwargs):
-        from django.db.models import Sum, Count
-        context = super().get_context_data(**kwargs)
-        
-        # Get unique sales channels for filter
-        channels = Withdrawals.objects.filter(
-            reason='SOLD',
-            is_archived=False,
-            sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
-        ).values_list('sales_channel', flat=True).distinct()
-        context["channels"] = channels
-
-        today = timezone.now()
-        context['current_month_value'] = today.strftime("%Y-%m")
-
-        filtered_qs = getattr(self, "_full_queryset", Withdrawals.objects.none())
-        
-        from realsproj.models import Sales
-
-        withdrawal_group_ids = filtered_qs.filter(
-            order_group_id__isnull=False
-        ).values_list('order_group_id', flat=True).distinct()
-
-        total_sales_amount = 0
-        total_sales_count = 0
-        
-        if withdrawal_group_ids:
-
-            sales_records = Sales.objects.filter(
-                is_archived=False
-            ).filter(
-                Q(description__icontains="Order #") | Q(description__icontains="order #")
-            )
-            
-            for group_id in withdrawal_group_ids:
-                group_sales = sales_records.filter(description__icontains=f"Order #{group_id}")
-                if group_sales.exists():
-                    total_sales_amount += group_sales.aggregate(total=Sum('amount'))['total'] or 0
-                    total_sales_count += group_sales.count()
-        
-        context['total_withdrawal_sales'] = total_sales_amount
-        context['total_withdrawal_sales_count'] = total_sales_count
-        
-        return context
+        return redirect('salesexpenses')
 
 
 class ExpenseArchiveView(View):
