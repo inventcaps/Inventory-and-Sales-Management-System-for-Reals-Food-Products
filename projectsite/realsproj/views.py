@@ -3909,9 +3909,8 @@ Real's Food Products Security Team'''
             recipient_list=[user.email],
             fail_silently=True,
         )
-        print(f"[EMAIL] Notification sent to {user.email}")
     except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send notification: {e}")
+        pass
 
 
 def login_view(request):
@@ -4016,13 +4015,6 @@ def login_view(request):
                     is_active=True
                 ).first()
                 
-                # DEBUG: Log the login attempt details
-                print(f"[LOGIN DEBUG] User: {user.username} (ID: {user.id})")
-                print(f"[LOGIN DEBUG] Device Fingerprint: {device_fingerprint}")
-                print(f"[LOGIN DEBUG] Trusted Device Found: {trusted_device is not None}")
-                if trusted_device:
-                    print(f"[LOGIN DEBUG] Trusted Device ID: {trusted_device.id}, Last Used: {trusted_device.last_used}")
-                
                 if trusted_device:
                     # Trusted device - login directly
                     trusted_device.last_used = timezone.now()
@@ -4054,8 +4046,6 @@ def login_view(request):
                     return redirect('home')
                 else:
                     # New device - require OTP for account confirmation
-                    print(f"[OTP DEBUG] Generating OTP for new device login")
-                    print(f"[OTP DEBUG] User: {user.username}, Email: {user.email}")
                     otp_code = str(random.randint(100000, 999999))
                     
                     UserOTP.objects.create(
@@ -4064,19 +4054,27 @@ def login_view(request):
                         expires_at=timezone.now() + timedelta(minutes=5),
                         ip_address=ip_address
                     )
-                    print(f"[OTP DEBUG] OTP created in database: {otp_code}")
                     
                     try:
                         send_mail(
                             subject='🔐 Account Confirmation Required - Real\'s Food Products',
-                            message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 5 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
+                            message=f'''Hello {user.username},
+
+We need to confirm your account for security purposes.
+
+Your confirmation code is: {otp_code}
+
+This code will expire in 5 minutes.
+
+Please enter this code to complete your login.
+
+Real's Food Products Security Team''',
                             from_email=settings.EMAIL_HOST_USER,
                             recipient_list=[user.email],
                             fail_silently=False,
                         )
-                        print(f"[OTP DEBUG] OTP email sent successfully to {user.email}")
                     except Exception as e:
-                        print(f"[OTP EMAIL ERROR] Failed to send OTP: {e}")
+                        pass
                     
                     LoginAttempt.objects.create(
                         user=user,
@@ -4138,9 +4136,8 @@ Real's Food Products Team''',
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
-                print(f"[REGISTRATION] Confirmation email sent to {user.email}")
             except Exception as e:
-                print(f"[REGISTRATION ERROR] Failed to send email: {e}")
+                pass
             
             # Don't auto-login inactive users
             messages.success(request, 'Your account has been created successfully! Please check your email and wait for admin approval before you can log in.')
@@ -4247,9 +4244,8 @@ Real's Food Products Team''',
                 recipient_list=[user_email],
                 fail_silently=True,
             )
-            print(f"[APPROVAL] Notification email sent to {user_email}")
         except Exception as e:
-            print(f"[APPROVAL ERROR] Failed to send email: {e}")
+            pass
         
         return JsonResponse({'success': True, 'message': f'User {username} approved successfully'})
     except User.DoesNotExist:
@@ -4290,9 +4286,6 @@ Real's Food Products Team''',
                 recipient_list=[user_email],
                 fail_silently=True,
             )
-            print(f"[REJECTION] Notification email sent to {user_email}")
-        except Exception as e:
-            print(f"[REJECTION ERROR] Failed to send email: {e}")
         
         # Soft delete: anonymize user data instead of hard delete to preserve foreign key integrity
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -4435,9 +4428,9 @@ Real's Food Products Team''',
             recipient_list=[email],
             fail_silently=True,
         )
-        print(f"[DEACTIVATION] Notification email sent to {email}")
+        
     except Exception as e:
-        print(f"[DEACTIVATION ERROR] Failed to send email: {e}")
+        pass
 
 def send_reactivation_email_async(username, email):
     """Send reactivation email in background thread"""
@@ -4462,9 +4455,9 @@ Real's Food Products Team''',
             recipient_list=[email],
             fail_silently=True,
         )
-        print(f"[REACTIVATION] Notification email sent to {email}")
+        
     except Exception as e:
-        print(f"[REACTIVATION ERROR] Failed to send email: {e}")
+        pass
 
 @login_required
 @require_http_methods(["POST"])
@@ -4622,7 +4615,6 @@ def delete_user(request, user_id):
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
-        print(f"[DELETE USER ERROR] Full traceback:\n{error_trace}")
         return JsonResponse({'success': False, 'message': f'Error: {str(e)}'})
 
 @login_required
@@ -4735,8 +4727,7 @@ Real's Food Products Security Team''',
                     fail_silently=False,
                 )
             except Exception as e:
-                # Log the error but don't prevent the password change
-                print(f"Failed to send password change email: {e}")
+                pass
             
             messages.success(request, "Password updated successfully.")
 
@@ -5156,7 +5147,6 @@ def database_backup(request):
                         all_data.extend(json.loads(model_data))
                 except Exception as e:
                     # Skip models that can't be serialized
-                    print(f"Skipping {model.__name__}: {e}")
                     continue
             
             # Convert to JSON string with pretty formatting
@@ -5461,10 +5451,7 @@ Real's Food Products Security Team''',
                         recipient_list=[email_to],
                         fail_silently=True,
                     )
-                    print(f"[2FA SETUP] Confirmation email sent to {email_to}")
-                except Exception as e:
-                    print(f"[2FA SETUP ERROR] Failed to send confirmation email: {e}")
-
+                
                 if '2fa_setup_backup_email' in request.session:
                     del request.session['2fa_setup_backup_email']
                 
@@ -5506,10 +5493,8 @@ Real's Food Products Security Team''',
                 recipient_list=[email_to],
                 fail_silently=False,
             )
-            print(f"[2FA SETUP] Verification code sent to {email_to}")
             messages.success(request, f"📧 Verification code sent to {mask_email(email_to)}. Please check your email.")
         except Exception as e:
-            print(f"[2FA SETUP ERROR] Failed to send verification email: {e}")
             messages.error(request, "❌ Failed to send verification email. Please try again.")
         
         return redirect('profile')
