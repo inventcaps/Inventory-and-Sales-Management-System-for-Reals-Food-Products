@@ -3495,6 +3495,205 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
 def profile_view(request):
     return render(request, "profile.html")
 
+@login_required
+def download_my_data(request):
+    """
+    Generate and download a CSV file containing all user data
+    """
+    import csv
+    from io import StringIO
+    
+    user = request.user
+    # Convert Django User to AuthUser for querying
+    auth_user = AuthUser.objects.get(id=user.id)
+    
+    # Create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['=== MY DATA EXPORT ==='])
+    writer.writerow([f'Generated: {timezone.now().strftime("%B %d, %Y at %I:%M %p")}'])
+    writer.writerow([])
+    
+    # Account Information Section
+    writer.writerow(['ACCOUNT INFORMATION'])
+    writer.writerow(['Field', 'Value'])
+    writer.writerow(['Username', user.username])
+    writer.writerow(['Email', user.email])
+    writer.writerow(['First Name', user.first_name or 'Not set'])
+    writer.writerow(['Last Name', user.last_name or 'Not set'])
+    writer.writerow(['Staff Status', 'Yes' if user.is_staff else 'No'])
+    writer.writerow(['Administrator', 'Yes' if user.is_superuser else 'No'])
+    writer.writerow(['Account Active', 'Yes' if user.is_active else 'No'])
+    writer.writerow(['Date Joined', user.date_joined.strftime('%B %d, %Y') if user.date_joined else 'N/A'])
+    writer.writerow(['Last Login', user.last_login.strftime('%B %d, %Y at %I:%M %p') if user.last_login else 'Never'])
+    writer.writerow([])
+    
+    # Two-Factor Authentication Section
+    writer.writerow(['TWO-FACTOR AUTHENTICATION'])
+    writer.writerow(['Field', 'Value'])
+    try:
+        if hasattr(user, 'twofa_settings'):
+            writer.writerow(['2FA Enabled', 'Yes' if user.twofa_settings.is_enabled else 'No'])
+            writer.writerow(['Method', user.twofa_settings.method or 'N/A'])
+            writer.writerow(['Backup Email', user.twofa_settings.backup_email or 'Not set'])
+        else:
+            writer.writerow(['2FA Enabled', 'No'])
+    except:
+        writer.writerow(['2FA Enabled', 'No'])
+    writer.writerow([])
+    
+    # User Activity Section
+    writer.writerow(['USER ACTIVITY'])
+    writer.writerow(['Field', 'Value'])
+    try:
+        if hasattr(user, 'useractivity'):
+            writer.writerow(['Last Logout', user.useractivity.last_logout.strftime('%B %d, %Y at %I:%M %p') if user.useractivity.last_logout else 'N/A'])
+            writer.writerow(['Currently Active', 'Yes' if user.useractivity.active else 'No'])
+        else:
+            writer.writerow(['Activity Tracking', 'Not available'])
+    except:
+        writer.writerow(['Activity Tracking', 'Not available'])
+    writer.writerow([])
+    
+    # Products Created
+    writer.writerow(['PRODUCTS CREATED'])
+    try:
+        products = Products.objects.filter(created_by_admin=auth_user)
+        if products.exists():
+            writer.writerow(['ID', 'Name', 'Barcode', 'Created At'])
+            for product in products:
+                writer.writerow([
+                    product.id,
+                    str(product),
+                    product.barcode or 'N/A',
+                    product.date_created.strftime('%B %d, %Y') if hasattr(product, 'date_created') and product.date_created else 'N/A'
+                ])
+        else:
+            writer.writerow(['No products created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving products: {str(e)}'])
+    writer.writerow([])
+    
+    # Raw Materials Created
+    writer.writerow(['RAW MATERIALS CREATED'])
+    try:
+        raw_materials = RawMaterials.objects.filter(created_by_admin=auth_user)
+        if raw_materials.exists():
+            writer.writerow(['ID', 'Name', 'Created At'])
+            for rm in raw_materials:
+                writer.writerow([
+                    rm.id,
+                    rm.name,
+                    rm.date_created.strftime('%B %d, %Y') if hasattr(rm, 'date_created') and rm.date_created else 'N/A'
+                ])
+        else:
+            writer.writerow(['No raw materials created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving raw materials: {str(e)}'])
+    writer.writerow([])
+    
+    # Sales Created
+    writer.writerow(['SALES RECORDS CREATED'])
+    try:
+        sales = Sales.objects.filter(created_by_admin=auth_user)
+        if sales.exists():
+            writer.writerow(['ID', 'Date', 'Amount'])
+            for sale in sales:
+                writer.writerow([
+                    sale.id,
+                    sale.date.strftime('%B %d, %Y') if sale.date else 'N/A',
+                    f'₱{float(sale.amount):,.2f}' if sale.amount else '₱0.00'
+                ])
+        else:
+            writer.writerow(['No sales records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving sales: {str(e)}'])
+    writer.writerow([])
+    
+    # Expenses Created
+    writer.writerow(['EXPENSE RECORDS CREATED'])
+    try:
+        expenses = Expenses.objects.filter(created_by_admin=auth_user)
+        if expenses.exists():
+            writer.writerow(['ID', 'Date', 'Amount', 'Description'])
+            for expense in expenses:
+                writer.writerow([
+                    expense.id,
+                    expense.date.strftime('%B %d, %Y') if expense.date else 'N/A',
+                    f'₱{float(expense.amount):,.2f}' if expense.amount else '₱0.00',
+                    expense.description if hasattr(expense, 'description') else 'N/A'
+                ])
+        else:
+            writer.writerow(['No expense records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving expenses: {str(e)}'])
+    writer.writerow([])
+    
+    # Withdrawals Created
+    writer.writerow(['WITHDRAWAL RECORDS CREATED'])
+    try:
+        withdrawals = Withdrawals.objects.filter(created_by_admin=user)
+        if withdrawals.exists():
+            writer.writerow(['ID', 'Date', 'Item Type', 'Quantity', 'Reason'])
+            for withdrawal in withdrawals:
+                writer.writerow([
+                    withdrawal.id,
+                    withdrawal.date.strftime('%B %d, %Y at %I:%M %p') if withdrawal.date else 'N/A',
+                    withdrawal.item_type,
+                    float(withdrawal.quantity) if withdrawal.quantity else 0,
+                    withdrawal.reason
+                ])
+        else:
+            writer.writerow(['No withdrawal records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving withdrawals: {str(e)}'])
+    writer.writerow([])
+    
+    # Product Batches Created
+    writer.writerow(['PRODUCT BATCHES CREATED'])
+    try:
+        product_batches = ProductBatches.objects.filter(created_by_admin=auth_user)
+        if product_batches.exists():
+            writer.writerow(['ID', 'Product', 'Quantity', 'Batch Date'])
+            for batch in product_batches:
+                writer.writerow([
+                    batch.id,
+                    str(batch.product) if batch.product else 'N/A',
+                    batch.quantity if hasattr(batch, 'quantity') else 'N/A',
+                    batch.batch_date.strftime('%B %d, %Y') if hasattr(batch, 'batch_date') and batch.batch_date else 'N/A'
+                ])
+        else:
+            writer.writerow(['No product batches created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving product batches: {str(e)}'])
+    writer.writerow([])
+    
+    # Raw Material Batches Created
+    writer.writerow(['RAW MATERIAL BATCHES CREATED'])
+    try:
+        rm_batches = RawMaterialBatches.objects.filter(created_by_admin=auth_user)
+        if rm_batches.exists():
+            writer.writerow(['ID', 'Material', 'Quantity', 'Batch Date'])
+            for batch in rm_batches:
+                writer.writerow([
+                    batch.id,
+                    str(batch.material) if batch.material else 'N/A',
+                    batch.quantity if hasattr(batch, 'quantity') else 'N/A',
+                    batch.batch_date.strftime('%B %d, %Y') if hasattr(batch, 'batch_date') and batch.batch_date else 'N/A'
+                ])
+        else:
+            writer.writerow(['No raw material batches created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving raw material batches: {str(e)}'])
+    
+    # Create CSV response
+    response = HttpResponse(output.getvalue(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="my_data_{user.username}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    
+    return response
+
 def best_sellers_api(request):
     from datetime import datetime
     TOP_N = 5

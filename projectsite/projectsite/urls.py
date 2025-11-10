@@ -200,6 +200,7 @@ urlpatterns = [
 
     path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),
+    path('profile/download-my-data/', a.download_my_data, name='download_my_data'),
     
     # User Management
     path('user-management/', a.user_management, name='user-management'),
