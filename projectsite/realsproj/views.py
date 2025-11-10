@@ -78,7 +78,7 @@ from realsproj.models import (
 )
 
 from django.db.models import Q, CharField
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models.functions import TruncMonth, TruncDay
 from django.db.models.functions import Cast
@@ -545,6 +545,10 @@ class ProductArchiveOldView(View):
 
 @require_http_methods(["POST"])
 def product_bulk_delete(request):
+    # Only superusers can delete products
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied. Only administrators can delete products.'})
+    
     try:
         ids = request.POST.get('ids', '').split(',')
         ids = [int(id.strip()) for id in ids if id.strip()]
@@ -805,9 +809,12 @@ def delete_product_photo_on_delete(sender, instance, **kwargs):
             pass
 
 
-class ProductsDeleteView(DeleteView):
+class ProductsDeleteView(UserPassesTestMixin, DeleteView):
     model = Products
     success_url = reverse_lazy("products")
+
+    def test_func(self):
+        return self.request.user.is_superuser
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Product deleted successfully.")
