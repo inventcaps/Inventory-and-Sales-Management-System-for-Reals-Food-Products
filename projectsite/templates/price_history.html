@@ -15,7 +15,7 @@
                         <!-- Filters -->
                         <form method="get" id="filterForm" class="mb-3">
                             <!-- First Row: Search, Date, Price Type, Show All, Reset -->
-                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                            <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
                                 <input type="text" name="search" class="form-control" style="width: 350px;"
                                     placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
                                 <input type="month" name="date_created" class="form-control" style="width:180px;"

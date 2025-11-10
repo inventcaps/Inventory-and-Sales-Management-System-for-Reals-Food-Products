@@ -7,29 +7,20 @@
   <div class="container-fluid">
     <h4 class="page-title">Financial Loss Report</h4>
     
-    <!-- Summary Cards -->
-    <div class="row mb-3 text-center">
-      <div class="col-md-4">
+    <!-- Total Financial Loss Card -->
+    <div class="row mb-3">
+      <div class="col-md-12">
         <div class="card">
           <div class="card-body">
-            <h5 class="card-title text-muted">Total Financial Loss</h5>
-            <h3 id="totalLoss" class="text-danger">₱{{ total_loss|floatformat:2|intcomma }}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title text-muted">Product Loss</h5>
-            <h3 id="productLoss" class="text-warning">₱{{ product_loss|floatformat:2|intcomma }}</h3>
-          </div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title text-muted">Raw Material Loss</h5>
-            <h3 id="rawMaterialLoss" class="text-info">₱{{ raw_material_loss|floatformat:2|intcomma }}</h3>
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h5 class="card-title mb-1">Total Financial Loss</h5>
+                <p class="text-muted mb-0">Total loss from expired & damaged items</p>
+              </div>
+              <div class="text-right">
+                <h2 id="totalLoss" class="mb-0 text-danger">₱{{ total_loss|floatformat:2|intcomma }}</h2>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -51,6 +42,26 @@
           </div>
 
           <div class="card-body">
+            <!-- Product Loss Summary -->
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h5 class="card-title mb-1">Product Loss</h5>
+                        <p class="text-muted mb-0">Total loss from expired & damaged products</p>
+                      </div>
+                      <div class="text-right">
+                        <h2 id="productLoss" class="mb-0 text-warning">₱{{ product_loss|floatformat:2|intcomma }}</h2>
+                        <small class="text-muted">Loss Amount</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <!-- Product Filters -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <input type="month" id="productDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.product_date_filter %}{{ request.GET.product_date_filter }}{% elif not request.GET.product_show_all %}{{ current_month_value }}{% endif %}" />
@@ -184,6 +195,26 @@
           </div>
 
           <div class="card-body">
+            <!-- Raw Material Loss Summary -->
+            <div class="row mb-3">
+              <div class="col-md-12">
+                <div class="card">
+                  <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <h5 class="card-title mb-1">Raw Material Loss</h5>
+                        <p class="text-muted mb-0">Total loss from expired & damaged raw materials</p>
+                      </div>
+                      <div class="text-right">
+                        <h2 id="rawMaterialLoss" class="mb-0 text-info">₱{{ raw_material_loss|floatformat:2|intcomma }}</h2>
+                        <small class="text-muted">Loss Amount</small>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <!-- Raw Material Filters -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <input type="month" id="rawMaterialDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.raw_material_date_filter %}{{ request.GET.raw_material_date_filter }}{% elif not request.GET.raw_material_show_all %}{{ current_month_value }}{% endif %}" />

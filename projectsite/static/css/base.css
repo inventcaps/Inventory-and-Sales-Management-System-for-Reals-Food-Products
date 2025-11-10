@@ -715,6 +715,25 @@ html[data-theme="dark"] .navbar-nav .nav-link {
   color: #f1f8f4 !important;    
 }
 
+html[data-theme="dark"] .navbar .nav-link i,
+html[data-theme="dark"] .navbar-nav .nav-link i {
+  color: #f1f8f4 !important;
+}
+
+html[data-theme="dark"] .navbar .profile-pic,
+html[data-theme="dark"] .navbar .profile-pic span {
+  color: #f1f8f4 !important;
+}
+
+html[data-theme="dark"] .topbar-toggler.more i {
+  color: #f1f8f4 !important;
+}
+
+html[data-theme="dark"] .navbar-toggler-icon,
+html[data-theme="dark"] .sidenav-toggler .navbar-toggler-icon {
+  filter: brightness(0) invert(1) !important;
+}
+
 html[data-theme="dark"] label {
   color: #f1f8f4 !important;    
 }
