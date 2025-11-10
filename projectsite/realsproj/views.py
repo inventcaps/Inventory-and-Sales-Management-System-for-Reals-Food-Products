@@ -1085,7 +1085,20 @@ class HistoryLogList(ListView):
 
         # Apply admin filter
         if admin_filter:
-            queryset = queryset.filter(admin__username=admin_filter)
+            # Need to handle both active and deactivated users
+            # First try to match active users
+            active_match = queryset.filter(admin__username=admin_filter)
+            
+            # Also check for deactivated users with this original username
+            deactivated_users = AuthUser.objects.filter(
+                username__startswith='inactive_user_',
+                first_name__contains=f'ORIGINAL_USERNAME:{admin_filter}|'
+            ).values_list('id', flat=True)
+            
+            deactivated_match = queryset.filter(admin_id__in=deactivated_users)
+            
+            # Combine both querysets
+            queryset = (active_match | deactivated_match).distinct()
 
         # Apply log type filter
         if log_filter:
@@ -1122,10 +1135,27 @@ class HistoryLogList(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         
-        # Get unique admins and log types for the filter dropdowns
-        context['admins'] = HistoryLog.objects.filter(
-            is_archived=False
-        ).order_by('admin__username').values_list('admin__username', flat=True).distinct()
+        # Get unique admins for the filter dropdowns
+        # We need to handle deactivated users properly
+        admin_usernames = set()
+        history_logs = HistoryLog.objects.filter(is_archived=False).select_related('admin')
+        
+        for log in history_logs:
+            try:
+                if log.admin:
+                    # Check if user is deactivated
+                    if log.admin.username.startswith('inactive_user_'):
+                        # Extract original username
+                        if log.admin.first_name and log.admin.first_name.startswith('ORIGINAL_USERNAME:'):
+                            parts = log.admin.first_name.split('|')
+                            original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+                            admin_usernames.add(original_username)
+                    else:
+                        admin_usernames.add(log.admin.username)
+            except Exception:
+                pass
+        
+        context['admins'] = sorted(admin_usernames)
         
         context['logs'] = HistoryLog.objects.filter(
             is_archived=False

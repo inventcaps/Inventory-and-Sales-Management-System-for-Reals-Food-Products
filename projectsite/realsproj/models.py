@@ -293,6 +293,26 @@ class HistoryLog(models.Model):
             
             return f"Entity #{self.entity_id}"
 
+    def get_admin_display(self):
+        """Safely get admin username even if user is deleted or deactivated."""
+        try:
+            if self.admin:
+                # Check if user is deactivated (username starts with 'inactive_user_')
+                if self.admin.username.startswith('inactive_user_'):
+                    # Try to extract original username from first_name field
+                    if self.admin.first_name and self.admin.first_name.startswith('ORIGINAL_USERNAME:'):
+                        parts = self.admin.first_name.split('|')
+                        original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+                        return f"{original_username} (Deactivated)"
+                    return "Deactivated User"
+                return self.admin.username
+        except Exception:
+            # If admin is deleted, try to get from details
+            if self.details and 'admin_username' in self.details:
+                return f"{self.details['admin_username']} (Deleted)"
+            return "Unknown User"
+        return "Unknown User"
+
     def get_details_display(self):
         """Pretty-print before/after changes with human-readable names and clean formatting."""
         try:

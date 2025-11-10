@@ -62,7 +62,7 @@
                   {% if object_list %}
                     {% for object in object_list %}
                     <tr>
-                      <td>{{ object.admin.username }}</td>
+                      <td>{{ object.get_admin_display }}</td>
                       <td>{{ object.log_type.category }}</td>
                       <td>{{ object.get_entity_display }}</td>
                       <td>{{ object.get_details_display }}</td>
