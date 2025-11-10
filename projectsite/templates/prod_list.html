@@ -15,7 +15,7 @@
                             <div class="card-title">List of Products</div>
                             <span id="scanner-status" class="badge badge-secondary" style="margin-top: 5px;">Scanner: Connecting...</span>
                         </div>
-                        <div class="d-flex align-items-center" style="gap:0.5rem; position: relative; z-index: 1050;">
+                        <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem; position: relative; z-index: 1050;">
                             
                             <!-- Product Attributes button -->
                             <a href="{% url 'product-attributes' %}" class="btn btn-info btn-rounded">
@@ -65,7 +65,7 @@
                             </div>
 
                             <!-- Other Filters Row -->
-                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                            <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
                                 <input type="text" name="search" class="form-control" style="width: 350px;"
                                     placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
                                 <input type="month" name="date_created" class="form-control" style="width:180px;"

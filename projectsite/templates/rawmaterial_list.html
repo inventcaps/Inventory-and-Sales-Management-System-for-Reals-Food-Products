@@ -12,7 +12,7 @@
                         <div>
                             <div class="card-title">List of Raw Materials</div>
                         </div>
-                        <div class="d-flex align-items-center" style="gap:0.5rem;">
+                        <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
                             <!-- Actions Dropdown -->
                             <div class="dropdown d-inline">
                                 <button class="btn btn-secondary btn-rounded dropdown-toggle" type="button" id="archiveMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -54,7 +54,7 @@
                             </div>
 
                             <!-- Search -->
-                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                            <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
                                 <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 350px;">
                                 <input type="month" name="date_created" id="dateFilter" class="form-control" style="width:180px;"
                                        placeholder="Filter by Month"

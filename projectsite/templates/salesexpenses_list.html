@@ -15,7 +15,7 @@
               <div class="card-title">List of Sales</div>
               <!-- <small class="text-muted">Manual sales entries (excludes withdrawal-based sales)</small> -->
             </div>
-            <div class="d-flex align-items-center" style="gap:0.5rem;">
+            <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
               <!-- Dropdown for archive actions -->
               <div class="dropdown d-inline">
                 <button class="btn btn-secondary btn-rounded dropdown-toggle" type="button" id="actionsDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -90,7 +90,7 @@
             </div>
 
             <!-- Filters moved here -->
-            <div class="d-flex align-items-center mb-2" style="gap:0.5rem;">
+            <div class="d-flex align-items-center flex-wrap mb-2" style="gap:0.5rem;">
               <!-- Category Filter -->
               <select id="categoryFilter" class="form-control" style="width:180px;">
                 <option value="">All Categories</option>
@@ -207,7 +207,7 @@
             </div>
             
             <!-- Filters -->
-            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+            <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
               <select id="withdrawalChannelFilter" class="form-control" style="width:180px;">
                 <option value="">All Channels</option>
                 {% for channel in channels %}
@@ -374,7 +374,7 @@
               </div>
             </div>
             <!-- Filters for Expenses -->
-            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+            <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
               <!-- Category Filter -->
               <select id="expenseCategoryFilter" class="form-control" style="width:180px;">
                 <option value="">All Categories</option>

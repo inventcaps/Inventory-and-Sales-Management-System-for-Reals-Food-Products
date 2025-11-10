@@ -11,7 +11,7 @@
                         <div>
                             <div class="card-title">List of Product Batches</div>
                         </div>
-                        <div class="d-flex align-items-center" style="gap:0.5rem;">
+                        <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
                             <!-- Actions Dropdown -->
                             <div class="dropdown d-inline">
                             <button class="btn btn-secondary btn-rounded dropdown-toggle" type="button" id="archiveMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -31,7 +31,7 @@
                     <div class="card-body">
                         <!-- Search + Filter -->
                         <form id="filterForm" method="get">
-                            <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+                            <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
                                 <input type="text" id="batchSearchInput" name="search" class="form-control" style="width: 350px;"
                                     placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
                                 <input type="month" name="date_filter" class="form-control" style="width: 180px;"
