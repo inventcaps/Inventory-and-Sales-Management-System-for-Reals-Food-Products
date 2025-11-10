@@ -239,13 +239,55 @@
             </div>
         </div>
 
+        <!-- Rejected Users Section -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Rejected Users</div>
+                        <div class="card-category">Users rejected during registration</div>
+                    </div>
+                    <div class="card-body">
+                        {% if rejected_users %}
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>User ID</th>
+                                        <th>Name</th>
+                                        <th>Email</th>
+                                        <th>Rejected</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for user in rejected_users %}
+                                    <tr>
+                                        <td><strong>{{ user.id }}</strong></td>
+                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
+                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="la la-info-circle"></i> No rejected users.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Deleted Users Section -->
         <div class="row mt-4">
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Deleted Users</div>
-                        <div class="card-category">Soft-deleted users (anonymized)</div>
+                        <div class="card-category">Users deleted by admin (anonymized)</div>
                     </div>
                     <div class="card-body">
                         {% if deleted_users %}

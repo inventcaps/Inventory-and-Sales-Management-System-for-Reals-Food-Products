@@ -187,7 +187,7 @@ urlpatterns = [
     path("api/sales-vs-expenses/", a.sales_vs_expenses, name="sales-vs-expenses"),
 
     path('notifications/', a.NotificationsList.as_view(), name='notifications'),
-    path('notifications/<pk>/delete/', a.NotificationsDeleteView.as_view(), name='notification-delete'),
+    # path('notifications/<pk>/delete/', a.NotificationsDeleteView.as_view(), name='notification-delete'),  # Disabled - notifications should not be deleted
 
     path("register/", a.register, name="register"),
 
@@ -208,7 +208,7 @@ urlpatterns = [
 
     path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),
-
+    path('profile/download-my-data/', a.download_my_data, name='download_my_data'),
     # User Management
     path('user-management/', a.user_management, name='user-management'),
     path('user/create-admin/', a.create_admin_user, name='create-admin-user'),
@@ -250,5 +250,8 @@ urlpatterns = [
     path('2fa-setup/', a.setup_2fa, name='2fa_setup'),
     path('2fa-disable/', a.disable_2fa, name='2fa_disable'),
     path('account/delete/', a.delete_account, name='delete_account'),
+    path('direct-password-reset/', a.direct_password_reset, name='direct_password_reset'),
+    path('privacy-policy/', a.privacy_policy, name='privacy_policy'),
+    path('terms-of-use/', a.terms_of_use, name='terms_of_use'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

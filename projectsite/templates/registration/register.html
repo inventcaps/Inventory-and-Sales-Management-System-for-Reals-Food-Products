@@ -34,6 +34,14 @@
     .form-wrapper::-webkit-scrollbar-thumb:hover {
       background: #555;
     }
+    /* Privacy Policy Checkbox Styling */
+    #accept_privacy {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+      accent-color: #5a855f;
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -44,9 +52,6 @@
         <img src="{% static 'img/reals.jpg' %}" alt="Logo" class="brand-logo">
         <h1>WELCOME TO REALS!</h1>
         <p>Create your account here!</p>
-      </div>
-      <div class="footer-left">
-        <p>&copy; Reals Food Products</p>
       </div>
     </div>
 
@@ -85,6 +90,18 @@
         📝 All new accounts are registered as <strong>Staff</strong> and require admin approval before activation.
       </small>
 
+            <!-- Privacy Policy Acceptance -->
+      <div style="margin-bottom: 15px;">
+        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.9rem; color: #333;">
+          <input type="checkbox" name="accept_privacy" id="accept_privacy">
+          <span>I have read and agree to the <a href="#" onclick="openTermsModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Terms of Use</a> and <a href="#" onclick="openPrivacyModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Privacy Policy</a></span>
+        </label>
+        <small id="privacyError" class="form-text" style="display: none; color: #dc3545; margin-top: 5px; margin-left: 28px; font-size: 0.875rem; font-weight: 600;">
+          You must accept the Privacy Policy to register.
+        </small>
+      </div>
+
+
           <!-- Server-side non-field errors only -->
           {% if form.non_field_errors %}
             <div class="alert alert-danger" style="margin-bottom: 15px;">
@@ -101,9 +118,62 @@
     </div>
   </div>
 
+  <!-- Terms of Use Modal -->
+  <div class="modal fade" id="termsOfUseModal" tabindex="-1" role="dialog" aria-labelledby="termsOfUseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+      <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, #4e7452 0%, #5a855f 100%); color: white; border-bottom: none; padding: 20px 25px;">
+          <h5 class="modal-title" id="termsOfUseModalLabel" style="margin: 0; white-space: nowrap;">
+            <i class="bi bi-file-text-fill"></i> Terms of Use
+          </h5>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          {% include 'terms_of_use_content.html' %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- Privacy Policy Modal -->
+  <div class="modal fade" id="privacyPolicyModal" tabindex="-1" role="dialog" aria-labelledby="privacyPolicyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+      <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, #4e7452 0%, #5a855f 100%); color: white; border-bottom: none; padding: 20px 25px;">
+          <h5 class="modal-title" id="privacyPolicyModalLabel" style="margin: 0; white-space: nowrap;">
+            <i class="bi bi-shield-lock-fill"></i> Privacy Policy
+          </h5>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          {% include 'privacy_policy_content.html' %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Bootstrap JS -->
   <script src="{% static 'js/core/jquery.3.2.1.min.js' %}"></script>
   <script src="{% static 'js/core/bootstrap.min.js' %}"></script>
+
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <script>
+    function openTermsModal(event) {
+      event.preventDefault();
+      $('#termsOfUseModal').modal('show');
+    }
+    
+    function openPrivacyModal(event) {
+      event.preventDefault();
+      $('#privacyPolicyModal').modal('show');
+    }
+  </script>
 
   <!-- JS for password validation -->
   <script>
@@ -111,10 +181,12 @@
     const emailInput = document.getElementById('email');
     const password1Input = document.getElementById('password1');
     const password2Input = document.getElementById('password2');
+    const acceptPrivacyCheckbox = document.getElementById('accept_privacy');
     const usernameError = document.getElementById('usernameError');
     const emailError = document.getElementById('emailError');
     const password1Error = document.getElementById('password1Error');
     const password2Error = document.getElementById('password2Error');
+    const privacyError = document.getElementById('privacyError');
 
     // Check if password meets the requirements
     function checkPasswordRequirements(password) {
@@ -132,6 +204,10 @@
       password1Error.textContent = message;
       password1Error.style.display = 'block';
       password1Input.style.borderColor = '#dc3545';
+    }
+
+    function hidePrivacyError() {
+      privacyError.style.display = 'none';
     }
 
     function showPassword2Error(message) {
@@ -182,6 +258,7 @@
       hideEmailError();
       hidePassword1Error();
       hidePassword2Error();
+      hidePrivacyError();
 
       let hasError = false;
 
@@ -212,6 +289,12 @@
         showPassword2Error("Passwords do not match.");
         hasError = true;
       }
+
+      if (!acceptPrivacyCheckbox.checked) {
+        e.preventDefault();
+        privacyError.style.display = 'block';
+        hasError = true;
+      }
     });
 
     // Hide errors when user starts typing
@@ -225,6 +308,8 @@
         showPassword2Error("Passwords do not match.");
       }
     });
+
+    acceptPrivacyCheckbox.addEventListener('change', hidePrivacyError);
   </script>
 </body>
 </html>

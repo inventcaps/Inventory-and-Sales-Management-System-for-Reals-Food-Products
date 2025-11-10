@@ -908,15 +908,15 @@ body, .main-panel, .card, .navbar, .sidebar, .dropdown-menu, .table, .form-contr
 
 /* Fix modal z-index issues */
 .modal-backdrop {
-   z-index: 1040 !important;
+   z-index: 10040 !important;
 }
 
 .modal {
-   z-index: 1050 !important;
+   z-index: 10050 !important;
 }
 
 .modal-dialog {
-   z-index: 1051 !important;
+   z-index: 10051 !important;
 }
 
 html[data-theme="dark"] .modal-content {

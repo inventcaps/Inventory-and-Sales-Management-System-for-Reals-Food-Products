@@ -80,7 +80,7 @@ from realsproj.models import (
 )
 
 from django.db.models import Q, CharField
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models.functions import TruncMonth, TruncDay
 from django.db.models.functions import Cast
@@ -559,6 +559,10 @@ class ProductArchiveView(View):
             after=product_data
         )
         
+        # Handle AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': 'Product archived successfully'})
+        
         page = request.POST.get('page')
         if page:
             return redirect(f"{reverse('product-list')}?page={page}")
@@ -630,6 +634,9 @@ class ProductArchiveOldView(View):
 
 @require_http_methods(["POST"])
 def product_bulk_delete(request):
+    # Only superusers can delete products
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied. Only administrators can delete products.'})
     try:
         ids = request.POST.get('ids', '').split(',')
         ids = [int(id.strip()) for id in ids if id.strip()]
@@ -952,9 +959,21 @@ def delete_product_photo_on_delete(sender, instance, **kwargs):
             pass
 
 
-class ProductsDeleteView(DeleteView):
+class ProductsDeleteView(UserPassesTestMixin, DeleteView):
     model = Products
     success_url = reverse_lazy("products")
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def delete(self, request, *args, **kwargs):
+        """Set current user ID in database session for trigger to use"""
+        from django.db import connection
+        
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL myapp.current_user_id = %s", [request.user.id])
+        
+        return super().delete(request, *args, **kwargs)
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Product deleted successfully.")
@@ -1063,6 +1082,15 @@ class RawMaterialsList(ListView):
 class RawMaterialArchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
+        
+        # Prepare raw material data for history log
+        material_data = {
+            'name': item.name,
+            'size': str(item.size),
+            'unit': str(item.unit),
+            'price_per_unit': str(item.price_per_unit),
+        }
+        
         item.is_archived = True
         item.save()
         
@@ -1076,6 +1104,15 @@ class RawMaterialArchiveView(View):
             log_type__category='Raw Material Updated',
             log_date__gte=recent_time
         ).delete()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Raw Material Archived",
+            entity_type="raw_material",
+            entity_id=item.id,
+            after=material_data
+        )
         
         return redirect('rawmaterials-list')
 
@@ -1196,6 +1233,15 @@ class ArchivedRawMaterialsListView(ListView):
 class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
+        
+        # Prepare raw material data for history log
+        material_data = {
+            'name': item.name,
+            'size': str(item.size),
+            'unit': str(item.unit),
+            'price_per_unit': str(item.price_per_unit),
+        }
+        
         item.is_archived = False
         item.save()
         
@@ -1209,6 +1255,15 @@ class RawMaterialUnarchiveView(View):
             log_type__category='Raw Material Updated',
             log_date__gte=recent_time
         ).delete()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Raw Material Restored",
+            entity_type="raw_material",
+            entity_id=item.id,
+            after=material_data
+        )
         
         return redirect('rawmaterials-archived-list')
 
@@ -1295,10 +1350,34 @@ class RawMaterialsDeleteView(LoginRequiredMixin, DeleteView):
             return redirect('rawmaterials-list')
         return super().dispatch(request, *args, **kwargs)
 
+    def delete(self, request, *args, **kwargs):
+        """Override delete to handle cascading deletion of related records"""
+        self.object = self.get_object()
+        material_id = self.object.id
+        material_name = str(self.object)
+        
+        try:
+            # Delete related raw material batches
+            batches_deleted = RawMaterialBatches.objects.filter(material_id=material_id).delete()[0]
+            
+            # Delete related raw material inventory
+            inventory_deleted = RawMaterialInventory.objects.filter(material_id=material_id).delete()[0]
+            
+            # Now delete the raw material itself
+            self.object.delete()
+            
+            messages.success(
+                self.request, 
+                f"🗑️ Raw Material '{material_name}' deleted successfully. "
+                f"Also deleted {batches_deleted} batch(es) and {inventory_deleted} inventory record(s)."
+            )
+            return redirect(self.get_success_url())
+        except Exception as e:
+            messages.error(self.request, f"❌ Error deleting raw material: {str(e)}")
+            return redirect('rawmaterials-list')
 
     def get_success_url(self):
-        messages.success(self.request, "🗑️ Raw Material deleted successfully.")
-        return super().get_success_url()
+        return reverse_lazy('rawmaterials')
 
 class HistoryLogList(ListView):
     model = HistoryLog
@@ -1322,7 +1401,20 @@ class HistoryLogList(ListView):
 
         # Apply admin filter
         if admin_filter:
-            queryset = queryset.filter(admin__username=admin_filter)
+            # Need to handle both active and deactivated users
+            # First try to match active users
+            active_match = queryset.filter(admin__username=admin_filter)
+            
+            # Also check for deactivated users with this original username
+            deactivated_users = AuthUser.objects.filter(
+                username__startswith='inactive_user_',
+                first_name__contains=f'ORIGINAL_USERNAME:{admin_filter}|'
+            ).values_list('id', flat=True)
+            
+            deactivated_match = queryset.filter(admin_id__in=deactivated_users)
+            
+            # Combine both querysets
+            queryset = (active_match | deactivated_match).distinct()
 
         # Apply log type filter
         if log_filter:
@@ -1369,10 +1461,27 @@ class HistoryLogList(ListView):
         today = timezone.now()
         context['current_month_value'] = today.strftime("%Y-%m")
         
-        # Get unique admins and log types for the filter dropdowns
-        context['admins'] = HistoryLog.objects.filter(
-            is_archived=False
-        ).order_by('admin__username').values_list('admin__username', flat=True).distinct()
+        # Get unique admins for the filter dropdowns
+        # We need to handle deactivated users properly
+        admin_usernames = set()
+        history_logs = HistoryLog.objects.filter(is_archived=False).select_related('admin')
+        
+        for log in history_logs:
+            try:
+                if log.admin:
+                    # Check if user is deactivated
+                    if log.admin.username.startswith('inactive_user_'):
+                        # Extract original username
+                        if log.admin.first_name and log.admin.first_name.startswith('ORIGINAL_USERNAME:'):
+                            parts = log.admin.first_name.split('|')
+                            original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+                            admin_usernames.add(original_username)
+                    else:
+                        admin_usernames.add(log.admin.username)
+            except Exception:
+                pass
+        
+        context['admins'] = sorted(admin_usernames)
         
         context['logs'] = HistoryLog.objects.filter(
             is_archived=False
@@ -1394,8 +1503,27 @@ class HistoryLogList(ListView):
 class SaleArchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
+        
+        # Prepare sale data for history log
+        sale_data = {
+            'category': sale.category,
+            'amount': str(sale.amount),
+            'date': str(sale.date),
+            'description': sale.description,
+        }
+        
         sale.is_archived = True
         sale.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Sale Archived",
+            entity_type="sale",
+            entity_id=sale.id,
+            after=sale_data
+        )
+        
         return redirect('salesexpenses')
 
 class SaleArchiveOldView(View):
@@ -1440,8 +1568,27 @@ class ArchivedSalesExpensesCombinedView(TemplateView):
 class SaleUnarchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
+        
+        # Prepare sale data for history log
+        sale_data = {
+            'category': sale.category,
+            'amount': str(sale.amount),
+            'date': str(sale.date),
+            'description': sale.description,
+        }
+        
         sale.is_archived = False
         sale.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Sale Restored",
+            entity_type="sale",
+            entity_id=sale.id,
+            after=sale_data
+        )
+        
         messages.success(request, "✅ Sale restored successfully.")
         return redirect('salesexpense-archive')
 
@@ -2307,8 +2454,27 @@ class WithdrawalOrderUpdatePaymentView(View):
 class ExpenseArchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
+        
+        # Prepare expense data for history log
+        expense_data = {
+            'category': expense.category,
+            'amount': str(expense.amount),
+            'date': str(expense.date),
+            'description': expense.description,
+        }
+        
         expense.is_archived = True
         expense.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Expense Archived",
+            entity_type="expense",
+            entity_id=expense.id,
+            after=expense_data
+        )
+        
         messages.success(request, "✅ Expense archived successfully.")
         return redirect('salesexpenses')
 
@@ -2365,8 +2531,27 @@ class ArchivedExpensesListView(ListView):
 class ExpenseUnarchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
+        
+        # Prepare expense data for history log
+        expense_data = {
+            'category': expense.category,
+            'amount': str(expense.amount),
+            'date': str(expense.date),
+            'description': expense.description,
+        }
+        
         expense.is_archived = False
         expense.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Expense Restored",
+            entity_type="expense",
+            entity_id=expense.id,
+            after=expense_data
+        )
+        
         messages.success(request, "✅ Expense restored successfully.")
         return redirect('salesexpense-archive')
 
@@ -2604,7 +2789,16 @@ class ProductBatchDeleteView(DeleteView):
 class ProductBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
-        # Note: Database triggers will automatically create history log
+        
+        # Prepare batch data for history log
+        batch_data = {
+            'product': str(batch.product),
+            'quantity': str(batch.quantity),
+            'batch_date': str(batch.batch_date),
+            'manufactured_date': str(batch.manufactured_date),
+            'expiration_date': str(batch.expiration_date),
+        }
+        
         batch.is_archived = True
         batch.save()
         
@@ -2618,6 +2812,15 @@ class ProductBatchArchiveView(View):
             log_type__category='Product Batch Updated',
             log_date__gte=recent_time
         ).delete()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Product Batch Archived",
+            entity_type="product_batch",
+            entity_id=batch.id,
+            after=batch_data
+        )
         
         messages.success(request, "📦 Product Batch archived successfully.")
         page = request.GET.get('page')
@@ -2639,7 +2842,16 @@ class ArchivedProductBatchListView(ListView):
 class ProductBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
-        # Note: Database triggers will automatically create history log
+        
+        # Prepare batch data for history log
+        batch_data = {
+            'product': str(batch.product),
+            'quantity': str(batch.quantity),
+            'batch_date': str(batch.batch_date),
+            'manufactured_date': str(batch.manufactured_date),
+            'expiration_date': str(batch.expiration_date),
+        }
+        
         batch.is_archived = False
         batch.save()
         
@@ -2653,6 +2865,15 @@ class ProductBatchUnarchiveView(View):
             log_type__category='Product Batch Updated',
             log_date__gte=recent_time
         ).delete()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Product Batch Restored",
+            entity_type="product_batch",
+            entity_id=batch.id,
+            after=batch_data
+        )
         
         messages.success(request, "✅ Product Batch restored successfully.")
         return redirect('product-batch-archived-list')
@@ -2900,8 +3121,28 @@ class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
 class RawMaterialBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(RawMaterialBatches, pk=pk)
+        
+        # Prepare batch data for history log
+        batch_data = {
+            'material': str(batch.material),
+            'quantity': str(batch.quantity),
+            'batch_date': str(batch.batch_date),
+            'received_date': str(batch.received_date),
+            'expiration_date': str(batch.expiration_date) if batch.expiration_date else None,
+        }
+        
         batch.is_archived = True
         batch.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Raw Material Batch Archived",
+            entity_type="raw_material_batch",
+            entity_id=batch.id,
+            after=batch_data
+        )
+        
         messages.success(request, "📦 Raw Material Batch archived successfully.")
         page = request.GET.get('page')
         if page:
@@ -2922,8 +3163,28 @@ class ArchivedRawMaterialBatchListView(ListView):
 class RawMaterialBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(RawMaterialBatches, pk=pk)
+        
+        # Prepare batch data for history log
+        batch_data = {
+            'material': str(batch.material),
+            'quantity': str(batch.quantity),
+            'batch_date': str(batch.batch_date),
+            'received_date': str(batch.received_date),
+            'expiration_date': str(batch.expiration_date) if batch.expiration_date else None,
+        }
+        
         batch.is_archived = False
         batch.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Raw Material Batch Restored",
+            entity_type="raw_material_batch",
+            entity_id=batch.id,
+            after=batch_data
+        )
+        
         messages.success(request, "✅ Raw Material Batch restored successfully.")
         return redirect('rawmaterial-batch-archived-list')
 
@@ -3920,8 +4181,29 @@ class ArchivedWithdrawalsListView(ListView):
 class WithdrawalsUnarchiveView(View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
+        
+        # Capture withdrawal data for history log
+        withdrawal_data = {
+            'item_type': withdrawal.item_type,
+            'item_id': withdrawal.item_id,
+            'quantity': str(withdrawal.quantity),
+            'reason': withdrawal.reason,
+            'sales_channel': withdrawal.sales_channel,
+            'price_type': withdrawal.price_type,
+        }
+        
         withdrawal.is_archived = False
         withdrawal.save()
+        
+        # Create history log
+        create_history_log(
+            admin=request.user,
+            log_category="Withdrawal Restored",
+            entity_type="withdrawal",
+            entity_id=withdrawal.id,
+            after=withdrawal_data
+        )
+        
         messages.success(request, "✅ Withdrawal restored successfully.")
         return redirect('withdrawals-archived-list')
 
@@ -4223,6 +4505,25 @@ class WithdrawalGroupArchiveView(View):
         count = withdrawals.count()
         
         if count > 0:
+            # Log each withdrawal in the group before archiving
+            for withdrawal in withdrawals:
+                withdrawal_data = {
+                    'item_type': withdrawal.item_type,
+                    'item_id': withdrawal.item_id,
+                    'quantity': str(withdrawal.quantity),
+                    'reason': withdrawal.reason,
+                    'sales_channel': withdrawal.sales_channel,
+                    'order_group_id': withdrawal.order_group_id,
+                }
+                
+                create_history_log(
+                    admin=request.user,
+                    log_category="Withdrawal Group Archived",
+                    entity_type="withdrawal",
+                    entity_id=withdrawal.id,
+                    after=withdrawal_data
+                )
+            
             withdrawals.update(is_archived=True)
             messages.success(request, f"✅ Archived {count} withdrawal(s) from Order #{order_group_id}")
         else:
@@ -4650,13 +4951,7 @@ class NotificationsList(ListView):
                 return redirect(f"{request.path}?{params.urlencode()}")
             raise
 
-class NotificationsDeleteView(DeleteView):
-    model = Notifications
-    success_url = reverse_lazy('notifications')
-
-    def get_success_url(self):
-        messages.success(self.request, "🗑️ Notification deleted successfully.")
-        return super().get_success_url()
+# NotificationsDeleteView removed - notifications should not be deleted
 
 
 class BulkProductBatchCreateView(View):
@@ -4767,6 +5062,205 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
 @login_required
 def profile_view(request):
     return render(request, "profile.html")
+
+@login_required
+def download_my_data(request):
+    """
+    Generate and download a CSV file containing all user data
+    """
+    import csv
+    from io import StringIO
+    
+    user = request.user
+    # Convert Django User to AuthUser for querying
+    auth_user = AuthUser.objects.get(id=user.id)
+    
+    # Create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['=== MY DATA EXPORT ==='])
+    writer.writerow([f'Generated: {timezone.now().strftime("%B %d, %Y at %I:%M %p")}'])
+    writer.writerow([])
+    
+    # Account Information Section
+    writer.writerow(['ACCOUNT INFORMATION'])
+    writer.writerow(['Field', 'Value'])
+    writer.writerow(['Username', user.username])
+    writer.writerow(['Email', user.email])
+    writer.writerow(['First Name', user.first_name or 'Not set'])
+    writer.writerow(['Last Name', user.last_name or 'Not set'])
+    writer.writerow(['Staff Status', 'Yes' if user.is_staff else 'No'])
+    writer.writerow(['Administrator', 'Yes' if user.is_superuser else 'No'])
+    writer.writerow(['Account Active', 'Yes' if user.is_active else 'No'])
+    writer.writerow(['Date Joined', user.date_joined.strftime('%B %d, %Y') if user.date_joined else 'N/A'])
+    writer.writerow(['Last Login', user.last_login.strftime('%B %d, %Y at %I:%M %p') if user.last_login else 'Never'])
+    writer.writerow([])
+    
+    # Two-Factor Authentication Section
+    writer.writerow(['TWO-FACTOR AUTHENTICATION'])
+    writer.writerow(['Field', 'Value'])
+    try:
+        if hasattr(user, 'twofa_settings'):
+            writer.writerow(['2FA Enabled', 'Yes' if user.twofa_settings.is_enabled else 'No'])
+            writer.writerow(['Method', user.twofa_settings.method or 'N/A'])
+            writer.writerow(['Backup Email', user.twofa_settings.backup_email or 'Not set'])
+        else:
+            writer.writerow(['2FA Enabled', 'No'])
+    except:
+        writer.writerow(['2FA Enabled', 'No'])
+    writer.writerow([])
+    
+    # User Activity Section
+    writer.writerow(['USER ACTIVITY'])
+    writer.writerow(['Field', 'Value'])
+    try:
+        if hasattr(user, 'useractivity'):
+            writer.writerow(['Last Logout', user.useractivity.last_logout.strftime('%B %d, %Y at %I:%M %p') if user.useractivity.last_logout else 'N/A'])
+            writer.writerow(['Currently Active', 'Yes' if user.useractivity.active else 'No'])
+        else:
+            writer.writerow(['Activity Tracking', 'Not available'])
+    except:
+        writer.writerow(['Activity Tracking', 'Not available'])
+    writer.writerow([])
+    
+    # Products Created
+    writer.writerow(['PRODUCTS CREATED'])
+    try:
+        products = Products.objects.filter(created_by_admin=auth_user)
+        if products.exists():
+            writer.writerow(['ID', 'Name', 'Barcode', 'Created At'])
+            for product in products:
+                writer.writerow([
+                    product.id,
+                    str(product),
+                    product.barcode or 'N/A',
+                    product.date_created.strftime('%B %d, %Y') if hasattr(product, 'date_created') and product.date_created else 'N/A'
+                ])
+        else:
+            writer.writerow(['No products created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving products: {str(e)}'])
+    writer.writerow([])
+    
+    # Raw Materials Created
+    writer.writerow(['RAW MATERIALS CREATED'])
+    try:
+        raw_materials = RawMaterials.objects.filter(created_by_admin=auth_user)
+        if raw_materials.exists():
+            writer.writerow(['ID', 'Name', 'Created At'])
+            for rm in raw_materials:
+                writer.writerow([
+                    rm.id,
+                    rm.name,
+                    rm.date_created.strftime('%B %d, %Y') if hasattr(rm, 'date_created') and rm.date_created else 'N/A'
+                ])
+        else:
+            writer.writerow(['No raw materials created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving raw materials: {str(e)}'])
+    writer.writerow([])
+    
+    # Sales Created
+    writer.writerow(['SALES RECORDS CREATED'])
+    try:
+        sales = Sales.objects.filter(created_by_admin=auth_user)
+        if sales.exists():
+            writer.writerow(['ID', 'Date', 'Amount'])
+            for sale in sales:
+                writer.writerow([
+                    sale.id,
+                    sale.date.strftime('%B %d, %Y') if sale.date else 'N/A',
+                    f'₱{float(sale.amount):,.2f}' if sale.amount else '₱0.00'
+                ])
+        else:
+            writer.writerow(['No sales records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving sales: {str(e)}'])
+    writer.writerow([])
+    
+    # Expenses Created
+    writer.writerow(['EXPENSE RECORDS CREATED'])
+    try:
+        expenses = Expenses.objects.filter(created_by_admin=auth_user)
+        if expenses.exists():
+            writer.writerow(['ID', 'Date', 'Amount', 'Description'])
+            for expense in expenses:
+                writer.writerow([
+                    expense.id,
+                    expense.date.strftime('%B %d, %Y') if expense.date else 'N/A',
+                    f'₱{float(expense.amount):,.2f}' if expense.amount else '₱0.00',
+                    expense.description if hasattr(expense, 'description') else 'N/A'
+                ])
+        else:
+            writer.writerow(['No expense records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving expenses: {str(e)}'])
+    writer.writerow([])
+    
+    # Withdrawals Created
+    writer.writerow(['WITHDRAWAL RECORDS CREATED'])
+    try:
+        withdrawals = Withdrawals.objects.filter(created_by_admin=user)
+        if withdrawals.exists():
+            writer.writerow(['ID', 'Date', 'Item Type', 'Quantity', 'Reason'])
+            for withdrawal in withdrawals:
+                writer.writerow([
+                    withdrawal.id,
+                    withdrawal.date.strftime('%B %d, %Y at %I:%M %p') if withdrawal.date else 'N/A',
+                    withdrawal.item_type,
+                    float(withdrawal.quantity) if withdrawal.quantity else 0,
+                    withdrawal.reason
+                ])
+        else:
+            writer.writerow(['No withdrawal records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving withdrawals: {str(e)}'])
+    writer.writerow([])
+    
+    # Product Batches Created
+    writer.writerow(['PRODUCT BATCHES CREATED'])
+    try:
+        product_batches = ProductBatches.objects.filter(created_by_admin=auth_user)
+        if product_batches.exists():
+            writer.writerow(['ID', 'Product', 'Quantity', 'Batch Date'])
+            for batch in product_batches:
+                writer.writerow([
+                    batch.id,
+                    str(batch.product) if batch.product else 'N/A',
+                    batch.quantity if hasattr(batch, 'quantity') else 'N/A',
+                    batch.batch_date.strftime('%B %d, %Y') if hasattr(batch, 'batch_date') and batch.batch_date else 'N/A'
+                ])
+        else:
+            writer.writerow(['No product batches created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving product batches: {str(e)}'])
+    writer.writerow([])
+    
+    # Raw Material Batches Created
+    writer.writerow(['RAW MATERIAL BATCHES CREATED'])
+    try:
+        rm_batches = RawMaterialBatches.objects.filter(created_by_admin=auth_user)
+        if rm_batches.exists():
+            writer.writerow(['ID', 'Material', 'Quantity', 'Batch Date'])
+            for batch in rm_batches:
+                writer.writerow([
+                    batch.id,
+                    str(batch.material) if batch.material else 'N/A',
+                    batch.quantity if hasattr(batch, 'quantity') else 'N/A',
+                    batch.batch_date.strftime('%B %d, %Y') if hasattr(batch, 'batch_date') and batch.batch_date else 'N/A'
+                ])
+        else:
+            writer.writerow(['No raw material batches created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving raw material batches: {str(e)}'])
+    
+    # Create CSV response
+    response = HttpResponse(output.getvalue(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="my_data_{user.username}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    
+    return response
 
 def best_sellers_api(request):
     from datetime import datetime
@@ -4997,10 +5491,8 @@ Real's Food Products Security Team'''
             recipient_list=[user.email],
             fail_silently=True,
         )
-        print(f"[EMAIL] Notification sent to {user.email}")
     except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send notification: {e}")
-
+        pass
 
 def login_view(request):
     if request.method == 'POST':
@@ -5012,6 +5504,7 @@ def login_view(request):
             
             from realsproj.models import UserOTP, User2FASettings, TrustedDevice, LoginAttempt
             from django.utils import timezone
+            from datetime import timedelta
             
             try:
                 user = User.objects.get(id=user_id)
@@ -5082,6 +5575,42 @@ def login_view(request):
         
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
+                
+        # Check for login lockout
+        from realsproj.models import LoginAttempt
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        ip_address = request.META.get('REMOTE_ADDR', '0.0.0.0')
+        lockout_duration = timedelta(minutes=5)
+        max_attempts = 5
+        
+        # Check failed attempts in the last 5 minutes from this IP address (regardless of username)
+        # This prevents someone from trying random usernames
+        recent_failed_attempts = LoginAttempt.objects.filter(
+            ip_address=ip_address,
+            success=False,
+            timestamp__gte=timezone.now() - lockout_duration
+        ).count()
+        
+        if recent_failed_attempts >= max_attempts:
+            # Get the time of the last failed attempt
+            last_attempt = LoginAttempt.objects.filter(
+                ip_address=ip_address,
+                success=False
+            ).order_by('-timestamp').first()
+            
+            if last_attempt:
+                time_remaining = (last_attempt.timestamp + lockout_duration) - timezone.now()
+                minutes_remaining = int(time_remaining.total_seconds() / 60)
+                seconds_remaining = int(time_remaining.total_seconds() % 60)
+                
+                if minutes_remaining > 0:
+                    messages.error(request, f"🔒 Too many failed login attempts. Please try again in {minutes_remaining} minute(s) and {seconds_remaining} second(s).")
+                else:
+                    messages.error(request, f"🔒 Too many failed login attempts. Please try again in {seconds_remaining} second(s).")
+                return render(request, 'login.html')
+        
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -5103,14 +5632,7 @@ def login_view(request):
                     device_fingerprint=device_fingerprint,
                     is_active=True
                 ).first()
-                
-                # DEBUG: Log the login attempt details
-                print(f"[LOGIN DEBUG] User: {user.username} (ID: {user.id})")
-                print(f"[LOGIN DEBUG] Device Fingerprint: {device_fingerprint}")
-                print(f"[LOGIN DEBUG] Trusted Device Found: {trusted_device is not None}")
-                if trusted_device:
-                    print(f"[LOGIN DEBUG] Trusted Device ID: {trusted_device.id}, Last Used: {trusted_device.last_used}")
-                
+                                
                 if trusted_device:
                     # Trusted device - login directly
                     trusted_device.last_used = timezone.now()
@@ -5142,8 +5664,6 @@ def login_view(request):
                     return redirect('home')
                 else:
                     # New device - require OTP for account confirmation
-                    print(f"[OTP DEBUG] Generating OTP for new device login")
-                    print(f"[OTP DEBUG] User: {user.username}, Email: {user.email}")
                     otp_code = str(random.randint(100000, 999999))
                     
                     UserOTP.objects.create(
@@ -5152,7 +5672,6 @@ def login_view(request):
                         expires_at=timezone.now() + timedelta(minutes=5),
                         ip_address=ip_address
                     )
-                    print(f"[OTP DEBUG] OTP created in database: {otp_code}")
                     
                     try:
                         send_mail(
@@ -5162,10 +5681,9 @@ def login_view(request):
                             recipient_list=[user.email],
                             fail_silently=False,
                         )
-                        print(f"[OTP DEBUG] OTP email sent successfully to {user.email}")
                     except Exception as e:
-                        print(f"[OTP EMAIL ERROR] Failed to send OTP: {e}")
-                    
+                        pass  
+
                     LoginAttempt.objects.create(
                         user=user,
                         username=user.username,
@@ -5186,10 +5704,50 @@ def login_view(request):
                     messages.info(request, f" Account confirmation required! OTP sent to {masked_email}")
                     return render(request, '2fa_verify.html', {'user_email': masked_email})
             else:
+                 # Record failed attempt for inactive account
+                device_info = get_device_info(request)
+                LoginAttempt.objects.create(
+                    user=user,
+                    username=username,
+                    ip_address=ip_address,
+                    device_fingerprint=get_device_fingerprint(request),
+                    browser=device_info['browser'],
+                    os=device_info['os'],
+                    success=False,
+                    required_otp=False,
+                    is_trusted_device=False
+                )
                 messages.error(request, "❌ Your account is inactive. Please contact the administrator.")
                 return render(request, 'login.html')
         else:
-            messages.error(request, "❌ Invalid username or password. Please try again.")
+            # Record failed login attempt
+            device_info = get_device_info(request)
+            LoginAttempt.objects.create(
+                user=None,
+                username=username,
+                ip_address=ip_address,
+                device_fingerprint=get_device_fingerprint(request),
+                browser=device_info['browser'],
+                os=device_info['os'],
+                success=False,
+                required_otp=False,
+                is_trusted_device=False
+            )
+            
+            # Check how many attempts remain (based on IP address only)
+            attempts_count = LoginAttempt.objects.filter(
+                ip_address=ip_address,
+                success=False,
+                timestamp__gte=timezone.now() - lockout_duration
+            ).count()
+            
+            attempts_remaining = max_attempts - attempts_count
+            
+            if attempts_remaining > 0:
+                messages.error(request, f"❌ Invalid username or password. {attempts_remaining} attempt(s) remaining.")
+            else:
+                messages.error(request, f"🔒 Too many failed login attempts. Please wait again after 5 minutes.")
+            
             return render(request, 'login.html')
     return render(request, 'login.html')
 
@@ -5226,9 +5784,8 @@ Real's Food Products Team''',
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
-                print(f"[REGISTRATION] Confirmation email sent to {user.email}")
             except Exception as e:
-                print(f"[REGISTRATION ERROR] Failed to send email: {e}")
+                pass
             
             # Don't auto-login inactive users
             messages.success(request, 'Your account has been created successfully! Please check your email and wait for admin approval before you can log in.')
@@ -5290,10 +5847,15 @@ def user_management(request):
         user.display_username = display_username
         user.display_email = display_email
         inactive_users.append(user)
+
+     # Get rejected users (rejected during registration)
+    rejected_users = User.objects.filter(
+        username__startswith='rejected_user_'
+    ).order_by('-date_joined')
     
     # Get deleted users (soft deleted)
     deleted_users_queryset = User.objects.filter(
-        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
+        username__startswith='deleted_user_'
     ).order_by('-date_joined')
     
     # Paginate deleted users - 5 per page
@@ -5305,6 +5867,7 @@ def user_management(request):
         'pending_users': pending_users,
         'active_users': active_users,
         'inactive_users': inactive_users,
+        'rejected_users': rejected_users,
         'deleted_users': deleted_users,
     }
     return render(request, 'user_management.html', context)
@@ -5346,9 +5909,8 @@ Real's Food Products Team''',
                 recipient_list=[user_email],
                 fail_silently=True,
             )
-            print(f"[APPROVAL] Notification email sent to {user_email}")
         except Exception as e:
-            print(f"[APPROVAL ERROR] Failed to send email: {e}")
+            pass
         
         return JsonResponse({'success': True, 'message': f'User {username} approved successfully'})
     except User.DoesNotExist:
@@ -6737,6 +7299,74 @@ def delete_account(request):
     # GET request - show confirmation page
     return render(request, 'delete_account.html')
 
+@login_required
+def direct_password_reset(request):
+    """Direct password reset for logged-in users who forgot their current password"""
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password1', '').strip()
+        confirm_password = request.POST.get('new_password2', '').strip()
+        
+        # Validate passwords match
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'direct_password_reset.html')
+        
+        # Validate password requirements
+        try:
+            validate_password(new_password, user=request.user)
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, msg)
+            return render(request, 'direct_password_reset.html')
+        
+        # Set new password
+        request.user.set_password(new_password)
+        request.user.save()
+        update_session_auth_hash(request, request.user)
+        
+        # Send email notification
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.utils import timezone
+        
+        try:
+            send_mail(
+                subject='🔐 Password Reset Successfully - Real\'s Food Products',
+                message=f'''Hello {request.user.username},
+
+Your password has been reset successfully.
+
+Reset Details:
+- Date & Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
+- Account: {request.user.email}
+
+If you did not make this change, please contact our support team immediately.
+
+For security reasons, we recommend:
+✓ Using a strong, unique password
+✓ Enabling two-factor authentication
+✓ Never sharing your password with anyone
+
+Thank you,
+Real's Food Products Team''',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[request.user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+        
+        messages.success(request, "✅ Your password has been reset successfully!")
+        return redirect('profile')
+    
+    return render(request, 'direct_password_reset.html')
+
+def privacy_policy(request):
+    return render(request, 'privacy_policy.html')
+
+def terms_of_use(request):
+    """Display the terms of use page"""
+    return render(request, 'terms_of_use.html')
 
 class PriceHistoryList(ListView):
     """View for displaying price change history"""

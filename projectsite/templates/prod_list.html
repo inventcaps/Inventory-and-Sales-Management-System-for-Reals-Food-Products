@@ -84,9 +84,11 @@
 
                         <!-- Bulk Action Buttons -->
                         <div class="mb-3">
+                            {% if user.is_superuser %}
                             <button type="button" class="btn btn-danger btn-rounded" id="bulkDeleteBtn" style="display:none;" onclick="bulkDelete()">
                                 <i class="la la-trash"></i> Delete Selected
                             </button>
+                            {% endif %}
                             <button type="button" class="btn btn-warning btn-rounded" id="bulkArchiveBtn" style="display:none;" onclick="bulkArchive()">
                                 <i class="la la-archive"></i> Archive Selected
                             </button>
@@ -557,10 +559,10 @@ function updateBulkButtons() {
     const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
     
     if (checkedBoxes.length > 0) {
-        bulkDeleteBtn.style.display = 'inline-block';
+        if (bulkDeleteBtn) bulkDeleteBtn.style.display = 'inline-block';
         bulkArchiveBtn.style.display = 'inline-block';
     } else {
-        bulkDeleteBtn.style.display = 'none';
+        if (bulkDeleteBtn) bulkDeleteBtn.style.display = 'none';
         bulkArchiveBtn.style.display = 'none';
     }
     

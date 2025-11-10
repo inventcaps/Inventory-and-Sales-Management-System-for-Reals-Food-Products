@@ -608,7 +608,7 @@ class BulkRawMaterialBatchForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rawmaterials = []
-        for rawmaterial in RawMaterials.objects.all():
+        for rawmaterial in RawMaterials.objects.filter(is_archived=False):
             qty_field_name = f'rawmaterial_{rawmaterial.id}_qty'
             exp_field_name = f'rawmaterial_{rawmaterial.id}_exp'
 
