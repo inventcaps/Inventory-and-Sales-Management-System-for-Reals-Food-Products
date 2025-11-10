@@ -5466,3 +5466,7 @@ Real's Food Products Team''',
         return redirect('profile')
     
     return render(request, 'direct_password_reset.html')
+
+def privacy_policy(request):
+    """Display the privacy policy page"""
+    return render(request, 'privacy_policy.html')

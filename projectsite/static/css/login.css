@@ -85,13 +85,20 @@ align-items: center;
 flex-wrap: nowrap;
 }
 
-.remember input {
+.remember input[type="checkbox"] {
+width: 18px;
+height: 18px;
 margin-right: 8px;
+cursor: pointer;
+accent-color: #5a855f;
+flex-shrink: 0;
 }
 
 .remember span {
 white-space: nowrap; 
-margin-top: -2px; 
+margin-top: 0; 
+font-size: 0.95rem;
+color: #555;
 }
 
 .forgot-link {

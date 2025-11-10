@@ -243,5 +243,6 @@ urlpatterns = [
     path('2fa-disable/', a.disable_2fa, name='2fa_disable'),
     path('account/delete/', a.delete_account, name='delete_account'),
     path('direct-password-reset/', a.direct_password_reset, name='direct_password_reset'),
+    path('privacy-policy/', a.privacy_policy, name='privacy_policy'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
