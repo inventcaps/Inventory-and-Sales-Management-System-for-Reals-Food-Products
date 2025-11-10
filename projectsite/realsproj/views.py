@@ -1392,16 +1392,10 @@ class WithdrawalOrderDetailView(View):
                     Q(description__icontains=f"order #{order_group_id}")
                 )
                 
-                print(f"🔍 Fetching sales for order #{order_group_id}")
-                print(f"   Found {sales_entries_list.count()} sales entries:")
-                for sale in sales_entries_list:
-                    print(f"   - ID: {sale.id}, Amount: ₱{sale.amount}, Description: {sale.description}")
-                
                 total_sum = sales_entries_list.aggregate(total=Sum('amount'))['total']
                 if total_sum:
                     total_amount = total_sum
                     partial_amount_added = True
-                    print(f"   Total: ₱{total_amount}")
         
         for withdrawal in withdrawals:
             subtotal = None
@@ -1474,39 +1468,31 @@ class WithdrawalOrderDetailView(View):
             
             payment_count = 0
             for payment in sales_payments:
-                print(f"   Processing payment: {payment.description}")
-                
                 if 'Status: PARTIAL' in payment.description or 'Partial payment' in payment.description:
                     payment_count += 1
                     payment_history.append({
                         'label': f'1st Payment (Partial)',
                         'amount': payment.amount
                     })
-                    print(f"   -> Added as 1st Payment (Partial): ₱{payment.amount}")
                 elif 'Final payment' in payment.description:
                     payment_count += 1
                     payment_history.append({
                         'label': f'2nd Payment (Final)',
                         'amount': payment.amount
                     })
-                    print(f"   -> Added as 2nd Payment (Final): ₱{payment.amount}")
                 elif 'Status: PAID' in payment.description or 'Payment received' in payment.description:
                     payment_count += 1
                     payment_history.append({
                         'label': f'Payment',
                         'amount': payment.amount
                     })
-                    print(f"   -> Added as Payment: ₱{payment.amount}")
                 else:
                     payment_count += 1
                     payment_history.append({
                         'label': f'Payment #{payment_count}',
                         'amount': payment.amount
                     })
-                    print(f"   -> Added as Payment #{payment_count}: ₱{payment.amount}")
             
-            print(f"   Total payment history entries: {len(payment_history)}")
-        
         context = {
             'order_group_id': order_group_id,
             'customer_name': first_withdrawal.customer_name,
@@ -1612,7 +1598,6 @@ class WithdrawalOrderUpdatePaymentView(View):
                 description=description,
                 created_by_admin=auth_user
             )
-            print(f"✅ PAID Sales entry created: Amount=₱{sales_amount}, Date={timezone.now().date()}")
             messages.success(request, success_msg)
         elif new_payment_status == 'PARTIAL':
             # Add partial amount to sales
@@ -1623,7 +1608,6 @@ class WithdrawalOrderUpdatePaymentView(View):
                 description=f"Partial payment for order #{order_group_id}",
                 created_by_admin=auth_user
             )
-            print(f"✅ PARTIAL Sales entry created: Amount=₱{sales_amount}, Date={timezone.now().date()}")
             messages.success(request, f"✅ Partial payment recorded. ₱{sales_amount:,.2f} added to sales.")
         else:  # UNPAID
             messages.success(request, "✅ Order marked as UNPAID. No sales recorded.")
@@ -2464,12 +2448,6 @@ class WithdrawItemView(View):
         })
 
     def post(self, request):
-        # Debug logging
-        print("=" * 50)
-        print("WITHDRAWAL POST DATA:")
-        print(f"POST data: {dict(request.POST)}")
-        print("=" * 50)
-        
         item_type = request.POST.get("item_type")
         reason = request.POST.get("reason")
         sales_channel = request.POST.get("sales_channel")
@@ -2478,14 +2456,6 @@ class WithdrawItemView(View):
         payment_status = request.POST.get("payment_status", "PAID")
         paid_amount_input = request.POST.get("paid_amount")
         
-        print(f"Parsed values:")
-        print(f"  item_type: {item_type}")
-        print(f"  reason: {reason}")
-        print(f"  sales_channel: {sales_channel}")
-        print(f"  customer_name: {customer_name}")
-        print(f"  payment_status: {payment_status}")
-        print(f"  price_input: {price_input}")
-
         # Parse price input
         if price_input in ['UNIT', 'SRP']:
             price_type = price_input
@@ -2564,7 +2534,6 @@ class WithdrawItemView(View):
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                        print(f"Withdrawal error: {error_details}")  # Log to console
                         messages.error(request, f"❌ Error withdrawing product: {str(e)}")
 
         elif item_type == "RAW_MATERIAL":
@@ -2599,10 +2568,6 @@ class WithdrawItemView(View):
 
         if count > 0:
             # For ORDER/CONSIGNMENT/RESELLER with PAID or PARTIAL status, create sales entry
-            print(f"🔍 Checking sales entry creation:")
-            print(f"  reason={reason}, sales_channel={sales_channel}, order_group_id={order_group_id}")
-            print(f"  payment_status={payment_status}")
-            
             if reason == "SOLD" and sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and order_group_id:
                 if payment_status in ['PAID', 'PARTIAL']:
                     # Calculate total amount for the order
@@ -2644,11 +2609,8 @@ class WithdrawItemView(View):
                                     discounted_price = base_price * (1 - (discount_percent / 100))
                                     item_total = Decimal(w.quantity) * discounted_price
                                     total_sales_amount += item_total
-                                    
-                                    print(f"  Item: {product}, Qty: {w.quantity}, Base: ₱{base_price}, Discount: {discount_percent}%, Final: ₱{item_total}")
                     
                     # Create ONE sales entry for the entire order
-                    print(f"💰 Total sales amount calculated: ₱{total_sales_amount}")
                     
                     if total_sales_amount > 0:
                         from .models import AuthUser
@@ -2661,14 +2623,6 @@ class WithdrawItemView(View):
                             description=f"Order #{order_group_id}, Status: {payment_status}",
                             created_by_admin=auth_user
                         )
-                        print(f"✅ Sales entry created successfully!")
-                        print(f"   ID: {sales_entry.id}")
-                        print(f"   Order: #{order_group_id}")
-                        print(f"   Amount: ₱{total_sales_amount}")
-                        print(f"   Status: {payment_status}")
-                        print(f"   Description: {sales_entry.description}")
-                    else:
-                        print(f"⚠️ Sales entry NOT created - total_sales_amount is 0")
             
             messages.success(request, f"✅ Success! {count} item(s) withdrawn. Inventory updated!")
         else:
@@ -4270,10 +4224,9 @@ def reject_user(request, user_id):
         from django.core.mail import send_mail
         from django.conf import settings
         
-        try:
-            send_mail(
-                subject='❌ Account Registration Rejected - Real\'s Food Products',
-                message=f'''Hello {username},
+        send_mail(
+            subject='❌ Account Registration Rejected - Real\'s Food Products',
+            message=f'''Hello {username},
 
 We regret to inform you that your registration request for Real's Food Products Inventory System has been rejected by an administrator.
 
@@ -4282,10 +4235,10 @@ If you believe this was a mistake or have any questions, please contact the admi
 Thank you for your interest.
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
-                recipient_list=[user_email],
-                fail_silently=True,
-            )
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[user_email],
+            fail_silently=True,
+        )
         
         # Soft delete: anonymize user data instead of hard delete to preserve foreign key integrity
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
@@ -5429,11 +5382,10 @@ def setup_2fa(request):
                     settings.backup_email = backup_email if backup_email else None
                     settings.save()
 
-                try:
-                    email_to = backup_email if backup_email else request.user.email
-                    send_mail(
-                        subject='🔐 Two-Factor Authentication Enabled - Real\'s Food Products',
-                        message=f'''Hello {request.user.username},
+                email_to = backup_email if backup_email else request.user.email
+                send_mail(
+                    subject='🔐 Two-Factor Authentication Enabled - Real\'s Food Products',
+                    message=f'''Hello {request.user.username},
 
 Two-Factor Authentication has been successfully enabled for your account.
 
@@ -5447,10 +5399,10 @@ If you did not enable this feature, please contact support immediately.
 Thank you for keeping your account secure!
 
 Real's Food Products Security Team''',
-                        from_email=django_settings.EMAIL_HOST_USER,
-                        recipient_list=[email_to],
-                        fail_silently=True,
-                    )
+                    from_email=django_settings.EMAIL_HOST_USER,
+                    recipient_list=[email_to],
+                    fail_silently=True,
+                )
                 
                 if '2fa_setup_backup_email' in request.session:
                     del request.session['2fa_setup_backup_email']
