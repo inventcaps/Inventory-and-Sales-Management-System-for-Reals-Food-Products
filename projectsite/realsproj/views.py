@@ -4235,15 +4235,21 @@ def user_management(request):
         user.display_email = display_email
         inactive_users.append(user)
     
-    # Get deleted users (soft deleted)
+    # Get rejected users (rejected during registration)
+    rejected_users = User.objects.filter(
+        username__startswith='rejected_user_'
+    ).order_by('-date_joined')
+    
+    # Get deleted users (soft deleted by admin)
     deleted_users = User.objects.filter(
-        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
+        username__startswith='deleted_user_'
     ).order_by('-date_joined')
     
     context = {
         'pending_users': pending_users,
         'active_users': active_users,
         'inactive_users': inactive_users,
+        'rejected_users': rejected_users,
         'deleted_users': deleted_users,
     }
     return render(request, 'user_management.html', context)
