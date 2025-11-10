@@ -245,5 +245,6 @@ urlpatterns = [
     path('account/delete/', a.delete_account, name='delete_account'),
     path('direct-password-reset/', a.direct_password_reset, name='direct_password_reset'),
     path('privacy-policy/', a.privacy_policy, name='privacy_policy'),
+    path('terms-of-use/', a.terms_of_use, name='terms_of_use'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

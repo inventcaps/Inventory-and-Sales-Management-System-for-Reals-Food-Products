@@ -91,14 +91,14 @@
         📝 All new accounts are registered as <strong>Staff</strong> and require admin approval before activation.
       </small>
 
-      <!-- Privacy Policy Acceptance -->
+      <!-- Privacy Policy and Terms Acceptance -->
       <div style="margin-bottom: 15px;">
-        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 0.9rem; color: #333;">
-          <input type="checkbox" name="accept_privacy" id="accept_privacy" required>
-          <span>I have read and agree to the <a href="#" onclick="openPrivacyModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Privacy Policy</a></span>
+        <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.9rem; color: #333;">
+          <input type="checkbox" name="accept_privacy" id="accept_privacy">
+          <span>I have read and agree to the <a href="#" onclick="openTermsModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Terms of Use</a> and <a href="#" onclick="openPrivacyModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Privacy Policy</a></span>
         </label>
-        <small id="privacyError" class="form-text" style="display: none; color: #dc3545; margin-top: 5px; font-size: 0.875rem;">
-          You must accept the Privacy Policy to register.
+        <small id="privacyError" class="form-text" style="display: none; color: #dc3545; margin-top: 5px; margin-left: 28px; font-size: 0.875rem; font-weight: 600;">
+          ⚠️ You must agree to the Terms of Use and Privacy Policy to register.
         </small>
       </div>
 
@@ -114,6 +114,25 @@
           <button type="submit">Register</button>
         </form>
         <p class="signup-text">Already have an account? <a href="{% url 'login' %}">Login</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terms of Use Modal -->
+  <div class="modal fade" id="termsOfUseModal" tabindex="-1" role="dialog" aria-labelledby="termsOfUseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable" role="document">
+      <div class="modal-content">
+        <div class="modal-header" style="background: linear-gradient(135deg, #4e7452 0%, #5a855f 100%); color: white; border-bottom: none; padding: 20px 25px;">
+          <h5 class="modal-title" id="termsOfUseModalLabel" style="margin: 0; white-space: nowrap;">
+            <i class="bi bi-file-text-fill"></i> Terms of Use
+          </h5>
+        </div>
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+          {% include 'terms_of_use_content.html' %}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+        </div>
       </div>
     </div>
   </div>
@@ -144,6 +163,11 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
   <script>
+    function openTermsModal(event) {
+      event.preventDefault();
+      $('#termsOfUseModal').modal('show');
+    }
+
     function openPrivacyModal(event) {
       event.preventDefault();
       $('#privacyPolicyModal').modal('show');

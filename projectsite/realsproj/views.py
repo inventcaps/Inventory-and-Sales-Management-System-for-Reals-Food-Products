@@ -3877,6 +3877,7 @@ def login_view(request):
             
             from realsproj.models import UserOTP, User2FASettings, TrustedDevice, LoginAttempt
             from django.utils import timezone
+            from datetime import timedelta
             
             try:
                 user = User.objects.get(id=user_id)
@@ -3947,6 +3948,42 @@ def login_view(request):
         
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
+        
+        # Check for login lockout
+        from realsproj.models import LoginAttempt
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        ip_address = request.META.get('REMOTE_ADDR', '0.0.0.0')
+        lockout_duration = timedelta(minutes=5)
+        max_attempts = 5
+        
+        # Check failed attempts in the last 5 minutes from this IP address (regardless of username)
+        # This prevents someone from trying random usernames
+        recent_failed_attempts = LoginAttempt.objects.filter(
+            ip_address=ip_address,
+            success=False,
+            timestamp__gte=timezone.now() - lockout_duration
+        ).count()
+        
+        if recent_failed_attempts >= max_attempts:
+            # Get the time of the last failed attempt
+            last_attempt = LoginAttempt.objects.filter(
+                ip_address=ip_address,
+                success=False
+            ).order_by('-timestamp').first()
+            
+            if last_attempt:
+                time_remaining = (last_attempt.timestamp + lockout_duration) - timezone.now()
+                minutes_remaining = int(time_remaining.total_seconds() / 60)
+                seconds_remaining = int(time_remaining.total_seconds() % 60)
+                
+                if minutes_remaining > 0:
+                    messages.error(request, f"🔒 Too many failed login attempts. Please try again in {minutes_remaining} minute(s) and {seconds_remaining} second(s).")
+                else:
+                    messages.error(request, f"🔒 Too many failed login attempts. Please try again in {seconds_remaining} second(s).")
+                return render(request, 'login.html')
+        
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -4050,10 +4087,50 @@ Real's Food Products Security Team''',
                     messages.info(request, f" Account confirmation required! OTP sent to {masked_email}")
                     return render(request, '2fa_verify.html', {'user_email': masked_email})
             else:
+                # Record failed attempt for inactive account
+                device_info = get_device_info(request)
+                LoginAttempt.objects.create(
+                    user=user,
+                    username=username,
+                    ip_address=ip_address,
+                    device_fingerprint=get_device_fingerprint(request),
+                    browser=device_info['browser'],
+                    os=device_info['os'],
+                    success=False,
+                    required_otp=False,
+                    is_trusted_device=False
+                )
                 messages.error(request, "❌ Your account is inactive. Please contact the administrator.")
                 return render(request, 'login.html')
         else:
-            messages.error(request, "❌ Invalid username or password. Please try again.")
+            # Record failed login attempt
+            device_info = get_device_info(request)
+            LoginAttempt.objects.create(
+                user=None,
+                username=username,
+                ip_address=ip_address,
+                device_fingerprint=get_device_fingerprint(request),
+                browser=device_info['browser'],
+                os=device_info['os'],
+                success=False,
+                required_otp=False,
+                is_trusted_device=False
+            )
+            
+            # Check how many attempts remain (based on IP address only)
+            attempts_count = LoginAttempt.objects.filter(
+                ip_address=ip_address,
+                success=False,
+                timestamp__gte=timezone.now() - lockout_duration
+            ).count()
+            
+            attempts_remaining = max_attempts - attempts_count
+            
+            if attempts_remaining > 0:
+                messages.error(request, f"❌ Invalid username or password. {attempts_remaining} attempt(s) remaining.")
+            else:
+                messages.error(request, f"🔒 Too many failed login attempts. Please wait again after 5 minutes.")
+            
             return render(request, 'login.html')
     return render(request, 'login.html')
 
@@ -5606,3 +5683,7 @@ Real's Food Products Team''',
 def privacy_policy(request):
     """Display the privacy policy page"""
     return render(request, 'privacy_policy.html')
+
+def terms_of_use(request):
+    """Display the terms of use page"""
+    return render(request, 'terms_of_use.html')
