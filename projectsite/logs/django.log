@@ -32,3 +32,4 @@ INFO 2025-11-11 22:15:06,156 autoreload 20796 14968 C:\Users\ASUS\OneDrive\Deskt
 INFO 2025-11-11 22:15:08,972 autoreload 21280 20852 Watching for file changes with StatReloader
 INFO 2025-11-11 22:16:41,464 basehttp 21280 3068 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-11 22:16:52,516 autoreload 21280 20852 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\realsproj\views.py changed, reloading.
+INFO 2025-11-11 22:17:20,246 autoreload 15764 19384 Watching for file changes with StatReloader

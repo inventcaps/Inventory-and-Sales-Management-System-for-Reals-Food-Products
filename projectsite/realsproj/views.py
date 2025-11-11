@@ -7021,7 +7021,7 @@ def delete_account(request):
             return redirect('delete_account')
     
     # GET request - show confirmation page
-    return render(request, 'delete_account.html')
+    return render(request, 'delete_account_confirm.html')
 
 @login_required
 def direct_password_reset(request):
