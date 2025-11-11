@@ -537,27 +537,13 @@ class ProductArchiveView(View):
     def post(self, request, pk):
         product = get_object_or_404(Products, pk=pk)
         
-        # Prepare product data for history log
-        product_data = {
-            'product_type': product.product_type.name,
-            'variant': product.variant.name,
-            'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-            'unit_price': str(product.unit_price.unit_price),
-            'srp_price': str(product.srp_price.srp_price),
-            'date_created': str(product.date_created),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         product.is_archived = True
-        product.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Product Archived",
-            entity_type="product",
-            entity_id=product.id,
-            after=product_data
-        )
+        product.save()  # Trigger will handle logging
         
         # Handle AJAX requests
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -581,27 +567,13 @@ class ProductUnarchiveView(View):
     def post(self, request, pk):
         product = get_object_or_404(Products, pk=pk)
         
-        # Prepare product data for history log
-        product_data = {
-            'product_type': product.product_type.name,
-            'variant': product.variant.name,
-            'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-            'unit_price': str(product.unit_price.unit_price),
-            'srp_price': str(product.srp_price.srp_price),
-            'date_created': str(product.date_created),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         product.is_archived = False
-        product.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Product Restored",
-            entity_type="product",
-            entity_id=product.id,
-            after=product_data
-        )
+        product.save()  # Trigger will handle logging
         
         return redirect('products-archived-list')
 
@@ -661,29 +633,13 @@ def product_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No products selected'})
         
-        # Get products before archiving to log them
-        products = Products.objects.filter(id__in=ids)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Log each archived product
-        for product in products:
-            product_data = {
-                'product_type': product.product_type.name,
-                'variant': product.variant.name,
-                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-                'unit_price': str(product.unit_price.unit_price),
-                'srp_price': str(product.srp_price.srp_price),
-                'date_created': str(product.date_created),
-            }
-            
-            create_history_log(
-                admin=request.user,
-                log_category="Product Bulk Archived",
-                entity_type="product",
-                entity_id=product.id,
-                after=product_data
-            )
-        
-        archived_count = products.update(is_archived=True)
+        # Update will trigger database triggers for each product
+        archived_count = Products.objects.filter(id__in=ids).update(is_archived=True)
         return JsonResponse({
             'success': True,
             'message': f'Successfully archived {archived_count} product(s)'
@@ -700,29 +656,13 @@ def product_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No products selected'})
         
-        # Get products before restoring to log them
-        products = Products.objects.filter(id__in=ids)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Log each restored product
-        for product in products:
-            product_data = {
-                'product_type': product.product_type.name,
-                'variant': product.variant.name,
-                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-                'unit_price': str(product.unit_price.unit_price),
-                'srp_price': str(product.srp_price.srp_price),
-                'date_created': str(product.date_created),
-            }
-            
-            create_history_log(
-                admin=request.user,
-                log_category="Product Bulk Restored",
-                entity_type="product",
-                entity_id=product.id,
-                after=product_data
-            )
-        
-        restored_count = products.update(is_archived=False)
+        # Update will trigger database triggers for each product
+        restored_count = Products.objects.filter(id__in=ids).update(is_archived=False)
         return JsonResponse({
             'success': True,
             'message': f'Successfully restored {restored_count} product(s)'
@@ -1083,36 +1023,13 @@ class RawMaterialArchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
         
-        # Prepare raw material data for history log
-        material_data = {
-            'name': item.name,
-            'size': str(item.size),
-            'unit': str(item.unit),
-            'price_per_unit': str(item.price_per_unit),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         item.is_archived = True
-        item.save()
-        
-        # Delete any "Raw Material Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id=pk,
-            log_type__category='Raw Material Updated',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Raw Material Archived",
-            entity_type="raw_material",
-            entity_id=item.id,
-            after=material_data
-        )
+        item.save()  # Trigger will handle logging
         
         return redirect('rawmaterials-list')
 
@@ -1148,30 +1065,13 @@ def rawmaterial_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No raw materials selected'})
         
-        # Archive raw materials (this will trigger database trigger)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        # Update will trigger database triggers for each raw material
         archived_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=True)
-        
-        # Delete the trigger-created logs
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id__in=ids,
-            log_type__category='Raw Material Archived',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Raw Material Bulk Archived" logs
-        for material_id in ids:
-            create_history_log(
-                admin=request.user,
-                log_category="Raw Material Bulk Archived",
-                entity_type="raw_material",
-                entity_id=material_id,
-                before={'is_archived': False},
-                after={'is_archived': True}
-            )
         
         return JsonResponse({
             'success': True,
@@ -1189,30 +1089,13 @@ def rawmaterial_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No raw materials selected'})
         
-        # Restore raw materials (this will trigger database trigger)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        # Update will trigger database triggers for each raw material
         restored_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=False)
-        
-        # Delete the trigger-created logs
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id__in=ids,
-            log_type__category='Raw Material Restored',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Raw Material Bulk Restored" logs
-        for material_id in ids:
-            create_history_log(
-                admin=request.user,
-                log_category="Raw Material Bulk Restored",
-                entity_type="raw_material",
-                entity_id=material_id,
-                before={'is_archived': True},
-                after={'is_archived': False}
-            )
         
         return JsonResponse({
             'success': True,
@@ -1234,36 +1117,13 @@ class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
         
-        # Prepare raw material data for history log
-        material_data = {
-            'name': item.name,
-            'size': str(item.size),
-            'unit': str(item.unit),
-            'price_per_unit': str(item.price_per_unit),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         item.is_archived = False
-        item.save()
-        
-        # Delete any "Raw Material Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id=pk,
-            log_type__category='Raw Material Updated',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Raw Material Restored",
-            entity_type="raw_material",
-            entity_id=item.id,
-            after=material_data
-        )
+        item.save()  # Trigger will handle logging
         
         return redirect('rawmaterials-archived-list')
 
@@ -1504,25 +1364,13 @@ class SaleArchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
         
-        # Prepare sale data for history log
-        sale_data = {
-            'category': sale.category,
-            'amount': str(sale.amount),
-            'date': str(sale.date),
-            'description': sale.description,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         sale.is_archived = True
-        sale.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Sale Archived",
-            entity_type="sale",
-            entity_id=sale.id,
-            after=sale_data
-        )
+        sale.save()  # Trigger will handle logging
         
         return redirect('salesexpenses')
 
@@ -1569,25 +1417,13 @@ class SaleUnarchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
         
-        # Prepare sale data for history log
-        sale_data = {
-            'category': sale.category,
-            'amount': str(sale.amount),
-            'date': str(sale.date),
-            'description': sale.description,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         sale.is_archived = False
-        sale.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Sale Restored",
-            entity_type="sale",
-            entity_id=sale.id,
-            after=sale_data
-        )
+        sale.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Sale restored successfully.")
         return redirect('salesexpense-archive')
@@ -2455,25 +2291,13 @@ class ExpenseArchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
         
-        # Prepare expense data for history log
-        expense_data = {
-            'category': expense.category,
-            'amount': str(expense.amount),
-            'date': str(expense.date),
-            'description': expense.description,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         expense.is_archived = True
-        expense.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Expense Archived",
-            entity_type="expense",
-            entity_id=expense.id,
-            after=expense_data
-        )
+        expense.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Expense archived successfully.")
         return redirect('salesexpenses')
@@ -2532,28 +2356,51 @@ class ExpenseUnarchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
         
-        # Prepare expense data for history log
-        expense_data = {
-            'category': expense.category,
-            'amount': str(expense.amount),
-            'date': str(expense.date),
-            'description': expense.description,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         expense.is_archived = False
-        expense.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Expense Restored",
-            entity_type="expense",
-            entity_id=expense.id,
-            after=expense_data
-        )
+        expense.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Expense restored successfully.")
         return redirect('salesexpense-archive')
+
+class ExpenseBulkRestoreView(View):
+    def post(self, request):
+        import json
+        try:
+            expense_ids = json.loads(request.POST.get('expense_ids', '[]'))
+            if not expense_ids:
+                return JsonResponse({'success': False, 'message': 'No expenses selected'})
+            
+            # Set current user for trigger
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+            
+            # Restore selected expenses
+            count = Expenses.objects.filter(id__in=expense_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+class ExpenseBulkDeleteView(View):
+    def post(self, request):
+        import json
+        try:
+            expense_ids = json.loads(request.POST.get('expense_ids', '[]'))
+            if not expense_ids:
+                return JsonResponse({'success': False, 'message': 'No expenses selected'})
+            
+            # Delete selected expenses
+            count, _ = Expenses.objects.filter(id__in=expense_ids, is_archived=True).delete()
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 class ExpensesCreateView(CreateView):
     model = Expenses
@@ -2790,37 +2637,13 @@ class ProductBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
         
-        # Prepare batch data for history log
-        batch_data = {
-            'product': str(batch.product),
-            'quantity': str(batch.quantity),
-            'batch_date': str(batch.batch_date),
-            'manufactured_date': str(batch.manufactured_date),
-            'expiration_date': str(batch.expiration_date),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         batch.is_archived = True
-        batch.save()
-        
-        # Delete any "Product Batch Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id=pk,
-            log_type__category='Product Batch Updated',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Product Batch Archived",
-            entity_type="product_batch",
-            entity_id=batch.id,
-            after=batch_data
-        )
+        batch.save()  # Trigger will handle logging
         
         messages.success(request, "📦 Product Batch archived successfully.")
         page = request.GET.get('page')
@@ -2843,37 +2666,13 @@ class ProductBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
         
-        # Prepare batch data for history log
-        batch_data = {
-            'product': str(batch.product),
-            'quantity': str(batch.quantity),
-            'batch_date': str(batch.batch_date),
-            'manufactured_date': str(batch.manufactured_date),
-            'expiration_date': str(batch.expiration_date),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         batch.is_archived = False
-        batch.save()
-        
-        # Delete any "Product Batch Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id=pk,
-            log_type__category='Product Batch Updated',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Product Batch Restored",
-            entity_type="product_batch",
-            entity_id=batch.id,
-            after=batch_data
-        )
+        batch.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Product Batch restored successfully.")
         return redirect('product-batch-archived-list')
@@ -2914,33 +2713,13 @@ def product_batch_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        # Get batches before archiving to log them
-        batches = ProductBatches.objects.filter(id__in=ids).select_related('product', 'product__product_type', 'product__variant', 'product__size', 'product__size_unit')
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Archive batches (this will trigger "Product Batch Archived" from database trigger)
-        archived_count = batches.update(is_archived=True)
-        
-        # Delete the trigger-created logs for these batches
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id__in=ids,
-            log_type__category='Product Batch Archived',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Product Batch Bulk Archived" logs
-        for batch in ProductBatches.objects.filter(id__in=ids):
-            create_history_log(
-                admin=request.user,
-                log_category="Product Batch Bulk Archived",
-                entity_type="product_batch",
-                entity_id=batch.id,
-                before={'is_archived': False},
-                after={'is_archived': True}
-            )
+        # Update will trigger database triggers for each batch
+        archived_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=True)
         
         return JsonResponse({
             'success': True,
@@ -2958,33 +2737,13 @@ def product_batch_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        # Get batches before restoring to log them
-        batches = ProductBatches.objects.filter(id__in=ids).select_related('product', 'product__product_type', 'product__variant', 'product__size', 'product__size_unit')
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Restore batches (this will trigger "Product Batch Restored" from database trigger)
-        restored_count = batches.update(is_archived=False)
-        
-        # Delete the trigger-created logs for these batches
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id__in=ids,
-            log_type__category='Product Batch Restored',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Product Batch Bulk Restored" logs
-        for batch in ProductBatches.objects.filter(id__in=ids):
-            create_history_log(
-                admin=request.user,
-                log_category="Product Batch Bulk Restored",
-                entity_type="product_batch",
-                entity_id=batch.id,
-                before={'is_archived': True},
-                after={'is_archived': False}
-            )
+        # Update will trigger database triggers for each batch
+        restored_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=False)
         
         return JsonResponse({
             'success': True,
@@ -3122,26 +2881,13 @@ class RawMaterialBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(RawMaterialBatches, pk=pk)
         
-        # Prepare batch data for history log
-        batch_data = {
-            'material': str(batch.material),
-            'quantity': str(batch.quantity),
-            'batch_date': str(batch.batch_date),
-            'received_date': str(batch.received_date),
-            'expiration_date': str(batch.expiration_date) if batch.expiration_date else None,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         batch.is_archived = True
-        batch.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Raw Material Batch Archived",
-            entity_type="raw_material_batch",
-            entity_id=batch.id,
-            after=batch_data
-        )
+        batch.save()  # Trigger will handle logging
         
         messages.success(request, "📦 Raw Material Batch archived successfully.")
         page = request.GET.get('page')
@@ -3164,30 +2910,59 @@ class RawMaterialBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(RawMaterialBatches, pk=pk)
         
-        # Prepare batch data for history log
-        batch_data = {
-            'material': str(batch.material),
-            'quantity': str(batch.quantity),
-            'batch_date': str(batch.batch_date),
-            'received_date': str(batch.received_date),
-            'expiration_date': str(batch.expiration_date) if batch.expiration_date else None,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         batch.is_archived = False
-        batch.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Raw Material Batch Restored",
-            entity_type="raw_material_batch",
-            entity_id=batch.id,
-            after=batch_data
-        )
+        batch.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Raw Material Batch restored successfully.")
         return redirect('rawmaterial-batch-archived-list')
 
+class RawMaterialBatchBulkRestoreView(View):
+    def post(self, request):
+        try:
+            # Get IDs from comma-separated string
+            ids_str = request.POST.get('ids', '')
+            if not ids_str:
+                return JsonResponse({'success': False, 'message': 'No batches selected'})
+            
+            batch_ids = [int(id.strip()) for id in ids_str.split(',') if id.strip()]
+            
+            if not batch_ids:
+                return JsonResponse({'success': False, 'message': 'No valid batch IDs provided'})
+            
+            # Set current user for trigger
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+            
+            # Restore selected batches (triggers will handle logging)
+            count = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'✅ {count} raw material batch(es) restored successfully!'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+class RawMaterialBatchBulkDeleteView(View):
+    def post(self, request):
+        import json
+        try:
+            batch_ids = json.loads(request.POST.get('batch_ids', '[]'))
+            if not batch_ids:
+                return JsonResponse({'success': False, 'message': 'No batches selected'})
+            
+            # Delete selected batches
+            count, _ = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True).delete()
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 class RawMaterialBatchArchiveOldView(View):
     def post(self, request):
@@ -4139,27 +3914,13 @@ class WithdrawalsArchiveView(View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
-        # Capture withdrawal data for history log
-        withdrawal_data = {
-            'item_type': withdrawal.item_type,
-            'item_id': withdrawal.item_id,
-            'quantity': str(withdrawal.quantity),
-            'reason': withdrawal.reason,
-            'sales_channel': withdrawal.sales_channel,
-            'price_type': withdrawal.price_type,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         withdrawal.is_archived = True
-        withdrawal.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Withdrawal Archived",
-            entity_type="withdrawal",
-            entity_id=withdrawal.id,
-            after=withdrawal_data
-        )
+        withdrawal.save()  # Trigger will handle logging
         
         messages.success(request, "📦 Withdrawal archived successfully.")
         page = request.GET.get('page')
@@ -4182,31 +3943,46 @@ class WithdrawalsUnarchiveView(View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
-        # Capture withdrawal data for history log
-        withdrawal_data = {
-            'item_type': withdrawal.item_type,
-            'item_id': withdrawal.item_id,
-            'quantity': str(withdrawal.quantity),
-            'reason': withdrawal.reason,
-            'sales_channel': withdrawal.sales_channel,
-            'price_type': withdrawal.price_type,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         withdrawal.is_archived = False
-        withdrawal.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Withdrawal Restored",
-            entity_type="withdrawal",
-            entity_id=withdrawal.id,
-            after=withdrawal_data
-        )
+        withdrawal.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Withdrawal restored successfully.")
         return redirect('withdrawals-archived-list')
 
+class WithdrawalBulkRestoreView(View):
+    def post(self, request):
+        import json
+        try:
+            withdrawal_ids = json.loads(request.POST.get('withdrawal_ids', '[]'))
+            if not withdrawal_ids:
+                return JsonResponse({'success': False, 'message': 'No withdrawals selected'})
+            
+            # Restore selected withdrawals
+            count = Withdrawals.objects.filter(id__in=withdrawal_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+class WithdrawalBulkDeleteView(View):
+    def post(self, request):
+        import json
+        try:
+            withdrawal_ids = json.loads(request.POST.get('withdrawal_ids', '[]'))
+            if not withdrawal_ids:
+                return JsonResponse({'success': False, 'message': 'No withdrawals selected'})
+            
+            # Delete selected withdrawals
+            count, _ = Withdrawals.objects.filter(id__in=withdrawal_ids, is_archived=True).delete()
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 class WithdrawalsArchiveOldView(View):
     def post(self, request):
@@ -5348,14 +5124,41 @@ class StockChangesList(ListView):
 class StockChangesArchiveView(View):
     def post(self, request, pk):
         stock_change = get_object_or_404(StockChanges, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         stock_change.is_archived = True
-        stock_change.save()
+        stock_change.save()  # Trigger will handle logging
         messages.success(request, "📦 Stock change archived successfully.")
         page = request.GET.get('page')
         if page:
             return redirect(f"{reverse('stock-changes')}?page={page}")
         return redirect('stock-changes')
 
+@require_http_methods(["POST"])
+def stock_changes_bulk_archive(request):
+    try:
+        ids = request.POST.get('ids', '').split(',')
+        ids = [int(id.strip()) for id in ids if id.strip()]
+        
+        if not ids:
+            return JsonResponse({'success': False, 'message': 'No stock changes selected'})
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        archived_count = StockChanges.objects.filter(id__in=ids).update(is_archived=True)
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully archived {archived_count} stock change(s)'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 class ArchivedStockChangesListView(ListView):
     model = StockChanges
@@ -5374,6 +5177,22 @@ class StockChangesUnarchiveView(View):
         stock_change.save()
         messages.success(request, "✅ Stock change restored successfully.")
         return redirect('stock-changes-archived-list')
+
+
+class StockChangesBulkRestoreView(View):
+    def post(self, request):
+        import json
+        try:
+            stock_change_ids = json.loads(request.POST.get('stock_change_ids', '[]'))
+            if not stock_change_ids:
+                return JsonResponse({'success': False, 'message': 'No stock changes selected'})
+            
+            # Restore selected stock changes
+            count = StockChanges.objects.filter(id__in=stock_change_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({'success': True, 'count': count, 'message': f'{count} stock change(s) restored successfully!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 
 class StockChangesArchiveOldView(View):

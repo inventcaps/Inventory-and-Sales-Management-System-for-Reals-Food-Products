@@ -29,7 +29,7 @@
 
               <!-- Export Dropdown -->
               <div class="dropdown d-inline">
-                <button class="btn btn-outline-primary btn-rounded dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <button class="btn btn-primary btn-rounded dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   <i class="la la-download"></i> Export
                 </button>
                 <div class="dropdown-menu" aria-labelledby="exportDropdown">
@@ -470,7 +470,7 @@
           <span>&times;</span>
         </button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body" id="archiveSaleModalBody">
         Are you sure you want to archive this sale?
       </div>
       <div class="modal-footer">
@@ -770,7 +770,11 @@ document.getElementById("expensesFilterType").addEventListener("change", functio
 // Open Archive Modal with dynamic data
 function openArchiveModal(saleId, category, amount) {
     const form = document.getElementById('archiveSaleForm');
+    const modalBody = document.getElementById('archiveSaleModalBody');
+    
     form.action = `/sales/${saleId}/archive/`;
+    modalBody.innerHTML = `Are you sure you want to archive sale: <strong>${category} - ₱${amount}</strong>?`;
+    
     form.onsubmit = function(event) {
         handleArchiveSubmit(event, `${category} - ₱${amount}`);
     };

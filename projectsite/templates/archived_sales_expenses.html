@@ -19,6 +19,16 @@
           </div>
 
           <div class="card-body">
+            <!-- Bulk Action Buttons -->
+            <div class="mb-3">
+              <button type="button" class="btn btn-success btn-rounded" id="bulkRestoreSalesBtn" style="display:none;" onclick="bulkRestoreSales()">
+                <i class="la la-undo"></i> Restore Selected Sales
+              </button>
+              <button type="button" class="btn btn-success btn-rounded" id="bulkRestoreExpensesBtn" style="display:none;" onclick="bulkRestoreExpenses()">
+                <i class="la la-undo"></i> Restore Selected Expenses
+              </button>
+            </div>
+
             <!-- Filter by Type -->
             <div class="mb-3">
               <select id="typeFilter" class="form-control" style="width:200px;">
@@ -35,6 +45,9 @@
               <table class="table table-striped">
                 <thead>
                   <tr>
+                    <th scope="col" style="width: 40px;">
+                      <input type="checkbox" id="selectAllSales" onclick="toggleSelectAllSales(this)">
+                    </th>
                     <th>Category</th>
                     <th>Amount</th>
                     <th>Date</th>
@@ -45,6 +58,9 @@
                 <tbody>
                   {% for sale in archived_sales %}
                   <tr>
+                    <td>
+                      <input type="checkbox" class="sale-checkbox" value="{{ sale.id }}" onchange="updateBulkButtons()">
+                    </td>
                     <td>{{ sale.category }}</td>
                     <td class="text-success"><strong>₱{{ sale.amount|floatformat:2|intcomma }}</strong></td>
                     <td>{{ sale.date|date:"Y-m-d" }}</td>
@@ -57,7 +73,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="5" class="text-center text-muted">No archived sales found</td>
+                    <td colspan="6" class="text-center text-muted">No archived sales found</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -72,6 +88,9 @@
               <table class="table table-striped">
                 <thead>
                   <tr>
+                    <th scope="col" style="width: 40px;">
+                      <input type="checkbox" id="selectAllExpenses" onclick="toggleSelectAllExpenses(this)">
+                    </th>
                     <th>Category</th>
                     <th>Amount</th>
                     <th>Date</th>
@@ -82,6 +101,9 @@
                 <tbody>
                   {% for expense in archived_expenses %}
                   <tr>
+                    <td>
+                      <input type="checkbox" class="expense-checkbox" value="{{ expense.id }}" onchange="updateBulkButtons()">
+                    </td>
                     <td>{{ expense.category }}</td>
                     <td class="text-danger"><strong>₱{{ expense.amount|floatformat:2|intcomma }}</strong></td>
                     <td>{{ expense.date|date:"Y-m-d" }}</td>
@@ -94,7 +116,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="5" class="text-center text-muted">No archived expenses found</td>
+                    <td colspan="6" class="text-center text-muted">No archived expenses found</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -160,7 +182,56 @@
 </div>
 {% endfor %}
 
+<!-- Bulk Restore Confirmation Modal for Sales -->
+<div class="modal fade" id="bulkRestoreSalesModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Restore</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to restore <strong id="bulkRestoreSalesCount">0</strong> sale(s)?
+        <br><br>
+        <small class="text-muted">These sales will be moved back to the active sales list.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkRestoreSalesModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="confirmBulkRestoreSales()">Restore</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Restore Confirmation Modal for Expenses -->
+<div class="modal fade" id="bulkRestoreExpensesModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Restore</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to restore <strong id="bulkRestoreExpensesCount">0</strong> expense(s)?
+        <br><br>
+        <small class="text-muted">These expenses will be moved back to the active expenses list.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkRestoreExpensesModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="confirmBulkRestoreExpenses()">Restore</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Check for success message after page reload
+    const unarchiveSuccess = sessionStorage.getItem('unarchiveSuccess');
+    if (unarchiveSuccess) {
+        showToast(unarchiveSuccess, 'success');
+        sessionStorage.removeItem('unarchiveSuccess');
+    }
+});
+
 // Type filter
 document.getElementById('typeFilter').addEventListener('change', function() {
   const url = new URL(window.location);
@@ -171,5 +242,145 @@ document.getElementById('typeFilter').addEventListener('change', function() {
   }
   window.location = url;
 });
+
+// Bulk selection functions for Sales
+function toggleSelectAllSales(checkbox) {
+    const checkboxes = document.querySelectorAll('.sale-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateBulkButtons();
+}
+
+// Bulk selection functions for Expenses
+function toggleSelectAllExpenses(checkbox) {
+    const checkboxes = document.querySelectorAll('.expense-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateBulkButtons();
+}
+
+function updateBulkButtons() {
+    const checkedSales = document.querySelectorAll('.sale-checkbox:checked');
+    const checkedExpenses = document.querySelectorAll('.expense-checkbox:checked');
+    const bulkRestoreSalesBtn = document.getElementById('bulkRestoreSalesBtn');
+    const bulkRestoreExpensesBtn = document.getElementById('bulkRestoreExpensesBtn');
+    
+    if (checkedSales.length > 0) {
+        bulkRestoreSalesBtn.style.display = 'inline-block';
+    } else {
+        bulkRestoreSalesBtn.style.display = 'none';
+    }
+    
+    if (checkedExpenses.length > 0) {
+        bulkRestoreExpensesBtn.style.display = 'inline-block';
+    } else {
+        bulkRestoreExpensesBtn.style.display = 'none';
+    }
+    
+    // Update select all checkbox states
+    const allSalesCheckboxes = document.querySelectorAll('.sale-checkbox');
+    const selectAllSalesCheckbox = document.getElementById('selectAllSales');
+    if (selectAllSalesCheckbox) {
+        selectAllSalesCheckbox.checked = allSalesCheckboxes.length > 0 && checkedSales.length === allSalesCheckboxes.length;
+    }
+    
+    const allExpensesCheckboxes = document.querySelectorAll('.expense-checkbox');
+    const selectAllExpensesCheckbox = document.getElementById('selectAllExpenses');
+    if (selectAllExpensesCheckbox) {
+        selectAllExpensesCheckbox.checked = allExpensesCheckboxes.length > 0 && checkedExpenses.length === allExpensesCheckboxes.length;
+    }
+}
+
+function getSelectedSalesIds() {
+    const checkedBoxes = document.querySelectorAll('.sale-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function getSelectedExpensesIds() {
+    const checkedBoxes = document.querySelectorAll('.expense-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function bulkRestoreSales() {
+    const selectedIds = getSelectedSalesIds();
+    if (selectedIds.length === 0) {
+        showToast('Please select at least one sale', 'warning');
+        return;
+    }
+    
+    document.getElementById('bulkRestoreSalesCount').textContent = selectedIds.length;
+    $('#bulkRestoreSalesModal').modal('show');
+}
+
+function confirmBulkRestoreSales() {
+    const selectedIds = getSelectedSalesIds();
+    
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('sale_ids', JSON.stringify(selectedIds));
+    
+    $('#bulkRestoreSalesModal').modal('hide');
+    
+    fetch('{% url "sales-bulk-restore" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            sessionStorage.setItem('unarchiveSuccess', `${data.count} sale(s) restored successfully!`);
+            window.location.reload();
+        } else {
+            showToast(data.message || 'Failed to restore sales', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Bulk restore error:', error);
+        showToast('An error occurred while restoring sales', 'error');
+    });
+}
+
+function bulkRestoreExpenses() {
+    const selectedIds = getSelectedExpensesIds();
+    if (selectedIds.length === 0) {
+        showToast('Please select at least one expense', 'warning');
+        return;
+    }
+    
+    document.getElementById('bulkRestoreExpensesCount').textContent = selectedIds.length;
+    $('#bulkRestoreExpensesModal').modal('show');
+}
+
+function confirmBulkRestoreExpenses() {
+    const selectedIds = getSelectedExpensesIds();
+    
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('expense_ids', JSON.stringify(selectedIds));
+    
+    $('#bulkRestoreExpensesModal').modal('hide');
+    
+    fetch('{% url "expenses-bulk-restore" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            sessionStorage.setItem('unarchiveSuccess', `${data.count} expense(s) restored successfully!`);
+            window.location.reload();
+        } else {
+            showToast(data.message || 'Failed to restore expenses', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Bulk restore error:', error);
+        showToast('An error occurred while restoring expenses', 'error');
+    });
+}
 </script>
 {% endblock %}
