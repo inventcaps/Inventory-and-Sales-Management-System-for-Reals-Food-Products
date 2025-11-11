@@ -36,7 +36,7 @@
               
               <!-- Show All Data Button -->
               <button type="button" class="btn btn-info" onclick="toggleShowAll()">
-                Show All Data
+                {% if request.GET.show_all %}Show Current Data{% else %}Show All Data{% endif %}
               </button>
               
               <!-- Reset Button -->

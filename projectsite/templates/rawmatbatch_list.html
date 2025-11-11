@@ -36,7 +36,7 @@
                 <input type="text" id="searchInput" class="form-control" name= "q" placeholder="Search raw batches..." value="{{ request.GET.q }}" style="width: 350px;"/>
                 <input type="month" name="date_filter" class="form-control" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" id="rawDateFilter" style="width: 180px;">
                 <button type="button" id="showAllBtn" class="btn btn-info" onclick="toggleShowAll()">
-                  Show All Data
+                  {% if request.GET.show_all %}Show Current Data{% else %}Show All Data{% endif %}
                 </button>
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>

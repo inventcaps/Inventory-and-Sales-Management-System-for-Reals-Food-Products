@@ -102,7 +102,7 @@
               </select>
               <input type="month" id="dateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.month %}{{ request.GET.month }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}" />
               <button type="button" class="btn btn-info" onclick="toggleShowAll()">
-                Show All Data
+                {% if request.GET.show_all %}Show Current Data{% else %}Show All Data{% endif %}
               </button>
               <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
