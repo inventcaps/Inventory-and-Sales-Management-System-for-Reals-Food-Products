@@ -63,9 +63,11 @@
                                             <a href="#" data-toggle="modal" data-target="#editProductTypeModal{{ type.id }}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
+                                            {% if user.is_superuser %}
                                             <a href="#" data-toggle="modal" data-target="#deleteProductTypeModal{{ type.id }}" class="text-danger ml-3" title="Delete">
                                                 <i class="la la-trash la-lg"></i>
                                             </a>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
@@ -106,9 +108,11 @@
                                             <a href="#" data-toggle="modal" data-target="#editProductVariantModal{{ variant.id }}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
+                                            {% if user.is_superuser %}
                                             <a href="#" data-toggle="modal" data-target="#deleteProductVariantModal{{ variant.id }}" class="text-danger ml-3" title="Delete">
                                                 <i class="la la-trash la-lg"></i>
                                             </a>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
@@ -149,9 +153,11 @@
                                             <a href="#" data-toggle="modal" data-target="#editSizeModal{{ size.id }}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
+                                            {% if user.is_superuser %}
                                             <a href="#" data-toggle="modal" data-target="#deleteSizeModal{{ size.id }}" class="text-danger ml-3" title="Delete">
                                                 <i class="la la-trash la-lg"></i>
                                             </a>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
@@ -192,9 +198,11 @@
                                             <a href="#" data-toggle="modal" data-target="#editSizeUnitModal{{ unit.id }}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
+                                            {% if user.is_superuser %}
                                             <a href="#" data-toggle="modal" data-target="#deleteSizeUnitModal{{ unit.id }}" class="text-danger ml-3" title="Delete">
                                                 <i class="la la-trash la-lg"></i>
                                             </a>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
@@ -235,9 +243,11 @@
                                             <a href="#" data-toggle="modal" data-target="#editUnitPriceModal{{ price.id }}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
+                                            {% if user.is_superuser %}
                                             <a href="#" data-toggle="modal" data-target="#deleteUnitPriceModal{{ price.id }}" class="text-danger ml-3" title="Delete">
                                                 <i class="la la-trash la-lg"></i>
                                             </a>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
@@ -278,9 +288,11 @@
                                             <a href="#" data-toggle="modal" data-target="#editSrpPriceModal{{ price.id }}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
+                                            {% if user.is_superuser %}
                                             <a href="#" data-toggle="modal" data-target="#deleteSrpPriceModal{{ price.id }}" class="text-danger ml-3" title="Delete">
                                                 <i class="la la-trash la-lg"></i>
                                             </a>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% empty %}
