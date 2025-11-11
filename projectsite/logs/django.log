@@ -24,3 +24,9 @@ INFO 2025-11-11 22:14:43,924 basehttp 20796 4876 "GET /api/check-account-status/
 INFO 2025-11-11 22:14:46,933 basehttp 20796 4876 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-11 22:14:49,912 basehttp 20796 4876 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-11 22:14:52,921 basehttp 20796 4876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-11 22:14:55,919 basehttp 20796 4876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-11 22:15:00,625 basehttp 20796 10984 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-11 22:15:02,426 basehttp 20796 10984 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-11 22:15:05,023 basehttp 20796 10984 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-11 22:15:06,156 autoreload 20796 14968 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\realsproj\models.py changed, reloading.
+INFO 2025-11-11 22:15:08,972 autoreload 21280 20852 Watching for file changes with StatReloader
