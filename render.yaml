@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: reals-inventory-system
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "daphne -b 0.0.0.0 -p $PORT projectsite.asgi:application"
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: False
+      - key: DATABASE_URL
+        value: postgresql://postgres:Reals_db_123@db.rczsumkmhoxjaycvggzt.supabase.co:5432/postgres
