@@ -150,7 +150,8 @@
                 <h5 class="modal-title">Confirm Archive</h5>
             </div>
             <div class="modal-body">
-                Are you sure you want to archive this raw material?
+                Are you sure you want to archive raw material:
+                <strong>{{ object.name }}</strong> ({{ object.size }} {{ object.unit }})?
             </div>
             <div class="modal-footer">
                 <form method="post" action="{% url 'rawmaterials-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.name }} ({{ object.size }} {{ object.unit }})')">
