@@ -66,7 +66,7 @@
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <input type="month" id="productDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.product_date_filter %}{{ request.GET.product_date_filter }}{% elif not request.GET.product_show_all %}{{ current_month_value }}{% endif %}" />
               <button type="button" class="btn btn-info" onclick="toggleProductShowAll()">
-                Show All Data
+                {% if request.GET.product_show_all %}Show Current Data{% else %}Show All Data{% endif %}
               </button>
               <button type="button" onclick="resetProductFilters()" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
@@ -219,7 +219,7 @@
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <input type="month" id="rawMaterialDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.raw_material_date_filter %}{{ request.GET.raw_material_date_filter }}{% elif not request.GET.raw_material_show_all %}{{ current_month_value }}{% endif %}" />
               <button type="button" class="btn btn-info" onclick="toggleRawMaterialShowAll()">
-                Show All Data
+                {% if request.GET.raw_material_show_all %}Show Current Data{% else %}Show All Data{% endif %}
               </button>
               <button type="button" onclick="resetRawMaterialFilters()" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>

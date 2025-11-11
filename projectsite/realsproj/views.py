@@ -928,7 +928,8 @@ class ProductRecipeBulkCreateView(View):
                 instance.product = product
                 instance.created_by_admin = auth_user
                 instance.save()
-            messages.success(request, "✅ Recipes added successfully.")
+            if instances:
+                messages.success(request, "✅ Recipes added successfully.")
             return redirect("recipe-list", product_id=product.id)
 
         return render(request, self.template_name, {"formset": formset, "product": product})

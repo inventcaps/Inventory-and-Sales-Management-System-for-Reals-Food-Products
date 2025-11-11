@@ -55,7 +55,7 @@
             <button type="button" class="btn btn-sm btn-info" id="add-row">+ Add Row</button>
           </div>
 
-          <button type="submit" class="btn btn-primary">Save</button>
+          <button type="submit" class="btn btn-primary" id="save-btn">Save</button>
         </form>
       </div>
     </div>
@@ -74,6 +74,7 @@ document.addEventListener("DOMContentLoaded", function() {
     let newRow = emptyRow.replace(/__prefix__/g, formIndex);
     tableBody.insertAdjacentHTML("beforeend", newRow);
     totalForms.value = formIndex + 1;
+    updateSaveButton();
   });
 
 
@@ -84,8 +85,54 @@ document.addEventListener("DOMContentLoaded", function() {
 
       let formCount = tableBody.querySelectorAll("tr").length;
       totalForms.value = formCount;
+      updateSaveButton();
     }
   });
+
+  // Function to check if there are any materials and update save button
+  function updateSaveButton() {
+    const saveBtn = document.getElementById("save-btn");
+    const rowCount = tableBody.querySelectorAll("tr").length;
+    
+    if (rowCount === 0) {
+      saveBtn.disabled = true;
+      saveBtn.classList.add("btn-secondary");
+      saveBtn.classList.remove("btn-primary");
+    } else {
+      saveBtn.disabled = false;
+      saveBtn.classList.add("btn-primary");
+      saveBtn.classList.remove("btn-secondary");
+    }
+  }
+
+  // Check on form submit
+  document.querySelector("form").addEventListener("submit", function(e) {
+    const rowCount = tableBody.querySelectorAll("tr").length;
+    if (rowCount === 0) {
+      e.preventDefault();
+      showToast("⚠️ Please add at least one material before saving.", "warning");
+    }
+  });
+
+  // Toast notification function
+  function showToast(message, type) {
+    const toast = document.createElement("div");
+    toast.className = `alert alert-${type} alert-dismissible fade show`;
+    toast.style.position = "fixed";
+    toast.style.top = "20px";
+    toast.style.right = "20px";
+    toast.style.zIndex = "9999";
+    toast.style.minWidth = "300px";
+    toast.innerHTML = `
+      <strong>${type === 'warning' ? '⚠️' : 'ℹ️'}</strong> ${message}
+      <button type="button" class="close" data-dismiss="alert">&times;</button>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // Initial check on page load
+  updateSaveButton();
 });
 </script>
 {% endblock %}
