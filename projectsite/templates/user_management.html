@@ -303,8 +303,8 @@
                                 <tbody>
                                     {% for user in deleted_users %}
                                     <tr>
-                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
-                                        <td>{{ user.email }}</td>
+                                        <td>{{ user.display_name|default:"Unknown User" }}</td>
+                                        <td>{{ user.display_email|default:"No email available" }}</td>
                                         <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                     </tr>
                                     {% endfor %}

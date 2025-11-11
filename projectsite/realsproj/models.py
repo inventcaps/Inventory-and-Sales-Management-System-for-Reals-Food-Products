@@ -261,6 +261,19 @@ class HistoryLog(models.Model):
                 full_name = f"{u.first_name} {u.last_name}".strip()
                 return f"{u.username}" + (f" ({full_name})" if full_name else "")
 
+            elif self.entity_type == "stock_change":
+                try:
+                    sc = StockChanges.objects.get(pk=self.entity_id)
+                    item = sc.get_item()
+                    if item:
+                        quantity_sign = "+" if sc.quantity_change >= 0 else ""
+                        return f"{str(item)} Quantity Change: {quantity_sign}{sc.quantity_change}"
+                    else:
+                        quantity_sign = "+" if sc.quantity_change >= 0 else ""
+                        return f"[{sc.item_type}] Unknown Item (ID: {sc.item_id}) Quantity Change: {quantity_sign}{sc.quantity_change}"
+                except StockChanges.DoesNotExist:
+                    return f"Deleted Stock Change #{self.entity_id}"
+
             else:
                 return f"Entity #{self.entity_id}"
 
@@ -295,7 +308,15 @@ class HistoryLog(models.Model):
                         name = entity_data.get('name', '')
                         unit_id = entity_data.get('unit_id', '')
                         price = entity_data.get('price_per_unit', '')
-                        unit_name = SizeUnits.objects.get(id=unit_id).unit_name if unit_id else ''
+                        
+                        # Safely get unit name
+                        unit_name = ''
+                        if unit_id:
+                            try:
+                                unit_name = SizeUnits.objects.get(id=unit_id).unit_name
+                            except SizeUnits.DoesNotExist:
+                                unit_name = 'Unknown Unit'
+                        
                         return f"Deleted ({name} ({unit_name}) - ₱{price})"
                     except:
                         pass
@@ -381,6 +402,29 @@ class HistoryLog(models.Model):
                     except:
                         pass
                 
+                elif self.entity_type == "stock_change":
+                    try:
+                        item_type = entity_data.get('item_type', '')
+                        item_id = entity_data.get('item_id', '')
+                        quantity_change = entity_data.get('quantity_change', '')
+                        quantity_sign = "+" if str(quantity_change).replace('-', '').replace('+', '').replace('.', '').isdigit() and float(quantity_change) >= 0 else ""
+                        
+                        item_name = f"[{item_type}] Item #{item_id}"
+                        if item_type and item_id:
+                            try:
+                                if item_type.lower() in ("product", "products"):
+                                    p = Products.objects.select_related("product_type", "variant", "size_unit", "size").get(pk=item_id)
+                                    item_name = f"{p.product_type.name} - {p.variant.name} ({p.size.size_label if p.size else ''} {p.size_unit.unit_name})"
+                                elif item_type.lower() in ("raw", "raw_material", "rawmaterials"):
+                                    rm = RawMaterials.objects.select_related("unit").get(pk=item_id)
+                                    item_name = f"{rm.name} ({rm.unit.unit_name}) - ₱{rm.price_per_unit}"
+                            except:
+                                pass
+                        
+                        return f"Deleted ({item_name} Quantity Change: {quantity_sign}{quantity_change})"
+                    except:
+                        pass
+                
                 # Generic fallback for any entity type with details
                 return f"Deleted ({self.entity_type.replace('_', ' ').title()})"
             
@@ -390,8 +434,25 @@ class HistoryLog(models.Model):
         """Safely get admin username even if user is deleted or deactivated."""
         try:
             if self.admin:
+                # Check if user is deleted (username starts with 'deleted_user_')
+                if self.admin.username.startswith('deleted_user_'):
+                    # Try to extract original username from first_name field
+                    if self.admin.first_name and self.admin.first_name.startswith('ORIGINAL_USERNAME:'):
+                        parts = self.admin.first_name.split('|')
+                        original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+                        return f"{original_username} (Deleted User)"
+                    # Fallback: try to extract from username pattern deleted_user_X_timestamp
+                    parts = self.admin.username.split('_')
+                    if len(parts) >= 3 and parts[0] == 'deleted' and parts[1] == 'user':
+                        try:
+                            # Extract the original username part (usually the third part)
+                            original_username = parts[2]
+                            return f"{original_username} (Deleted User)"
+                        except:
+                            pass
+                    return "Deleted User"
                 # Check if user is deactivated (username starts with 'inactive_user_')
-                if self.admin.username.startswith('inactive_user_'):
+                elif self.admin.username.startswith('inactive_user_'):
                     # Try to extract original username from first_name field
                     if self.admin.first_name and self.admin.first_name.startswith('ORIGINAL_USERNAME:'):
                         parts = self.admin.first_name.split('|')
