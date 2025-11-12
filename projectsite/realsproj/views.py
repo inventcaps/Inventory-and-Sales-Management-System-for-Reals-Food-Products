@@ -4117,7 +4117,7 @@ class WithdrawUpdateView(UpdateView):
         before = {
             'item_type': withdrawal.item_type,
             'item_id': withdrawal.item_id,
-            'quantity': str(withdrawal.quantity),
+            'quantity': withdrawal.quantity,  # Keep as Decimal for calculations
             'reason': withdrawal.reason,
             'sales_channel': withdrawal.sales_channel,
             'price_type': withdrawal.price_type,
@@ -4133,11 +4133,78 @@ class WithdrawUpdateView(UpdateView):
         # Explicitly set the date to the original date
         self.object.date = original_date
         
-        # Save with update_fields to only update specific fields
+        # Note: Inventory adjustment is handled by database triggers (trg_withdrawals_fefo)
+        # The trigger handles INSERT/DELETE operations, but UPDATE needs special handling
+        # We need to simulate DELETE (restore old) + INSERT (deduct new) for proper FEFO
+        
+        old_quantity = before['quantity']
+        new_quantity = self.object.quantity
+        old_item_id = before['item_id']
+        new_item_id = self.object.item_id
+        
+        # Check if we need to handle inventory changes
+        inventory_changed = (old_item_id != new_item_id or old_quantity != new_quantity)
+        
+        if inventory_changed:
+            # Validate stock availability before making changes
+            # For validation, we need to check if the new quantity can be satisfied
+            # from the restored stock (current stock + old withdrawal quantity)
+            try:
+                if self.object.item_type == 'PRODUCT':
+                    if old_item_id != new_item_id:
+                        # Different item - check new item has enough stock for the full new quantity
+                        new_product = Products.objects.get(id=new_item_id)
+                        new_inv = new_product.productinventory
+                        if new_quantity > new_inv.total_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {new_product}. Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                    else:
+                        # Same item - check if new quantity can be satisfied from restored stock
+                        product = Products.objects.get(id=new_item_id)
+                        inv = product.productinventory
+                        # Calculate what stock would be after restoring the old withdrawal
+                        restored_stock = inv.total_stock + old_quantity
+                        if new_quantity > restored_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {product}. Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                                
+                elif self.object.item_type == 'RAW_MATERIAL':
+                    if old_item_id != new_item_id:
+                        # Different item - check new item has enough stock for the full new quantity
+                        new_material = RawMaterials.objects.get(id=new_item_id)
+                        new_inv = new_material.rawmaterialinventory
+                        if new_quantity > new_inv.total_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {new_material}. Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                    else:
+                        # Same item - check if new quantity can be satisfied from restored stock
+                        material = RawMaterials.objects.get(id=new_item_id)
+                        inv = material.rawmaterialinventory
+                        # Calculate what stock would be after restoring the old withdrawal
+                        restored_stock = inv.total_stock + old_quantity
+                        if new_quantity > restored_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {material}. Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                                
+            except Exception as e:
+                messages.error(self.request, f"❌ Error validating stock: {str(e)}")
+                return redirect(self.get_success_url())
+        
+        # Set current user for trigger context
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [self.request.user.id])
+        
+        # Save the withdrawal record with new values
+        # The updated trg_withdrawals_fefo() trigger will handle inventory adjustment automatically
         self.object.save(update_fields=[
             'item_id', 'quantity', 'reason', 'sales_channel', 
             'price_type', 'custom_price', 'discount_id', 'custom_discount_value'
         ])
+        
+        # Add success message for inventory update
+        if old_item_id != new_item_id or old_quantity != new_quantity:
+            messages.success(self.request, f"✅ Withdrawal updated successfully! Inventory has been adjusted accordingly.")
         
         # Refresh from database to ensure we have the latest data
         withdrawal.refresh_from_db()

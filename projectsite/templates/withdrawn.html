@@ -34,57 +34,39 @@
           <div class="card-body">
 
             <!-- Withdrawal Summary Cards -->
-            <div class="row mb-3">
+            <div class="row mb-3" id="withdrawalSummary">
               <!-- Total Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Total Withdrawals</h5>
-                        <p class="text-muted mb-0">All withdrawal quantities</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Total Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">All withdrawal quantities</p>
+                    <h2 class="mb-2 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
               
               <!-- Product Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Product Withdrawals</h5>
-                        <p class="text-muted mb-0">{{ product_withdrawals_count }} withdrawal(s)</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Product Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">{{ product_withdrawals_count }} withdrawal(s)</p>
+                    <h2 class="mb-2 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
               
               <!-- Raw Material Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Raw Material Withdrawals</h5>
-                        <p class="text-muted mb-0">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Raw Material Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
+                    <h2 class="mb-2 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
