@@ -19,5 +19,8 @@ python-decouple==3.8
 dj-database-url==2.1.0
 Pillow==10.4.0
 
+# Email - HTTP API (bypasses SMTP blocks)
+requests==2.31.0
+
 # ASGI/WSGI Server for Production
 gunicorn==23.0.0
