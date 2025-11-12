@@ -84,7 +84,7 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database configuration with fallback
-DATABASE_URL = config('DATABASE_URL', default='postgresql://postgres:Reals_db_123@db.rczsumkmhoxjaycvggzt.supabase.co:5432/postgres')
+DATABASE_URL = config('DATABASE_URL', default='postgresql://postgres.rczsumkmhoxjaycvggzt:Reals_db_123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres')
 
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
@@ -124,12 +124,20 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',      # accept old PBKDF2
-    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',  # legacy
-    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
-    'django.contrib.auth.hashers.ScryptPasswordHasher',
-]
+# Password hashers - optimized for development speed
+if DEBUG:
+    # Fast hashing for development
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',  # Fast for dev
+        'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    ]
+else:
+    # Secure hashing for production
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+        'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+        'django.contrib.auth.hashers.ScryptPasswordHasher',
+    ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -161,6 +169,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGOUT_REDIRECT_URL = 'login'
 LOGIN_REDIRECT_URL = 'home' 
 LOGIN_URL = 'login'
+
+# Session optimization for faster login
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_SAVE_EVERY_REQUEST = False
 
 # Cache Configuration for Performance
 CACHES = {
