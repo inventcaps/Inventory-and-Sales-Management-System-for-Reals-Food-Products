@@ -359,6 +359,9 @@ document.addEventListener("DOMContentLoaded", function() {
       document.getElementById('paid_amount').required = false;
       priceInput.required = true;
     }
+    
+    // Update discount field states when sales channel changes
+    updateDiscountFieldStates();
   });
   
   // Handle payment status change
@@ -384,7 +387,52 @@ document.addEventListener("DOMContentLoaded", function() {
       priceInput.required = false;
       document.getElementById('paid_amount').required = false;
     }
+    
+    // Update discount field states based on payment status
+    updateDiscountFieldStates();
   });
+
+  // Function to check if price input contains a custom price (numeric value)
+  function isCustomPrice() {
+    const priceValue = priceInput.value.trim();
+    // Check if the value is a number (custom price) rather than UNIT or SRP
+    return priceValue !== '' && !isNaN(priceValue) && priceValue !== 'UNIT' && priceValue !== 'SRP';
+  }
+
+  // Function to update discount field states based on conditions
+  function updateDiscountFieldStates() {
+    const discountInputs = document.querySelectorAll('input[name^="discount_"]');
+    const paymentStatus = paymentStatusSelect.value;
+    const customPrice = isCustomPrice();
+    
+    // Disable discount fields if:
+    // 1. Payment status is UNPAID or PARTIAL
+    // 2. Custom price is being used
+    const shouldDisable = paymentStatus === 'UNPAID' || paymentStatus === 'PARTIAL' || customPrice;
+    
+    discountInputs.forEach(input => {
+      input.disabled = shouldDisable;
+      if (shouldDisable) {
+        input.style.backgroundColor = '#f8f9fa';
+        input.style.color = '#6c757d';
+        input.style.cursor = 'not-allowed';
+        // Clear the value when disabled
+        input.value = '';
+      } else {
+        input.style.backgroundColor = '';
+        input.style.color = '';
+        input.style.cursor = '';
+      }
+    });
+  }
+
+  // Monitor price input changes to detect custom price usage
+  priceInput.addEventListener('input', function() {
+    updateDiscountFieldStates();
+  });
+
+  // Initial call to set correct state
+  updateDiscountFieldStates();
 
 });
 </script>
