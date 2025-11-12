@@ -187,26 +187,13 @@ CACHES = {
     }
 }
 
-# Email Configuration
+# Email Configuration - Simple Gmail Setup
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
-
-# SendGrid configuration (preferred for production)
-SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
-
-if SENDGRID_API_KEY and not DEBUG:
-    # Use SendGrid for production
-    EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
-    SENDGRID_SANDBOX_MODE_IN_DEBUG = False
-    EMAIL_HOST_USER = config('SENDGRID_FROM_EMAIL', default='noreply@realsfood.com')
-    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-else:
-    # Gmail SMTP fallback for development
-    EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
-    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='zbke eujp ljum nsyi')
-
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='zbke eujp ljum nsyi')
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 # For development - use console backend if no credentials
