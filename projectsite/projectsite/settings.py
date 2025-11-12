@@ -187,21 +187,28 @@ CACHES = {
     }
 }
 
-# Email Configuration - Simple Gmail Setup
+# Email configuration: use SendGrid in production when available; Gmail locally
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.smtp.EmailBackend')
-EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
-EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
-EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='zbke eujp ljum nsyi')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-# For development - use console backend if no credentials
-if DEBUG and (not EMAIL_HOST_PASSWORD or EMAIL_HOST_PASSWORD == 'your-app-password-here'):
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Prefer SendGrid if API key is provided (avoids blocked SMTP on hosts like Railway)
+SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
+SENDGRID_FROM_EMAIL = config('SENDGRID_FROM_EMAIL', default='')
+if SENDGRID_API_KEY:
+    EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
+    DEFAULT_FROM_EMAIL = SENDGRID_FROM_EMAIL or config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
+else:
+    EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+    # For development - use console backend if no credentials
+    if DEBUG and (not EMAIL_HOST_PASSWORD or EMAIL_HOST_PASSWORD == 'your-app-password-here'):
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Email timeout settings
-EMAIL_TIMEOUT = 30
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
