@@ -333,7 +333,7 @@ class WithdrawEditForm(forms.ModelForm):
         ('SOLD', 'Sold'),
         ('EXPIRED', 'Expired'),
         ('DAMAGED', 'Damaged'),
-        ('RETURNED', 'Returned'),
+        ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
         ('OTHERS', 'Others'),
     ]
     PAYMENT_STATUS_CHOICES = [
@@ -408,7 +408,7 @@ class WithdrawEditForm(forms.ModelForm):
                 self.fields['reason'].choices = [
                     ('EXPIRED', 'Expired'),
                     ('DAMAGED', 'Damaged'),
-                    ('RETURNED', 'Returned'),
+                    ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
                     ('OTHERS', 'Others'),
                 ]
                 self.fields['price_type_or_custom'].required = False
@@ -525,7 +525,7 @@ class UnifiedWithdrawForm(forms.Form):
         ('SOLD', 'Sold'),
         ('EXPIRED', 'Expired'),
         ('DAMAGED', 'Damaged'),
-        ('RETURNED', 'Returned'),
+        ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
         ('OTHERS', 'Others'),
     ]
 

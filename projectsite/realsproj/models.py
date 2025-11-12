@@ -1107,10 +1107,10 @@ class Withdrawals(models.Model):
         ('SOLD', 'Sold'),
         ('EXPIRED', 'Expired'),
         ('DAMAGED', 'Damaged'),
-        ('RETURNED', 'Returned'),
+        ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
         ('OTHERS', 'Others'),
     ]
-    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    reason = models.CharField(max_length=30, choices=REASON_CHOICES)
 
     date = models.DateTimeField(auto_now_add=True)
     created_by_admin = models.ForeignKey(

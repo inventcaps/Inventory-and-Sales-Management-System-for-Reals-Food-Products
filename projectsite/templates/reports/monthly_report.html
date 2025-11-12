@@ -21,28 +21,40 @@
           </div>
 
           <div class="card-body">
-            <div class="row mb-1 text-center">
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Total Revenue</h5>
-                    <h3 class="text-success">₱{{ summary.total_revenue|floatformat:2|intcomma }}</h3>
+            <div class="row mb-3 text-center">
+              <div class="col-md-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title text-muted mb-2">Total Revenue</h5>
+                    <h3 class="text-success mb-2">₱{{ summary.total_revenue|floatformat:2|intcomma }}</h3>
+                    <small class="text-muted">After financial loss</small>
                   </div>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Total Profit</h5>
-                    <h3 class="text-primary">₱{{ summary.total_profit|floatformat:2|intcomma }}</h3>
+              <div class="col-md-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title text-muted mb-2">Financial Loss</h5>
+                    <h3 class="text-danger mb-2">₱{{ summary.total_financial_loss|floatformat:2|intcomma }}</h3>
+                    <small class="text-muted">Expired & damaged</small>
                   </div>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Average Profit</h5>
-                    <h3 class="text-info">₱{{ summary.average_profit|floatformat:2|intcomma }}</h3>
+              <div class="col-md-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title text-muted mb-2">Total Profit</h5>
+                    <h3 class="text-primary mb-2">₱{{ summary.total_profit|floatformat:2|intcomma }}</h3>
+                    <small class="text-muted">&nbsp;</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h5 class="card-title text-muted mb-2">Average Profit</h5>
+                    <h3 class="text-info mb-2">₱{{ summary.average_profit|floatformat:2|intcomma }}</h3>
+                    <small class="text-muted">&nbsp;</small>
                   </div>
                 </div>
               </div>
@@ -53,6 +65,7 @@
                   <tr>
                     <th>Month</th>
                     <th>Revenue</th>
+                    <th>Financial Loss</th>
                     <th>Expenses</th>
                     <th>Profit</th>
                     <th>Revenue Change</th>
@@ -65,6 +78,7 @@
                   <tr>
                     <td>{{ row.month|date:"F Y" }}</td>
                     <td>₱{{ row.revenue|floatformat:2|intcomma }}</td>
+                    <td class="text-danger">₱{{ row.financial_loss|floatformat:2|intcomma }}</td>
                     <td>₱{{ row.expenses|floatformat:2|intcomma }}</td>
                     <td>₱{{ row.profit|floatformat:2|intcomma }}</td>
                     <td>
@@ -107,7 +121,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="7" class="text-center text-muted">No monthly report available</td>
+                    <td colspan="8" class="text-center text-muted">No monthly report available</td>
                   </tr>
                   {% endfor %}
                 </tbody>
