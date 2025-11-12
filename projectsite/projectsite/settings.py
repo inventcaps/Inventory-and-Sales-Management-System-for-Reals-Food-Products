@@ -15,8 +15,8 @@ SECRET_KEY = config('SECRET_KEY', default='django-insecure-hf7!w=oxut=ipo$@r0r&8
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*,localhost,127.0.0.1,.ngrok-free.app,.onrender.com', cast=Csv())
-CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='https://*.ngrok-free.app,https://*.onrender.com', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*,localhost,127.0.0.1,.ngrok-free.app,.onrender.com,.railway.app', cast=Csv())
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='https://*.ngrok-free.app,https://*.onrender.com,https://*.railway.app', cast=Csv())
 
 # Application definition
 
