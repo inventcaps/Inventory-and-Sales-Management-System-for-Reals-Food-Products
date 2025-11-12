@@ -289,9 +289,6 @@ LOGGING = {
 }
 
 # Email Configuration - Use Resend (HTTP API, bypasses Railway SMTP blocks)
-EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
-EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
-
 if DEBUG:
     # Development: use console backend
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
@@ -301,8 +298,10 @@ else:
     EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
     EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
     EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default=EMAIL_HOST_USER)
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='inventcaps@gmail.com')
 
 # For development - use console backend if no credentials
 if DEBUG and not EMAIL_HOST_PASSWORD:
