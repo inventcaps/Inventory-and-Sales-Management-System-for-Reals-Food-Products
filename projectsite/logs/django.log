@@ -7040,3 +7040,902 @@ INFO 2025-11-12 16:19:29,833 basehttp 24552 21784 "GET /api/check-account-status
 INFO 2025-11-12 16:19:29,882 basehttp 24552 21784 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-12 16:19:32,851 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-12 16:19:32,899 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:35,857 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:35,908 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:38,864 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:38,948 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:41,869 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:41,939 basehttp 24552 19280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:44,832 basehttp 24552 24284 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:44,990 basehttp 24552 24284 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:47,855 basehttp 24552 24284 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:47,955 basehttp 24552 24284 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:50,963 basehttp 24552 24284 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:51,021 basehttp 24552 24284 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:53,840 basehttp 24552 16476 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:53,900 basehttp 24552 16476 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:56,840 basehttp 24552 16476 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:56,887 basehttp 24552 16476 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:59,840 basehttp 24552 16476 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:19:59,890 basehttp 24552 16476 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:02,848 basehttp 24552 15464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:02,897 basehttp 24552 15464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:05,873 basehttp 24552 15464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:05,988 basehttp 24552 15464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:09,428 basehttp 24552 15464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:09,506 basehttp 24552 15464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:17,301 basehttp 24552 17884 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:19,897 basehttp 24552 17884 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:20,266 basehttp 24552 17884 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:20,482 basehttp 24552 17884 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:21,094 basehttp 24552 17884 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:21,207 basehttp 24552 17884 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:23,900 basehttp 24552 17596 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:23,996 basehttp 24552 17596 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:26,904 basehttp 24552 17596 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:26,995 basehttp 24552 17596 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:38,467 basehttp 24552 5516 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:20:42,457 basehttp 24552 5516 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:21:35,897 basehttp 24552 1108 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:21:35,958 basehttp 24552 1108 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:04,637 basehttp 24552 17360 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:05,288 basehttp 24552 17360 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:08,503 basehttp 24552 17360 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:11,884 basehttp 24552 17360 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:14,926 basehttp 24552 16156 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:17,833 basehttp 24552 25228 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:20,840 basehttp 24552 25228 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:23,844 basehttp 24552 25228 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:26,954 basehttp 24552 25228 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:29,848 basehttp 24552 13816 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:32,851 basehttp 24552 13816 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:35,848 basehttp 24552 13816 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:35,942 basehttp 24552 13816 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:38,857 basehttp 24552 13816 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:41,846 basehttp 24552 13816 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:44,835 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:47,841 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:50,840 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:53,840 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:56,844 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:22:59,873 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:23:02,844 basehttp 24552 8520 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:23:35,860 basehttp 24552 5972 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:23:35,916 basehttp 24552 5972 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:24:35,847 basehttp 24552 16720 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:25:35,893 basehttp 24552 10320 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:27:58,799 autoreload 24552 1128 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:27:59,711 autoreload 1116 3060 Watching for file changes with StatReloader
+INFO 2025-11-12 16:28:20,640 autoreload 24956 6856 Watching for file changes with StatReloader
+INFO 2025-11-12 16:30:51,686 autoreload 18228 19816 Watching for file changes with StatReloader
+INFO 2025-11-12 16:31:44,775 autoreload 18228 19816 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:31:45,458 autoreload 10996 20008 Watching for file changes with StatReloader
+INFO 2025-11-12 16:31:48,823 basehttp 10996 22576 "GET / HTTP/1.1" 200 45908
+WARNING 2025-11-12 16:31:49,026 basehttp 10996 22576 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:31:49,390 basehttp 10996 11344 "GET /api/sales-vs-expenses/ HTTP/1.1" 200 2874
+INFO 2025-11-12 16:31:49,412 basehttp 10996 20788 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:31:49,444 basehttp 10996 24792 "GET /api/revenue-change/?year=2025&month=11 HTTP/1.1" 200 92
+INFO 2025-11-12 16:31:49,493 basehttp 10996 8576 "GET /api/best-sellers/?year=2025&month=11 HTTP/1.1" 200 264
+INFO 2025-11-12 16:31:52,253 basehttp 10996 8576 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:31:52,771 basehttp 10996 8576 "GET /historylog/ HTTP/1.1" 200 49033
+WARNING 2025-11-12 16:31:52,847 basehttp 10996 8576 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:31:52,954 basehttp 10996 24792 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:31:56,841 basehttp 10996 5964 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:31:59,846 basehttp 10996 5964 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:02,852 basehttp 10996 5964 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:05,860 basehttp 10996 20092 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:08,840 basehttp 10996 20092 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:11,837 basehttp 10996 20092 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:14,839 basehttp 10996 20092 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:17,826 basehttp 10996 20092 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:20,845 basehttp 10996 20092 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:23,846 basehttp 10996 17456 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:26,844 basehttp 10996 17456 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:28,939 basehttp 10996 17456 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:30,946 basehttp 10996 17456 "GET /prodbatch/ HTTP/1.1" 200 101797
+WARNING 2025-11-12 16:32:31,005 basehttp 10996 17456 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:32:31,151 basehttp 10996 23984 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:31,637 basehttp 10996 23984 "GET /products/ HTTP/1.1" 200 129696
+WARNING 2025-11-12 16:32:31,701 basehttp 10996 23984 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:32:31,883 basehttp 10996 21176 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:32:31,901 log 10996 13700 Not Found: /ws/scan/
+WARNING 2025-11-12 16:32:31,901 basehttp 10996 13700 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:32:34,816 basehttp 10996 16180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:32:34,984 log 10996 20264 Not Found: /ws/scan/
+WARNING 2025-11-12 16:32:34,985 basehttp 10996 20264 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:32:37,809 basehttp 10996 16180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:38,501 basehttp 10996 16180 "GET /products/?search=banana+stick HTTP/1.1" 200 90893
+INFO 2025-11-12 16:32:39,190 basehttp 10996 16180 "GET /products/?search=banana+stick HTTP/1.1" 200 90893
+INFO 2025-11-12 16:32:40,801 basehttp 10996 16180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:43,982 basehttp 10996 6240 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:46,841 basehttp 10996 6240 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:49,828 basehttp 10996 6240 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:52,822 basehttp 10996 6240 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:55,824 basehttp 10996 19236 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:32:58,816 basehttp 10996 19236 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:01,877 basehttp 10996 19236 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:04,844 basehttp 10996 8636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:08,160 basehttp 10996 8636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:10,827 basehttp 10996 8636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:13,809 basehttp 10996 13528 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:16,810 basehttp 10996 13528 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:19,816 basehttp 10996 13528 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:22,810 basehttp 10996 13528 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:25,815 basehttp 10996 12928 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:27,627 basehttp 10996 12928 "GET /products/7 HTTP/1.1" 200 55004
+WARNING 2025-11-12 16:33:27,686 basehttp 10996 12928 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:33:27,843 basehttp 10996 25412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:27,936 log 10996 19128 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:27,936 basehttp 10996 19128 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:30,792 basehttp 10996 25412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:31,043 log 10996 12976 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:31,046 basehttp 10996 12976 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:31,048 basehttp 10996 12976 - Broken pipe from ('127.0.0.1', 57181)
+INFO 2025-11-12 16:33:33,357 basehttp 10996 25412 "POST /products/7 HTTP/1.1" 302 0
+INFO 2025-11-12 16:33:33,476 basehttp 10996 25412 "GET /products/ HTTP/1.1" 200 130965
+WARNING 2025-11-12 16:33:33,571 basehttp 10996 25412 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:33:33,716 basehttp 10996 24280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:33,735 log 10996 16192 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:33,738 basehttp 10996 16192 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:36,654 basehttp 10996 24280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:36,829 log 10996 10140 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:36,829 basehttp 10996 10140 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:39,646 basehttp 10996 24280 "GET /products/?search=Banana+Stick HTTP/1.1" 200 90974
+INFO 2025-11-12 16:33:39,652 basehttp 10996 18832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:39,816 basehttp 10996 18832 "GET /media/product_photos/Banana_Sticks_Bbq_Flavor_75g.png HTTP/1.1" 200 289055
+INFO 2025-11-12 16:33:40,354 basehttp 10996 18832 "GET /products/?search=Banana+Stick HTTP/1.1" 200 90974
+INFO 2025-11-12 16:33:42,647 basehttp 10996 18832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:43,813 basehttp 10996 18832 "GET /products/7 HTTP/1.1" 200 55552
+WARNING 2025-11-12 16:33:43,901 basehttp 10996 24280 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:33:43,987 basehttp 10996 18832 "GET /media/product_photos/Banana_Sticks_Bbq_Flavor_75g.png HTTP/1.1" 304 0
+INFO 2025-11-12 16:33:44,038 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:44,061 log 10996 17260 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:44,062 basehttp 10996 17260 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:46,996 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:47,171 log 10996 2568 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:47,171 basehttp 10996 2568 "GET /ws/scan/ HTTP/1.1" 404 29212
+WARNING 2025-11-12 16:33:47,917 log 10996 14240 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:47,917 basehttp 10996 14240 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:50,836 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:33:51,035 log 10996 19104 Not Found: /ws/scan/
+WARNING 2025-11-12 16:33:51,035 basehttp 10996 19104 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:33:53,866 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:56,850 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:33:59,838 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:02,851 basehttp 10996 21032 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:03,046 basehttp 10996 21032 "GET /products/8 HTTP/1.1" 200 55094
+WARNING 2025-11-12 16:34:03,122 basehttp 10996 21032 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:34:03,264 basehttp 10996 18832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:03,301 log 10996 12076 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:03,301 basehttp 10996 12076 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:06,216 basehttp 10996 13616 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:06,487 log 10996 15960 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:06,490 basehttp 10996 15960 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:08,237 basehttp 10996 13616 "POST /products/8 HTTP/1.1" 302 0
+INFO 2025-11-12 16:34:08,386 basehttp 10996 13616 "GET /products/ HTTP/1.1" 200 130965
+WARNING 2025-11-12 16:34:08,452 basehttp 10996 13616 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:34:08,588 basehttp 10996 13480 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:08,902 log 10996 11744 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:08,903 basehttp 10996 11744 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:11,642 basehttp 10996 13480 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:12,240 log 10996 2816 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:12,243 basehttp 10996 2816 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:14,538 basehttp 10996 13480 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:17,646 basehttp 10996 13480 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:19,346 basehttp 10996 13480 "GET /products/?search=stick HTTP/1.1" 200 91049
+INFO 2025-11-12 16:34:19,472 basehttp 10996 10136 "GET /media/product_photos/Banana_Sticks_Bbq_Flavor_75g.png HTTP/1.1" 304 0
+INFO 2025-11-12 16:34:19,484 basehttp 10996 13480 "GET /media/product_photos/Banana_Sticks_Bbq_Flavor_150g.png HTTP/1.1" 200 296411
+INFO 2025-11-12 16:34:20,036 basehttp 10996 13480 "GET /products/?search=stick HTTP/1.1" 200 91049
+INFO 2025-11-12 16:34:20,523 basehttp 10996 13480 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:22,266 basehttp 10996 13480 "GET /products/5 HTTP/1.1" 200 55002
+WARNING 2025-11-12 16:34:22,345 basehttp 10996 13480 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 16:34:22,485 basehttp 10996 10136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:22,857 log 10996 24976 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:22,859 basehttp 10996 24976 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:25,471 basehttp 10996 10136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:27,236 log 10996 22172 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:27,238 basehttp 10996 22172 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:28,430 basehttp 10996 10136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:31,446 basehttp 10996 12908 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:34,453 basehttp 10996 12908 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:37,469 basehttp 10996 12908 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:40,435 basehttp 10996 11436 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:40,850 log 10996 23940 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:40,850 basehttp 10996 23940 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:43,706 basehttp 10996 11436 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 16:34:44,875 log 10996 3120 Not Found: /ws/scan/
+WARNING 2025-11-12 16:34:44,876 basehttp 10996 3120 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 16:34:46,864 basehttp 10996 11436 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:49,853 basehttp 10996 19876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 16:34:52,729 autoreload 10996 20008 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:34:53,613 autoreload 22920 17952 Watching for file changes with StatReloader
+INFO 2025-11-12 16:36:04,550 autoreload 22920 17952 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:36:05,396 autoreload 7364 11564 Watching for file changes with StatReloader
+INFO 2025-11-12 16:36:35,829 autoreload 7364 11564 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:36:36,514 autoreload 25128 25544 Watching for file changes with StatReloader
+INFO 2025-11-12 16:36:39,006 autoreload 25128 25544 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:36:39,716 autoreload 5116 25036 Watching for file changes with StatReloader
+INFO 2025-11-12 16:36:45,250 autoreload 5116 25036 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:36:45,851 autoreload 12916 1952 Watching for file changes with StatReloader
+INFO 2025-11-12 16:40:32,258 autoreload 12916 1952 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:40:33,043 autoreload 1124 16832 Watching for file changes with StatReloader
+INFO 2025-11-12 16:40:46,958 autoreload 1124 16832 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:40:47,685 autoreload 6932 15344 Watching for file changes with StatReloader
+INFO 2025-11-12 16:51:00,166 autoreload 1452 24496 Watching for file changes with StatReloader
+INFO 2025-11-12 16:51:40,915 autoreload 1452 24496 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 16:51:41,714 autoreload 19552 11328 Watching for file changes with StatReloader
+INFO 2025-11-12 16:51:47,591 basehttp 19552 18640 "GET / HTTP/1.1" 302 0
+INFO 2025-11-12 16:51:48,525 basehttp 19552 18640 "GET /login/?next=/ HTTP/1.1" 200 38539
+INFO 2025-11-12 17:03:10,435 basehttp 19552 15436 "GET /products/?search=stick HTTP/1.1" 200 85185
+WARNING 2025-11-12 17:03:10,801 log 19552 7684 Not Found: /ws/scan/
+WARNING 2025-11-12 17:03:10,801 basehttp 19552 7684 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 17:03:18,214 basehttp 19552 15436 "GET /prodbatch/ HTTP/1.1" 200 93836
+WARNING 2025-11-12 17:03:18,295 basehttp 19552 15436 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:03:30,427 basehttp 19552 896 "GET /prodbatch/add HTTP/1.1" 200 50091
+WARNING 2025-11-12 17:03:30,482 basehttp 19552 896 "GET /static/js/ready.js HTTP/1.1" 404 1792
+WARNING 2025-11-12 17:03:30,521 log 19552 17332 Not Found: /ws/scan/
+WARNING 2025-11-12 17:03:30,524 basehttp 19552 17332 "GET /ws/scan/ HTTP/1.1" 404 29212
+WARNING 2025-11-12 17:03:33,564 log 19552 13244 Not Found: /ws/scan/
+WARNING 2025-11-12 17:03:33,564 basehttp 19552 13244 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 17:03:57,058 basehttp 19552 23868 "POST /logout/ HTTP/1.1" 302 0
+INFO 2025-11-12 17:03:57,794 basehttp 19552 23868 "GET /login/ HTTP/1.1" 200 38539
+INFO 2025-11-12 17:04:02,801 basehttp 19552 23868 "POST /login/ HTTP/1.1" 200 38865
+INFO 2025-11-12 17:04:25,418 autoreload 19552 11328 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 17:04:27,609 autoreload 16788 7652 Watching for file changes with StatReloader
+INFO 2025-11-12 17:04:34,328 autoreload 16788 7652 C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-12 17:04:35,014 autoreload 21104 24520 Watching for file changes with StatReloader
+INFO 2025-11-12 17:04:55,256 basehttp 21104 24112 "POST /login/ HTTP/1.1" 302 0
+INFO 2025-11-12 17:05:12,109 basehttp 21104 24112 "GET /revenue-x-recent_sales HTTP/1.1" 200 47189
+WARNING 2025-11-12 17:05:12,183 basehttp 21104 24112 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:05:19,716 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:19,956 basehttp 21104 8248 "GET /api/revenue-change/?year=2025&month=11 HTTP/1.1" 200 92
+INFO 2025-11-12 17:05:20,776 basehttp 21104 7692 "GET /api/sales-vs-expenses/ HTTP/1.1" 200 2874
+INFO 2025-11-12 17:05:23,651 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:26,883 basehttp 21104 21972 "GET /api/best-sellers/?year=2025&month=11 HTTP/1.1" 200 264
+INFO 2025-11-12 17:05:29,249 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:33,615 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:38,084 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:39,234 basehttp 21104 15348 - Broken pipe from ('127.0.0.1', 62275)
+INFO 2025-11-12 17:05:42,090 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:46,723 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:51,054 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:54,266 basehttp 21104 21012 "GET /rawmatbatch/ HTTP/1.1" 200 93603
+WARNING 2025-11-12 17:05:54,391 basehttp 21104 21012 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:05:54,864 basehttp 21104 15196 - Broken pipe from ('127.0.0.1', 64378)
+INFO 2025-11-12 17:05:55,200 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:05:58,374 basehttp 21104 2908 "GET /prodbatch/ HTTP/1.1" 200 101797
+WARNING 2025-11-12 17:05:58,546 basehttp 21104 2908 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:06:00,273 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:04,567 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:08,788 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:12,725 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:12,830 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:16,592 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:19,004 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:20,786 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:21,730 basehttp 21104 16024 "GET /rawmatbatch/add HTTP/1.1" 200 59588
+WARNING 2025-11-12 17:06:21,786 basehttp 21104 16024 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:06:22,186 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:23,140 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:25,771 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:26,631 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:27,814 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:29,334 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:30,586 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:32,222 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:33,891 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:34,566 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:36,812 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:38,259 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:38,862 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:40,971 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:42,856 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:42,883 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:44,492 basehttp 21104 11212 "GET /prodbatch/add HTTP/1.1" 200 55078
+WARNING 2025-11-12 17:06:44,541 basehttp 21104 11212 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:06:45,726 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:46,038 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:46,946 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:47,057 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 17:06:48,368 log 21104 7540 Not Found: /ws/scan/
+WARNING 2025-11-12 17:06:48,371 basehttp 21104 7540 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 17:06:49,504 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:51,001 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:52,766 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:54,840 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:55,165 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 17:06:55,934 log 21104 13256 Not Found: /ws/scan/
+WARNING 2025-11-12 17:06:55,934 basehttp 21104 13256 "GET /ws/scan/ HTTP/1.1" 404 29212
+INFO 2025-11-12 17:06:58,538 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:59,215 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:06:59,658 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:02,645 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:05,064 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:05,523 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:08,808 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:10,459 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:10,502 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:12,558 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:13,373 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:14,969 basehttp 21104 24412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:16,058 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:16,190 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:17,104 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:19,843 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:21,985 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:22,163 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:23,846 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:25,292 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:26,571 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:27,856 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:30,026 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:30,617 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:33,385 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:35,206 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:35,840 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:38,700 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:39,808 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:40,946 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:40,948 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:43,985 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:45,284 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:46,426 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:49,146 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:50,108 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:51,208 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:53,002 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:55,526 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:56,164 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:56,167 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:07:58,605 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:00,430 basehttp 21104 24492 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:00,491 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:03,043 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:03,573 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:04,664 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:07,104 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:09,096 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:10,690 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:12,976 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:13,288 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:17,446 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:21,521 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:24,966 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:25,605 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:29,896 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:35,338 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:35,649 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:41,254 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:44,571 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:47,240 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:50,054 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:52,166 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:55,416 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:08:56,714 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:01,885 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:04,614 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:06,235 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:12,308 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:13,779 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:26,858 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:28,470 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:39,690 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:39,913 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:46,217 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:09:54,372 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:00,164 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:00,540 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:05,408 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:11,088 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:14,674 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:14,831 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:15,251 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:15,658 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:19,177 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:28,046 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:28,485 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:29,258 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:29,414 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:30,388 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:10:41,858 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:00,917 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:08,471 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:09,106 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:09,114 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:09,458 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:11,721 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:16,018 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:18,037 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:18,940 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:19,219 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:23,487 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:24,979 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:25,596 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:26,233 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:26,633 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:29,446 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:38,564 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:38,577 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:38,915 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:41,471 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:11:45,983 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:00,288 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:00,291 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:00,301 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:07,985 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:08,819 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:09,736 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:09,906 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:10,355 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:11,980 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:13,014 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:13,788 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:13,796 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:14,558 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:16,818 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:18,042 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:18,526 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:19,015 basehttp 21104 1116 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:19,196 basehttp 21104 20592 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:21,540 basehttp 21104 13944 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:23,664 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:24,290 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:28,764 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:29,526 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:34,371 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:36,971 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:38,685 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:43,114 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+ERROR 2025-11-12 17:12:45,571 log 21104 4652 Internal Server Error: /api/check-account-status/
+Traceback (most recent call last):
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\sessions\backends\base.py", line 187, in _get_session
+    return self._session_cache
+AttributeError: 'SessionStore' object has no attribute '_session_cache'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 275, in ensure_connection
+    self.connect()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\postgresql\base.py", line 277, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\psycopg\connection.py", line 118, in connect
+    raise last_ex.with_traceback(None)
+psycopg.errors.ConnectionTimeout: connection timeout expired
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\Users\ASUS\OneDrive\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\realsproj\middleware.py", line 15, in __call__
+    if request.user.is_authenticated:
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\functional.py", line 251, in inner
+    self._setup()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\functional.py", line 404, in _setup
+    self._wrapped = self._setupfunc()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\auth\middleware.py", line 33, in <lambda>
+    request.user = SimpleLazyObject(lambda: get_user(request))
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\auth\middleware.py", line 13, in get_user
+    request._cached_user = auth.get_user(request)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\auth\__init__.py", line 209, in get_user
+    user_id = _get_user_session_key(request)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\auth\__init__.py", line 62, in _get_user_session_key
+    return get_user_model()._meta.pk.to_python(request.session[SESSION_KEY])
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\sessions\backends\base.py", line 53, in __getitem__
+    return self._session[key]
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\sessions\backends\base.py", line 192, in _get_session
+    self._session_cache = self.load()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\sessions\backends\db.py", line 42, in load
+    s = self._get_session_from_db()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\contrib\sessions\backends\db.py", line 32, in _get_session_from_db
+    return self.model.objects.get(
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\models\manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\models\query.py", line 645, in get
+    num = len(clone)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\models\query.py", line 382, in __len__
+    self._fetch_all()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\models\query.py", line 1928, in _fetch_all
+    self._result_cache = list(self._iterable_class(self))
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\models\query.py", line 91, in __iter__
+    results = compiler.execute_sql(
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\models\sql\compiler.py", line 1560, in execute_sql
+    cursor = self.connection.cursor()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 316, in cursor
+    return self._cursor()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 292, in _cursor
+    self.ensure_connection()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 274, in ensure_connection
+    with self.wrap_database_errors:
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 275, in ensure_connection
+    self.connect()
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\base\base.py", line 256, in connect
+    self.connection = self.get_new_connection(conn_params)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\utils\asyncio.py", line 26, in inner
+    return func(*args, **kwargs)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\django\db\backends\postgresql\base.py", line 277, in get_new_connection
+    connection = self.Database.connect(**conn_params)
+  File "C:\Users\ASUS\AppData\Local\Programs\Python\Python310\lib\site-packages\psycopg\connection.py", line 118, in connect
+    raise last_ex.with_traceback(None)
+django.db.utils.OperationalError: connection timeout expired
+ERROR 2025-11-12 17:12:45,585 basehttp 21104 4652 "GET /api/check-account-status/ HTTP/1.1" 500 26096
+INFO 2025-11-12 17:12:46,207 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:47,472 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:51,707 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:54,887 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:55,806 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:12:59,892 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:13:03,815 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:13:03,815 basehttp 21104 15300 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:14:18,175 basehttp 21104 15300 "POST /rawmatbatch/add HTTP/1.1" 302 0
+INFO 2025-11-12 17:14:28,015 basehttp 21104 15300 "GET /rawmatbatch/ HTTP/1.1" 200 93603
+WARNING 2025-11-12 17:14:28,087 basehttp 21104 15300 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:14:33,735 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:14:38,246 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:14:43,333 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:14:48,206 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:14:53,252 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:14:57,739 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:02,395 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:07,171 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:11,794 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:15,260 basehttp 21104 22296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:16,671 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:17,685 basehttp 21104 23864 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:20,208 basehttp 21104 22296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:21,051 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:21,250 basehttp 21104 17836 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:24,609 basehttp 21104 23864 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:26,113 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:26,926 basehttp 21104 22296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:28,812 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:30,771 basehttp 21104 23864 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:31,066 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:33,897 basehttp 21104 22296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:35,322 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:35,998 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:37,802 basehttp 21104 23864 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:39,027 basehttp 21104 22296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:40,647 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:41,813 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:42,530 basehttp 21104 20320 "GET /rawmatbatch/add HTTP/1.1" 200 59588
+WARNING 2025-11-12 17:15:42,579 basehttp 21104 20320 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:15:43,747 basehttp 21104 23864 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:44,714 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:44,903 basehttp 21104 22296 "GET /rawmaterial-inventory/ HTTP/1.1" 200 51904
+WARNING 2025-11-12 17:15:45,035 basehttp 21104 22296 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:15:45,531 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:47,638 basehttp 21104 9916 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:49,580 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:50,307 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:51,858 basehttp 21104 9916 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:54,392 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:56,918 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:56,952 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:59,166 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:59,458 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:15:59,781 basehttp 21104 17836 "POST /prodbatch/add HTTP/1.1" 302 0
+INFO 2025-11-12 17:16:02,741 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:03,961 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:04,852 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:07,728 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:08,034 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:09,431 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:09,852 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:11,450 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:11,883 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:13,276 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:13,553 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:16,082 basehttp 21104 8136 "POST /rawmatbatch/add HTTP/1.1" 302 0
+INFO 2025-11-12 17:16:16,384 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:16,860 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:18,251 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:19,132 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:20,456 basehttp 21104 17836 "GET /prodbatch/ HTTP/1.1" 200 103082
+INFO 2025-11-12 17:16:20,924 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:21,645 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:24,288 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:24,602 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:25,530 basehttp 21104 17836 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:25,836 basehttp 21104 24636 "GET /rawmatbatch/ HTTP/1.1" 200 94876
+INFO 2025-11-12 17:16:26,137 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:26,604 basehttp 21104 9144 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 17:16:26,618 basehttp 21104 9144 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:16:30,165 basehttp 21104 18748 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 17:16:30,178 basehttp 21104 18748 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:16:30,497 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:31,684 basehttp 21104 17836 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:31,956 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:32,431 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:33,690 basehttp 21104 19808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:34,944 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:35,379 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:36,918 basehttp 21104 17836 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:37,966 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:38,246 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:38,546 basehttp 21104 19808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:39,688 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:40,188 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:41,558 basehttp 21104 17836 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:41,766 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:42,216 basehttp 21104 8136 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:42,230 basehttp 21104 19808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:43,476 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:44,039 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:45,846 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:47,782 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:48,808 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:50,633 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:52,221 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:54,621 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:54,802 basehttp 21104 10296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:55,221 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:57,679 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:58,240 basehttp 21104 20660 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:16:58,444 basehttp 21104 21068 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:01,247 basehttp 21104 24636 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:01,747 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:01,904 basehttp 21104 10296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:02,208 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:03,324 basehttp 21104 21068 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:04,296 basehttp 21104 20660 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:05,522 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:05,774 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:06,171 basehttp 21104 10296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:08,676 basehttp 21104 20660 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:09,046 basehttp 21104 21068 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:09,546 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:11,995 basehttp 21104 10296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:12,283 basehttp 21104 14740 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:13,213 basehttp 21104 20660 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:14,090 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:15,613 basehttp 21104 21068 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:16,154 basehttp 21104 8464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:18,392 basehttp 21104 20660 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:18,404 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:18,622 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:20,588 basehttp 21104 8464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:21,088 basehttp 21104 21068 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:21,485 basehttp 21104 24096 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:22,250 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:24,287 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:24,874 basehttp 21104 8464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:26,342 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:28,126 basehttp 21104 7876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:28,771 basehttp 21104 11552 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:30,743 basehttp 21104 8464 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:31,328 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:31,658 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:33,131 basehttp 21104 11552 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:33,566 basehttp 21104 7876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:33,763 basehttp 21104 1808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:35,390 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:36,146 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:36,746 basehttp 21104 20624 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:38,766 basehttp 21104 1808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:39,396 basehttp 21104 7876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:39,608 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:42,765 basehttp 21104 20624 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:43,046 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:43,188 basehttp 21104 1808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:44,196 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:45,413 basehttp 21104 7876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:45,732 basehttp 21104 11552 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:47,933 basehttp 21104 1808 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:48,143 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:48,926 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:50,809 basehttp 21104 11552 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:51,491 basehttp 21104 7876 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:52,136 basehttp 21104 20624 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:52,448 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:54,814 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:56,771 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:57,606 basehttp 21104 20624 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:59,637 basehttp 21104 19408 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:17:59,746 basehttp 21104 7876 "GET /rawmatbatch/?page=2 HTTP/1.1" 200 86105
+INFO 2025-11-12 17:18:00,438 basehttp 21104 11552 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:00,775 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:05,085 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:09,484 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:12,508 basehttp 21104 9708 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:13,851 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:18,338 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:21,729 basehttp 21104 9708 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:22,667 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:26,966 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:30,376 basehttp 21104 9708 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:31,088 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:35,290 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:39,366 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:39,380 basehttp 21104 9708 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:43,338 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:47,216 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:51,300 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:51,312 basehttp 21104 9708 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:18:55,646 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:00,266 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:00,793 basehttp 21104 6696 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:00,796 basehttp 21104 9708 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:03,796 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:05,250 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:09,385 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:09,440 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:14,107 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:19,946 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:22,816 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:24,400 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:28,133 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:29,108 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:33,560 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:36,590 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:37,846 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:41,886 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:45,408 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:46,058 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:50,371 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:54,366 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:54,685 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:58,708 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:19:59,900 basehttp 21104 296 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:00,187 basehttp 21104 3992 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:02,440 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:06,208 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:06,538 basehttp 21104 3992 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:10,557 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:16,652 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:20,264 basehttp 21104 3992 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:21,263 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:24,584 basehttp 21104 11412 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:25,471 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:29,650 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:33,377 basehttp 21104 17132 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:33,690 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:37,858 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:42,014 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:45,214 basehttp 21104 17188 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:46,201 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:50,276 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:55,331 basehttp 21104 17188 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:20:55,335 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:00,475 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:01,268 basehttp 21104 17188 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:04,024 basehttp 21104 10260 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:05,084 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:09,496 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:12,434 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:13,758 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:17,853 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:21,563 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:22,181 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:24,188 basehttp 21104 16428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:25,109 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:26,492 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:28,098 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:29,729 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:30,801 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:33,258 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:34,356 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:35,866 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:37,175 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:38,657 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:39,790 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:39,980 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:43,816 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:44,586 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:45,161 basehttp 21104 10260 "GET /prodbatch/69 HTTP/1.1" 200 45098
+WARNING 2025-11-12 17:21:45,315 basehttp 21104 10260 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:21:46,182 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:47,708 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:48,634 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:52,981 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:53,976 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:55,664 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:56,991 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:57,527 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:21:58,446 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:00,615 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:00,864 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:01,548 basehttp 21104 10292 "POST /prodbatch/69 HTTP/1.1" 302 0
+INFO 2025-11-12 17:22:15,683 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:18,338 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:19,127 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:29,237 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:31,574 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:33,058 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:33,374 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:33,378 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:36,136 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:37,758 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:40,008 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:40,376 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:40,386 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:42,184 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:43,158 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:44,340 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:44,842 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:44,940 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:46,869 basehttp 21104 10292 "GET /prodbatch/ HTTP/1.1" 200 103084
+INFO 2025-11-12 17:22:46,908 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:47,678 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:48,770 basehttp 21104 22168 "GET /api/check-account-status/ HTTP/1.1" 200 62
+WARNING 2025-11-12 17:22:48,778 basehttp 21104 22168 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-12 17:22:48,983 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:49,313 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:51,358 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:52,416 basehttp 21104 6180 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:53,053 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:54,070 basehttp 21104 3660 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:54,429 basehttp 21104 20316 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:55,626 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:56,181 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:56,943 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:22:57,860 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:01,726 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:02,071 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:03,147 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:11,651 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:13,802 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:14,585 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:15,258 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:16,367 basehttp 21104 23940 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:19,006 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:19,171 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:21,493 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:21,803 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:22,413 basehttp 21104 23940 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:22,804 basehttp 21104 15832 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:24,672 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:25,072 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:28,208 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:28,629 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:31,427 basehttp 21104 21856 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:32,358 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:33,536 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:34,776 basehttp 21104 14264 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:38,721 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:40,931 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:41,526 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:43,380 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:44,432 basehttp 21104 14264 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:44,508 basehttp 21104 23216 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:46,195 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:47,890 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:48,376 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:50,808 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:54,320 basehttp 21104 23216 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:54,557 basehttp 21104 14264 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:55,690 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:56,360 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:23:56,818 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:03,499 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:04,346 basehttp 21104 23216 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:07,259 basehttp 21104 14264 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:09,264 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:09,904 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:09,943 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:13,692 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:14,005 basehttp 21104 23216 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:14,303 basehttp 21104 14264 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:15,890 basehttp 21104 12956 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:16,145 basehttp 21104 10292 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:16,754 basehttp 21104 18280 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:17,901 basehttp 21104 25428 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:18,321 basehttp 21104 23216 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:19,888 basehttp 21104 14264 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:40,166 basehttp 21104 68 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-12 17:24:44,396 basehttp 21104 68 "GET /api/check-account-status/ HTTP/1.1" 200 62
