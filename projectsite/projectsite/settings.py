@@ -84,7 +84,7 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
 # Database configuration with fallback
-DATABASE_URL = config('DATABASE_URL', default='postgresql://postgres.rczsumkmhoxjaycvggzt:Reals_db_123@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres')
+DATABASE_URL = config('DATABASE_URL', default='postgresql://postgres.ynmwkydtjzqppyecqhux:Reals_DB_123@aws-1-us-east-1.pooler.supabase.com:6543/postgres')
 
 DATABASES = {
     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
