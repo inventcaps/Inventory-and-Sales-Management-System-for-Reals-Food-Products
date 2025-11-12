@@ -214,12 +214,44 @@ class HistoryLog(models.Model):
                     return f"{w.get_reason_display()} - {w.quantity} {w.get_item_type_display()} ({w.get_sales_channel_display() or 'N/A'})"
                 except Withdrawals.DoesNotExist:
                     # If withdrawal is deleted, use data from history log details
-                    if self.details and 'before' in self.details:
-                        data = self.details['before']
-                        reason = dict(Withdrawals.REASON_CHOICES).get(data.get('reason'), data.get('reason', 'Unknown'))
-                        item_type = dict(Withdrawals.ITEM_TYPE_CHOICES).get(data.get('item_type'), data.get('item_type', 'Unknown'))
-                        quantity = data.get('quantity', 'Unknown')
-                        return f"{reason} - {quantity} {item_type} (Deleted)"
+                    if self.details:
+                        # Try different data structures based on log type
+                        data = None
+                        if 'before' in self.details:
+                            data = self.details['before']
+                        elif 'deleted' in self.details:
+                            data = self.details['deleted']
+                        elif 'created' in self.details:
+                            data = self.details['created']
+                        
+                        if data:
+                            reason = dict(Withdrawals.REASON_CHOICES).get(data.get('reason'), data.get('reason', 'Unknown'))
+                            item_type = dict(Withdrawals.ITEM_TYPE_CHOICES).get(data.get('item_type'), data.get('item_type', 'Unknown'))
+                            quantity = data.get('quantity', 'Unknown')
+                            sales_channel = dict(Withdrawals.SALES_CHANNEL_CHOICES).get(data.get('sales_channel'), data.get('sales_channel', 'N/A'))
+                            
+                            # Get product/material name if available
+                            item_name = "Unknown Item"
+                            if data.get('item_type') == 'PRODUCT' and data.get('item_id'):
+                                try:
+                                    product = Products.objects.select_related(
+                                        'product_type', 'variant', 'size', 'size_unit'
+                                    ).get(id=data.get('item_id'))
+                                    item_name = f"{product.product_type.name} - {product.variant.name}"
+                                    if product.size:
+                                        item_name += f" ({product.size.size_label} {product.size_unit.unit_name})"
+                                except Products.DoesNotExist:
+                                    pass
+                            elif data.get('item_type') == 'RAW_MATERIAL' and data.get('item_id'):
+                                try:
+                                    material = RawMaterials.objects.get(id=data.get('item_id'))
+                                    item_name = material.name
+                                except RawMaterials.DoesNotExist:
+                                    pass
+                            
+                            # Format like: "Deleted (Sold - 2.0 Yema - Mani (120 Grams) (ORDER))"
+                            return f"Deleted ({reason} - {quantity} {item_name} ({sales_channel}))"
+                    
                     return f"Deleted Withdrawal #{self.entity_id}"
 
             elif self.entity_type == "product_recipe":
@@ -484,6 +516,8 @@ class HistoryLog(models.Model):
                     return dict(Withdrawals.SALES_CHANNEL_CHOICES).get(value, value)
                 if key == "price_type":
                     return dict(Withdrawals.PRICE_TYPE_CHOICES).get(value, value)
+                if key == "payment_status":
+                    return dict(Withdrawals.PAYMENT_STATUS_CHOICES).get(value, value)
                 if key == "item_type":
                     return dict(Withdrawals.ITEM_TYPE_CHOICES).get(value, value)
                 if key == "category" and isinstance(value, str):
@@ -559,6 +593,70 @@ class HistoryLog(models.Model):
 
             def format_key(key):
                 return key.replace("_id", "").replace("_", " ").title()
+
+            # Handle withdrawal-specific data structures first
+            if self.entity_type == "withdrawal":
+                if "created" in self.details:
+                    # Withdrawal Created (new format with nested data)
+                    data = self.details["created"]
+                    parts = []
+                    if data.get('reason'):
+                        parts.append(f"Reason: {humanize_field('reason', data['reason'])}")
+                    if data.get('quantity'):
+                        parts.append(f"Quantity: {data['quantity']}")
+                    if data.get('sales_channel'):
+                        parts.append(f"Channel: {humanize_field('sales_channel', data['sales_channel'])}")
+                    if data.get('payment_status'):
+                        parts.append(f"Status: {humanize_field('payment_status', data['payment_status'])}")
+                    if data.get('customer_name'):
+                        parts.append(f"Customer: {data['customer_name']}")
+                    return " | ".join(parts)
+                
+                elif "updated" in self.details:
+                    # Withdrawal Updated (new format with nested before/after)
+                    update_data = self.details["updated"]
+                    before = update_data.get("before", {})
+                    after = update_data.get("after", {})
+                    
+                    changes = []
+                    for key in ['quantity', 'reason', 'payment_status', 'sales_channel', 'customer_name']:
+                        old_val = before.get(key)
+                        new_val = after.get(key)
+                        if old_val != new_val:
+                            old_display = humanize_field(key, old_val) if old_val else "None"
+                            new_display = humanize_field(key, new_val) if new_val else "None"
+                            changes.append(f"{format_key(key)}: {old_display} → {new_display}")
+                    
+                    return " | ".join(changes) if changes else "Updated"
+                
+                elif "deleted" in self.details:
+                    # Withdrawal Deleted (new format with nested data)
+                    data = self.details["deleted"]
+                    parts = []
+                    if data.get('reason'):
+                        parts.append(f"Reason: {humanize_field('reason', data['reason'])}")
+                    if data.get('quantity'):
+                        parts.append(f"Quantity: {data['quantity']}")
+                    if data.get('sales_channel'):
+                        parts.append(f"Channel: {humanize_field('sales_channel', data['sales_channel'])}")
+                    if data.get('payment_status'):
+                        parts.append(f"Status: {humanize_field('payment_status', data['payment_status'])}")
+                    if data.get('customer_name'):
+                        parts.append(f"Customer: {data['customer_name']}")
+                    return " | ".join(parts)
+                
+                elif "archived" in self.details:
+                    # Withdrawal Archived/Restored (new format)
+                    archive_data = self.details["archived"]
+                    before = archive_data.get("before", {})
+                    after = archive_data.get("after", {})
+                    
+                    if after.get("is_archived") == True:
+                        return "Archived"
+                    elif after.get("is_archived") == False:
+                        return "Restored"
+                    else:
+                        return "Archive Status Changed"
 
             if "before" in self.details and "after" in self.details:
                 diffs = []

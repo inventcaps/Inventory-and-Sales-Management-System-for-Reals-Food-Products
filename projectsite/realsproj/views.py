@@ -2816,13 +2816,14 @@ class ProductInventoryList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
+        # Filter out archived products and their inventory
         queryset = super().get_queryset().select_related(
             "product",
             "product__product_type",
             "product__variant",
             "product__size",
             "product__size_unit",
-        )
+        ).filter(product__is_archived=False)
 
         # Unified search field for Product Type, Variant, and Size
         search = self.request.GET.get("search", "").strip()
@@ -2848,8 +2849,10 @@ class ProductInventoryList(ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
-        # Calculate total stock across all products
-        total_stock = ProductInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        # Calculate total stock across all non-archived products
+        total_stock = ProductInventory.objects.filter(
+            product__is_archived=False
+        ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_product_stock'] = total_stock
         return context
 
@@ -3070,7 +3073,10 @@ class RawMaterialInventoryList(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related("material").order_by('material_id')
+        # Filter out archived raw materials and their inventory
+        queryset = super().get_queryset().select_related("material").filter(
+            material__is_archived=False
+        ).order_by('material_id')
 
         q = self.request.GET.get("q", "").strip()
         status = self.request.GET.get("status", "").strip()
@@ -3096,7 +3102,10 @@ class RawMaterialInventoryList(ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
-        total_stock = RawMaterialInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        # Calculate total stock across all non-archived raw materials
+        total_stock = RawMaterialInventory.objects.filter(
+            material__is_archived=False
+        ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
         return context
 
@@ -4148,14 +4157,8 @@ class WithdrawUpdateView(UpdateView):
             'date': str(withdrawal.date),
         }
 
-        create_history_log(
-            admin=self.request.user,
-            log_category="Withdrawal Edited",
-            entity_type="withdrawal",
-            entity_id=withdrawal.id,
-            before=before,
-            after=after
-        )
+        # History logging is now handled by PostgreSQL triggers
+        # Removed manual create_history_log call to prevent double logging
 
         # Update sales entry if this is a PAID order with Unit/SRP price
         if (withdrawal.reason == 'SOLD' and 
@@ -4253,14 +4256,8 @@ class WithdrawDeleteView(DeleteView):
         # Call parent delete
         response = super().post(request, *args, **kwargs)
         
-        # Create history log after deletion
-        create_history_log(
-            admin=request.user,
-            log_category="Withdrawal Deleted",
-            entity_type="withdrawal",
-            entity_id=withdrawal_id,
-            before=before
-        )
+        # History logging is now handled by PostgreSQL triggers
+        # Removed manual create_history_log call to prevent double logging
         
         # Update sales entry if this was part of a PAID/PARTIAL order
         if (reason == 'SOLD' and 
@@ -4338,24 +4335,8 @@ class WithdrawalGroupArchiveView(View):
         count = withdrawals.count()
         
         if count > 0:
-            # Log each withdrawal in the group before archiving
-            for withdrawal in withdrawals:
-                withdrawal_data = {
-                    'item_type': withdrawal.item_type,
-                    'item_id': withdrawal.item_id,
-                    'quantity': str(withdrawal.quantity),
-                    'reason': withdrawal.reason,
-                    'sales_channel': withdrawal.sales_channel,
-                    'order_group_id': withdrawal.order_group_id,
-                }
-                
-                create_history_log(
-                    admin=request.user,
-                    log_category="Withdrawal Group Archived",
-                    entity_type="withdrawal",
-                    entity_id=withdrawal.id,
-                    after=withdrawal_data
-                )
+            # History logging is now handled by PostgreSQL triggers
+            # Removed manual create_history_log calls to prevent double logging
             
             withdrawals.update(is_archived=True)
             messages.success(request, f"✅ Archived {count} withdrawal(s) from Order #{order_group_id}")
@@ -4380,24 +4361,8 @@ class WithdrawalGroupDeleteView(View):
                 first_withdrawal.payment_status in ['PAID', 'PARTIAL']
             )
             
-            # Log each deletion
-            for withdrawal in withdrawals:
-                before = {
-                    'item_type': withdrawal.item_type,
-                    'item_id': withdrawal.item_id,
-                    'quantity': str(withdrawal.quantity),
-                    'reason': withdrawal.reason,
-                    'sales_channel': withdrawal.sales_channel,
-                    'order_group_id': withdrawal.order_group_id,
-                }
-                
-                create_history_log(
-                    admin=request.user,
-                    log_category="Withdrawal Group Deleted",
-                    entity_type="withdrawal",
-                    entity_id=withdrawal.id,
-                    before=before
-                )
+            # History logging is now handled by PostgreSQL triggers
+            # Removed manual create_history_log calls to prevent double logging
             
             # Delete all withdrawals in the group
             withdrawals.delete()

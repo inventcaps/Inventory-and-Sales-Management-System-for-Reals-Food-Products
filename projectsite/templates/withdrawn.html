@@ -153,7 +153,7 @@
                         <input type="checkbox" class="row-checkbox" value="{{ group.order_group_id }}" data-group="true" onchange="updateBulkButtons()">
                         {% endif %}
                     </td>
-                    <td>{{ group.date|localtime|date:"Y-m-d g:i A" }}</td>
+                    <td>{{ group.date|date:"Y-m-d g:i A" }}</td>
                     <td>{{ group.item_type_display }}</td>
                     <td>
                       {{ group.reason_display }}
@@ -248,7 +248,7 @@
             <strong>Item:</strong> {{ object.get_item_display }}<br>
             <strong>Quantity:</strong> {{ object.quantity|floatformat:0 }}<br>
             <strong>Reason:</strong> {{ object.get_reason_display }}<br>
-            <strong>Date:</strong> {{ object.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ object.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdrawals-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.get_item_display }} (Qty: {{ object.quantity }})')">
@@ -277,7 +277,7 @@
             <strong>Item:</strong> {{ object.get_item_display }}<br>
             <strong>Quantity:</strong> {{ object.quantity|floatformat:0 }}<br>
             <strong>Reason:</strong> {{ object.get_reason_display }}<br>
-            <strong>Date:</strong> {{ object.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ object.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdraw-delete' object.id %}" onsubmit="handleDeleteSubmit(event, '{{ object.get_item_display }} (Qty: {{ object.quantity }})')">
@@ -305,7 +305,7 @@
           <div class="modal-body">
             <div class="row mb-3">
               <div class="col-md-6">
-                <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}<br>
+                <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}<br>
                 <strong>Reason:</strong> {{ group.reason_display }}
                 {% if group.sales_channel_display %}
                   <br><strong>Channel:</strong> {{ group.sales_channel_display }}
@@ -392,7 +392,7 @@
             <strong>Order #:</strong> {{ group.order_group_id }}<br>
             <strong>Items:</strong> {{ group.item_count }}<br>
             <strong>Customer:</strong> {{ group.customer_name|default:"-" }}<br>
-            <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdrawal-group-archive' group.order_group_id %}" onsubmit="handleArchiveSubmit(event, 'Order #{{ group.order_group_id }}')">
@@ -421,7 +421,7 @@
             <strong>Order #:</strong> {{ group.order_group_id }}<br>
             <strong>Items:</strong> {{ group.item_count }}<br>
             <strong>Customer:</strong> {{ group.customer_name|default:"-" }}<br>
-            <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}
             <br><br>
             <span class="text-danger"><strong>Warning:</strong> This will delete all {{ group.item_count }} items in this order!</span>
           </div>
