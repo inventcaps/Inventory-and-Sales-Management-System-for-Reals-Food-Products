@@ -187,15 +187,18 @@ CACHES = {
     }
 }
 
-# Email Configuration - Use HTTP-based email service to bypass SMTP restrictions
-if DEBUG:
-    # Development: use console backend (prints emails to terminal)
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-else:
-    # Production: use custom Mailgun backend (HTTP API, bypasses SMTP blocks)
-    EMAIL_BACKEND = 'realsproj.email_backend.FallbackEmailBackend'
+# Email Configuration - Simple setup
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
-DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@inventcaps.com')
+# For development - use console backend if no credentials
+if DEBUG and (not EMAIL_HOST_PASSWORD or EMAIL_HOST_PASSWORD == 'your-app-password-here'):
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Email timeout settings
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
