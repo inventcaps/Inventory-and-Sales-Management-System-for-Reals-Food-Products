@@ -1,0 +1,353 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Real's Food Products</title>
+  
+  <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
+  <link rel="stylesheet" href="{% static 'css/login.css' %}">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Nunito', sans-serif;
+      min-height: 100vh;
+      padding: 40px 0;
+    }
+    
+    .privacy-container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+    
+    .privacy-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 40px;
+      text-align: center;
+    }
+    
+    .privacy-header h1 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    
+    .privacy-header p {
+      font-size: 1rem;
+      opacity: 0.9;
+      margin: 0;
+    }
+    
+    .privacy-content {
+      padding: 40px;
+      color: #333;
+    }
+    
+    .privacy-section {
+      margin-bottom: 35px;
+    }
+    
+    .privacy-section h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #667eea;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .privacy-section h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #764ba2;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    
+    .privacy-section p {
+      line-height: 1.8;
+      margin-bottom: 15px;
+      color: #555;
+    }
+    
+    .privacy-section ul {
+      margin-left: 20px;
+      margin-bottom: 15px;
+    }
+    
+    .privacy-section li {
+      line-height: 1.8;
+      margin-bottom: 8px;
+      color: #555;
+    }
+    
+    .highlight-box {
+      background: #f8f9fa;
+      border-left: 4px solid #667eea;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 5px;
+    }
+    
+    .highlight-box strong {
+      color: #667eea;
+    }
+    
+    .back-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #667eea;
+      color: white;
+      padding: 12px 30px;
+      border-radius: 25px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+    }
+    
+    .back-button:hover {
+      background: #764ba2;
+      color: white;
+      text-decoration: none;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .contact-box {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 10px;
+      margin-top: 30px;
+    }
+    
+    .contact-box h3 {
+      color: white;
+      margin-bottom: 15px;
+    }
+    
+    .contact-box p {
+      color: white;
+      margin-bottom: 10px;
+    }
+    
+    .contact-box a {
+      color: #fff;
+      text-decoration: underline;
+    }
+    
+    .last-updated {
+      text-align: center;
+      color: #999;
+      font-size: 0.9rem;
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #e0e0e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="privacy-container">
+    <div class="privacy-header">
+      <h1><i class="bi bi-shield-lock-fill"></i> Privacy Policy</h1>
+      <p>Real's Food Products Inventory & Sales Management System</p>
+    </div>
+    
+    <div class="privacy-content">
+      <!-- Introduction -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-info-circle-fill"></i> Introduction</h2>
+        <p>
+          Welcome to Real's Food Products Inventory & Sales Management System. We are committed to protecting your personal information and your right to privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our system.
+        </p>
+        <p>
+          By accessing or using our system, you agree to the terms outlined in this Privacy Policy. If you do not agree with our policies and practices, please do not use our system.
+        </p>
+      </div>
+
+      <!-- Information We Collect -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-database-fill"></i> Information We Collect</h2>
+        
+        <h3>1. Personal Information</h3>
+        <p>We collect the following personal information when you register and use our system:</p>
+        <ul>
+          <li><strong>Account Information:</strong> Username, email address, first name, last name, and password (encrypted)</li>
+          <li><strong>Profile Information:</strong> User role (Administrator or Staff), account status, and preferences</li>
+          <li><strong>Contact Information:</strong> Email address for notifications and account recovery</li>
+        </ul>
+
+        <h3>2. Automatically Collected Information</h3>
+        <p>When you use our system, we automatically collect certain information:</p>
+        <ul>
+          <li><strong>Login Activity:</strong> Login timestamps, IP addresses, device information, browser type, and operating system</li>
+          <li><strong>Device Fingerprints:</strong> Unique identifiers for trusted device management</li>
+          <li><strong>Session Data:</strong> Session duration, pages visited, and actions performed</li>
+          <li><strong>System Logs:</strong> Activity logs, error logs, and security events</li>
+        </ul>
+
+        <h3>3. Business Data</h3>
+        <p>As part of the inventory management system, we process:</p>
+        <ul>
+          <li>Product information, inventory records, and sales data</li>
+          <li>Transaction history and financial records</li>
+          <li>Supplier and customer information (if applicable)</li>
+          <li>Reports and analytics data</li>
+        </ul>
+      </div>
+
+      <!-- How We Use Your Information -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-gear-fill"></i> How We Use Your Information</h2>
+        <p>We use the collected information for the following purposes:</p>
+        <ul>
+          <li><strong>Account Management:</strong> Create and manage user accounts, authenticate users, and maintain account security</li>
+          <li><strong>System Operations:</strong> Provide access to inventory management features, process transactions, and generate reports</li>
+          <li><strong>Security:</strong> Detect and prevent unauthorized access, monitor suspicious activities, and implement two-factor authentication</li>
+          <li><strong>Communication:</strong> Send account notifications, security alerts, password reset emails, and system updates</li>
+          <li><strong>Compliance:</strong> Maintain audit trails, comply with legal obligations, and enforce our terms of service</li>
+          <li><strong>Improvement:</strong> Analyze system usage, improve features, and enhance user experience</li>
+        </ul>
+      </div>
+
+      <!-- Data Security -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-shield-check-fill"></i> Data Security</h2>
+        <p>We implement robust security measures to protect your information:</p>
+        
+        <div class="highlight-box">
+          <strong>Security Measures Include:</strong>
+          <ul style="margin-top: 10px; margin-bottom: 0;">
+            <li><strong>Encryption:</strong> All passwords are encrypted using industry-standard hashing algorithms (PBKDF2, BCrypt, Scrypt)</li>
+            <li><strong>Secure Connections:</strong> Data transmission is protected using HTTPS/SSL encryption</li>
+            <li><strong>Access Controls:</strong> Role-based access control (RBAC) limits data access based on user roles</li>
+            <li><strong>Two-Factor Authentication:</strong> Optional 2FA adds an extra layer of account security</li>
+            <li><strong>Trusted Device Management:</strong> Device fingerprinting and OTP verification for new devices</li>
+            <li><strong>Session Security:</strong> Automatic session expiration and secure session management</li>
+            <li><strong>Audit Logging:</strong> Comprehensive logging of all system activities and security events</li>
+            <li><strong>Regular Backups:</strong> Automated database backups to prevent data loss</li>
+          </ul>
+        </div>
+
+        <p>
+          Despite our security measures, no system is 100% secure. We cannot guarantee absolute security, but we continuously monitor and update our security practices to protect your data.
+        </p>
+      </div>
+
+      <!-- Data Retention -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-clock-history"></i> Data Retention</h2>
+        <p>We retain your information for as long as necessary to fulfill the purposes outlined in this policy:</p>
+        <ul>
+          <li><strong>Active Accounts:</strong> Data is retained while your account is active</li>
+          <li><strong>Inactive Accounts:</strong> Deactivated accounts are anonymized but retained for audit purposes</li>
+          <li><strong>Deleted Accounts:</strong> Soft-deleted accounts are anonymized and retained for 90 days before permanent deletion</li>
+          <li><strong>Audit Logs:</strong> System logs and activity records are retained for compliance and security purposes</li>
+          <li><strong>Legal Requirements:</strong> Some data may be retained longer if required by law</li>
+        </ul>
+      </div>
+
+      <!-- Your Rights -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-person-check-fill"></i> Your Rights</h2>
+        <p>You have the following rights regarding your personal information:</p>
+        <ul>
+          <li><strong>Access:</strong> Request access to your personal data stored in our system</li>
+          <li><strong>Correction:</strong> Update or correct inaccurate personal information through your profile settings</li>
+          <li><strong>Deletion:</strong> Request deletion of your account and associated data (subject to legal retention requirements)</li>
+          <li><strong>Data Portability:</strong> Request a copy of your data in a structured, machine-readable format</li>
+          <li><strong>Withdraw Consent:</strong> Withdraw consent for optional data processing (e.g., marketing communications)</li>
+          <li><strong>Object:</strong> Object to certain types of data processing</li>
+        </ul>
+        <p>To exercise these rights, please contact your system administrator or use the contact information provided below.</p>
+      </div>
+
+      <!-- Data Sharing -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-share-fill"></i> Data Sharing and Disclosure</h2>
+        <p>We do not sell, trade, or rent your personal information to third parties. We may share your information only in the following circumstances:</p>
+        <ul>
+          <li><strong>Within Organization:</strong> Authorized administrators and staff members with appropriate access levels</li>
+          <li><strong>Service Providers:</strong> Third-party services that help us operate the system (e.g., email service providers, hosting providers)</li>
+          <li><strong>Legal Compliance:</strong> When required by law, court order, or government regulation</li>
+          <li><strong>Business Transfers:</strong> In the event of a merger, acquisition, or sale of assets</li>
+          <li><strong>Protection:</strong> To protect the rights, property, or safety of Real's Food Products, our users, or others</li>
+        </ul>
+      </div>
+
+      <!-- Cookies and Tracking -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-cookie"></i> Cookies and Tracking Technologies</h2>
+        <p>We use cookies and similar tracking technologies to enhance your experience:</p>
+        <ul>
+          <li><strong>Session Cookies:</strong> Essential for system functionality and user authentication</li>
+          <li><strong>Security Cookies:</strong> CSRF tokens to protect against cross-site request forgery attacks</li>
+          <li><strong>Remember Me:</strong> Optional persistent cookies to keep you logged in across sessions</li>
+          <li><strong>Device Fingerprinting:</strong> To identify trusted devices and enhance security</li>
+        </ul>
+        <p>You can control cookies through your browser settings, but disabling cookies may affect system functionality.</p>
+      </div>
+
+      <!-- Children's Privacy -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-people-fill"></i> Children's Privacy</h2>
+        <p>
+          Our system is not intended for individuals under the age of 18. We do not knowingly collect personal information from children. If you believe we have collected information from a child, please contact us immediately.
+        </p>
+      </div>
+
+      <!-- Changes to Privacy Policy -->
+      <div class="privacy-section">
+        <h2><i class="bi bi-arrow-repeat"></i> Changes to This Privacy Policy</h2>
+        <p>
+          We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify you of any material changes by:
+        </p>
+        <ul>
+          <li>Posting the updated policy on this page</li>
+          <li>Updating the "Last Updated" date</li>
+          <li>Sending email notifications for significant changes</li>
+        </ul>
+        <p>Your continued use of the system after changes are posted constitutes acceptance of the updated policy.</p>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="contact-box">
+        <h3><i class="bi bi-envelope-fill"></i> Contact Us</h3>
+        <p>If you have questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact us:</p>
+        <p><strong>Email:</strong> <a href="mailto:inventcaps@gmail.com">inventcaps@gmail.com</a></p>
+        <p><strong>System Administrator:</strong> Contact your organization's administrator for account-related inquiries</p>
+        <p><strong>Data Protection Officer:</strong> Available for privacy-related concerns and data subject requests</p>
+      </div>
+
+      <!-- Last Updated -->
+      <div class="last-updated">
+        <p><strong>Last Updated:</strong> November 10, 2025</p>
+        <p><strong>Effective Date:</strong> November 10, 2025</p>
+      </div>
+
+      <!-- Back Button -->
+      <div style="text-align: center;">
+        <a href="{% url 'login' %}" class="back-button">
+          <i class="bi bi-arrow-left"></i> Back to Login
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="{% static 'js/core/jquery.3.2.1.min.js' %}"></script>
+  <script src="{% static 'js/core/bootstrap.min.js' %}"></script>
+</body>
+</html>

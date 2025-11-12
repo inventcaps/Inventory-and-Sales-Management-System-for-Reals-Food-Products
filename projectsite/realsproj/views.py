@@ -80,7 +80,7 @@ from realsproj.models import (
 )
 
 from django.db.models import Q, CharField
-from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import TemplateView
 from django.db.models.functions import TruncMonth, TruncDay
 from django.db.models.functions import Cast
@@ -316,14 +316,62 @@ def monthly_report(request):
         .order_by("month") 
     )
 
-    expenses_dict = {e["month"]: e["total_expenses"] for e in expenses}
+    # Calculate financial loss per month (expired, damaged, replacement items)
+    financial_loss_withdrawals = Withdrawals.objects.filter(
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+        is_archived=False
+    ).annotate(month=TruncMonth("date")).values("month", "item_type", "item_id", "quantity")
+    
+    # Group financial loss by month
+    financial_loss_dict = {}
+    for withdrawal in financial_loss_withdrawals:
+        month = withdrawal["month"]
+        if month not in financial_loss_dict:
+            financial_loss_dict[month] = Decimal('0.00')
+        
+        try:
+            if withdrawal["item_type"] == 'PRODUCT':
+                product = Products.objects.select_related('unit_price').get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * product.unit_price.unit_price
+                financial_loss_dict[month] += loss_amount
+            elif withdrawal["item_type"] == 'RAW_MATERIAL':
+                material = RawMaterials.objects.get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * material.price_per_unit
+                financial_loss_dict[month] += loss_amount
+        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
+            continue
+
+    # Normalize all dictionaries to use date objects as keys
+    def normalize_date(dt):
+        if hasattr(dt, 'date'):
+            return dt.date()
+        return dt
+
+    expenses_dict = {normalize_date(e["month"]): e["total_expenses"] for e in expenses}
+    sales_dict = {normalize_date(s["month"]): s["total_sales"] for s in sales}
+    
+    # Normalize financial_loss_dict keys as well
+    normalized_financial_loss_dict = {}
+    for month, loss in financial_loss_dict.items():
+        normalized_month = normalize_date(month)
+        normalized_financial_loss_dict[normalized_month] = loss
+
+    # Get all unique months from sales, expenses, and financial loss
+    all_months = set()
+    all_months.update(sales_dict.keys())
+    all_months.update(expenses_dict.keys())
+    all_months.update(normalized_financial_loss_dict.keys())
+    
+    # Sort months chronologically
+    all_months = sorted(all_months)
 
     report = []
     prev = None
 
-    for s in sales:
-        month = s["month"]
-        revenue = s["total_sales"] or 0
+    for month in all_months:
+        gross_revenue = sales_dict.get(month, 0) or 0
+        financial_loss = normalized_financial_loss_dict.get(month, 0) or 0
+        revenue = gross_revenue - financial_loss  # Net revenue after financial loss
         cost = expenses_dict.get(month, 0) or 0
         profit = revenue - cost
 
@@ -336,6 +384,7 @@ def monthly_report(request):
         report.append({
             "month": month,
             "revenue": revenue,
+            "financial_loss": financial_loss,
             "expenses": cost,
             "profit": profit,
             "revenue_change": revenue_change,
@@ -345,6 +394,7 @@ def monthly_report(request):
 
     summary = {
         "total_revenue": sum(r["revenue"] for r in report),
+        "total_financial_loss": sum(r["financial_loss"] for r in report),
         "total_profit": sum(r["profit"] for r in report),
         "average_profit": (sum(r["profit"] for r in report) / len(report)) if report else 0,
     }
@@ -363,7 +413,7 @@ def monthly_report_export(request):
     response["Content-Disposition"] = 'attachment; filename="financial_report.csv"'
     response.write(u'\ufeff'.encode('utf8'))
     writer = csv.writer(response)
-    writer.writerow(["Month", "Revenue", "Expenses", "Profit", "Revenue Change", "Profit Change", "Trend"])
+    writer.writerow(["Month", "Revenue", "Financial Loss", "Expenses", "Profit", "Revenue Change", "Profit Change", "Trend"])
     sales = (
         Sales.objects.annotate(month=TruncMonth("date"))
         .values("month")
@@ -376,18 +426,64 @@ def monthly_report_export(request):
         .annotate(total_expenses=Sum("amount"))
         .order_by("month")
     )
-    sales_dict = {s["month"]: Decimal(s["total_sales"] or 0) for s in sales}
-    expenses_dict = {e["month"]: Decimal(e["total_expenses"] or 0) for e in expenses}
-    all_months = sorted(set(list(sales_dict.keys()) + list(expenses_dict.keys())))
+    
+    # Calculate financial loss per month (same logic as main view)
+    financial_loss_withdrawals = Withdrawals.objects.filter(
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+        is_archived=False
+    ).annotate(month=TruncMonth("date")).values("month", "item_type", "item_id", "quantity")
+    
+    financial_loss_dict = {}
+    for withdrawal in financial_loss_withdrawals:
+        month = withdrawal["month"]
+        if month not in financial_loss_dict:
+            financial_loss_dict[month] = Decimal('0.00')
+        
+        try:
+            if withdrawal["item_type"] == 'PRODUCT':
+                product = Products.objects.select_related('unit_price').get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * product.unit_price.unit_price
+                financial_loss_dict[month] += loss_amount
+            elif withdrawal["item_type"] == 'RAW_MATERIAL':
+                material = RawMaterials.objects.get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * material.price_per_unit
+                financial_loss_dict[month] += loss_amount
+        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
+            continue
+    
+    # Normalize all dictionaries to use date objects as keys
+    def normalize_date(dt):
+        if hasattr(dt, 'date'):
+            return dt.date()
+        return dt
+
+    sales_dict = {normalize_date(s["month"]): Decimal(s["total_sales"] or 0) for s in sales}
+    expenses_dict = {normalize_date(e["month"]): Decimal(e["total_expenses"] or 0) for e in expenses}
+    
+    # Normalize financial_loss_dict keys as well
+    normalized_financial_loss_dict = {}
+    for month, loss in financial_loss_dict.items():
+        normalized_month = normalize_date(month)
+        normalized_financial_loss_dict[normalized_month] = loss
+    
+    # Get all unique months from sales, expenses, and financial loss
+    all_months = set()
+    all_months.update(sales_dict.keys())
+    all_months.update(expenses_dict.keys())
+    all_months.update(normalized_financial_loss_dict.keys())
+    all_months = sorted(all_months)
 
     report = []
     for month in all_months:
-        revenue = sales_dict.get(month, Decimal(0))
+        gross_revenue = sales_dict.get(month, Decimal(0))
+        financial_loss = normalized_financial_loss_dict.get(month, Decimal(0))
+        revenue = gross_revenue - financial_loss  # Net revenue after financial loss
         cost = expenses_dict.get(month, Decimal(0))
         profit = revenue - cost
         report.append({
             "month": month,
             "revenue": revenue,
+            "financial_loss": financial_loss,
             "expenses": cost,
             "profit": profit,
         })
@@ -419,6 +515,7 @@ def monthly_report_export(request):
         writer.writerow([
             report[i]["month"].strftime("%B %Y"),
             f"₱{report[i]['revenue']:,.2f}",
+            f"₱{report[i]['financial_loss']:,.2f}",
             f"₱{report[i]['expenses']:,.2f}",
             f"₱{report[i]['profit']:,.2f}",
             rev_change,
@@ -537,27 +634,17 @@ class ProductArchiveView(View):
     def post(self, request, pk):
         product = get_object_or_404(Products, pk=pk)
         
-        # Prepare product data for history log
-        product_data = {
-            'product_type': product.product_type.name,
-            'variant': product.variant.name,
-            'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-            'unit_price': str(product.unit_price.unit_price),
-            'srp_price': str(product.srp_price.srp_price),
-            'date_created': str(product.date_created),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         product.is_archived = True
-        product.save()
+        product.save()  # Trigger will handle logging
         
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Product Archived",
-            entity_type="product",
-            entity_id=product.id,
-            after=product_data
-        )
+        # Handle AJAX requests
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': 'Product archived successfully'})
         
         page = request.POST.get('page')
         if page:
@@ -577,27 +664,13 @@ class ProductUnarchiveView(View):
     def post(self, request, pk):
         product = get_object_or_404(Products, pk=pk)
         
-        # Prepare product data for history log
-        product_data = {
-            'product_type': product.product_type.name,
-            'variant': product.variant.name,
-            'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-            'unit_price': str(product.unit_price.unit_price),
-            'srp_price': str(product.srp_price.srp_price),
-            'date_created': str(product.date_created),
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         product.is_archived = False
-        product.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Product Restored",
-            entity_type="product",
-            entity_id=product.id,
-            after=product_data
-        )
+        product.save()  # Trigger will handle logging
         
         return redirect('products-archived-list')
 
@@ -630,6 +703,9 @@ class ProductArchiveOldView(View):
 
 @require_http_methods(["POST"])
 def product_bulk_delete(request):
+    # Only superusers can delete products
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied. Only administrators can delete products.'})
     try:
         ids = request.POST.get('ids', '').split(',')
         ids = [int(id.strip()) for id in ids if id.strip()]
@@ -654,29 +730,13 @@ def product_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No products selected'})
         
-        # Get products before archiving to log them
-        products = Products.objects.filter(id__in=ids)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Log each archived product
-        for product in products:
-            product_data = {
-                'product_type': product.product_type.name,
-                'variant': product.variant.name,
-                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-                'unit_price': str(product.unit_price.unit_price),
-                'srp_price': str(product.srp_price.srp_price),
-                'date_created': str(product.date_created),
-            }
-            
-            create_history_log(
-                admin=request.user,
-                log_category="Product Bulk Archived",
-                entity_type="product",
-                entity_id=product.id,
-                after=product_data
-            )
-        
-        archived_count = products.update(is_archived=True)
+        # Update will trigger database triggers for each product
+        archived_count = Products.objects.filter(id__in=ids).update(is_archived=True)
         return JsonResponse({
             'success': True,
             'message': f'Successfully archived {archived_count} product(s)'
@@ -693,29 +753,13 @@ def product_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No products selected'})
         
-        # Get products before restoring to log them
-        products = Products.objects.filter(id__in=ids)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Log each restored product
-        for product in products:
-            product_data = {
-                'product_type': product.product_type.name,
-                'variant': product.variant.name,
-                'size': f"{product.size.size_label} {product.size_unit.unit_name}",
-                'unit_price': str(product.unit_price.unit_price),
-                'srp_price': str(product.srp_price.srp_price),
-                'date_created': str(product.date_created),
-            }
-            
-            create_history_log(
-                admin=request.user,
-                log_category="Product Bulk Restored",
-                entity_type="product",
-                entity_id=product.id,
-                after=product_data
-            )
-        
-        restored_count = products.update(is_archived=False)
+        # Update will trigger database triggers for each product
+        restored_count = Products.objects.filter(id__in=ids).update(is_archived=False)
         return JsonResponse({
             'success': True,
             'message': f'Successfully restored {restored_count} product(s)'
@@ -878,45 +922,15 @@ class ProductsUpdateView(UpdateView):
         auth_user = AuthUser.objects.get(username=self.request.user.username)
         form.instance.created_by_admin = auth_user
         
-        # Get the old instance before saving
-        old_instance = Products.objects.get(pk=self.object.pk)
-        
-        # Capture before state
-        before_data = {
-            'product_type_id': old_instance.product_type_id,
-            'variant_id': old_instance.variant_id,
-            'size_id': old_instance.size_id,
-            'size_unit_id': old_instance.size_unit_id,
-            'unit_price_id': old_instance.unit_price_id,
-            'srp_price_id': old_instance.srp_price_id,
-        }
-        
         # Check if photo should be deleted
         if self.request.POST.get('delete_photo_flag') == '1':
             form.instance.photo = None
+
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [auth_user.id])
         
         product = form.save()
-        
-        # Capture after state
-        after_data = {
-            'product_type_id': product.product_type_id,
-            'variant_id': product.variant_id,
-            'size_id': product.size_id,
-            'size_unit_id': product.size_unit_id,
-            'unit_price_id': product.unit_price_id,
-            'srp_price_id': product.srp_price_id,
-        }
-        
-        # Create history log only if something changed
-        if before_data != after_data:
-            create_history_log(
-                admin=auth_user,
-                log_category="Product Updated",
-                entity_type="product",
-                entity_id=product.id,
-                before=before_data,
-                after=after_data
-            )
         
         messages.success(self.request, "✅ Product updated successfully.")
         
@@ -952,9 +966,21 @@ def delete_product_photo_on_delete(sender, instance, **kwargs):
             pass
 
 
-class ProductsDeleteView(DeleteView):
+class ProductsDeleteView(UserPassesTestMixin, DeleteView):
     model = Products
     success_url = reverse_lazy("products")
+
+    def test_func(self):
+        return self.request.user.is_superuser
+
+    def delete(self, request, *args, **kwargs):
+        """Set current user ID in database session for trigger to use"""
+        from django.db import connection
+        
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        return super().delete(request, *args, **kwargs)
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Product deleted successfully.")
@@ -1028,7 +1054,7 @@ class RawMaterialsList(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = RawMaterials.objects.filter(is_archived=False).select_related("unit", "created_by_admin").order_by('-id')
+        queryset = RawMaterials.objects.filter(is_archived=False).select_related("unit", "created_by_admin").order_by('-date_created')
         
         query = self.request.GET.get("q", "").strip()
         date_created = self.request.GET.get("date_created", "").strip()
@@ -1064,19 +1090,14 @@ class RawMaterialsList(ListView):
 class RawMaterialArchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
-        item.is_archived = True
-        item.save()
         
-        # Delete any "Raw Material Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id=pk,
-            log_type__category='Raw Material Updated',
-            log_date__gte=recent_time
-        ).delete()
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        item.is_archived = True
+        item.save()  # Trigger will handle logging
         
         return redirect('rawmaterials-list')
 
@@ -1112,30 +1133,13 @@ def rawmaterial_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No raw materials selected'})
         
-        # Archive raw materials (this will trigger database trigger)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        # Update will trigger database triggers for each raw material
         archived_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=True)
-        
-        # Delete the trigger-created logs
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id__in=ids,
-            log_type__category='Raw Material Archived',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Raw Material Bulk Archived" logs
-        for material_id in ids:
-            create_history_log(
-                admin=request.user,
-                log_category="Raw Material Bulk Archived",
-                entity_type="raw_material",
-                entity_id=material_id,
-                before={'is_archived': False},
-                after={'is_archived': True}
-            )
         
         return JsonResponse({
             'success': True,
@@ -1153,30 +1157,13 @@ def rawmaterial_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No raw materials selected'})
         
-        # Restore raw materials (this will trigger database trigger)
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        # Update will trigger database triggers for each raw material
         restored_count = RawMaterials.objects.filter(id__in=ids).update(is_archived=False)
-        
-        # Delete the trigger-created logs
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id__in=ids,
-            log_type__category='Raw Material Restored',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Raw Material Bulk Restored" logs
-        for material_id in ids:
-            create_history_log(
-                admin=request.user,
-                log_category="Raw Material Bulk Restored",
-                entity_type="raw_material",
-                entity_id=material_id,
-                before={'is_archived': True},
-                after={'is_archived': False}
-            )
         
         return JsonResponse({
             'success': True,
@@ -1197,19 +1184,14 @@ class ArchivedRawMaterialsListView(ListView):
 class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
-        item.is_archived = False
-        item.save()
         
-        # Delete any "Raw Material Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='raw_material',
-            entity_id=pk,
-            log_type__category='Raw Material Updated',
-            log_date__gte=recent_time
-        ).delete()
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        item.is_archived = False
+        item.save()  # Trigger will handle logging
         
         return redirect('rawmaterials-archived-list')
 
@@ -1296,10 +1278,18 @@ class RawMaterialsDeleteView(LoginRequiredMixin, DeleteView):
             return redirect('rawmaterials-list')
         return super().dispatch(request, *args, **kwargs)
 
+    def delete(self, request, *args, **kwargs):
+        """Set current user ID in database session for trigger to use"""
+        from django.db import connection
+        
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        return super().delete(request, *args, **kwargs)
 
     def get_success_url(self):
-        messages.success(self.request, "🗑️ Raw Material deleted successfully.")
-        return super().get_success_url()
+        messages.success(self.request, "🗑️ Raw material deleted successfully.")
+        return reverse_lazy('rawmaterials')
 
 class HistoryLogList(ListView):
     model = HistoryLog
@@ -1323,7 +1313,20 @@ class HistoryLogList(ListView):
 
         # Apply admin filter
         if admin_filter:
-            queryset = queryset.filter(admin__username=admin_filter)
+            # Need to handle both active and deactivated users
+            # First try to match active users
+            active_match = queryset.filter(admin__username=admin_filter)
+            
+            # Also check for deactivated users with this original username
+            deactivated_users = AuthUser.objects.filter(
+                username__startswith='inactive_user_',
+                first_name__contains=f'ORIGINAL_USERNAME:{admin_filter}|'
+            ).values_list('id', flat=True)
+            
+            deactivated_match = queryset.filter(admin_id__in=deactivated_users)
+            
+            # Combine both querysets
+            queryset = (active_match | deactivated_match).distinct()
 
         # Apply log type filter
         if log_filter:
@@ -1370,10 +1373,27 @@ class HistoryLogList(ListView):
         today = timezone.now()
         context['current_month_value'] = today.strftime("%Y-%m")
         
-        # Get unique admins and log types for the filter dropdowns
-        context['admins'] = HistoryLog.objects.filter(
-            is_archived=False
-        ).order_by('admin__username').values_list('admin__username', flat=True).distinct()
+        # Get unique admins for the filter dropdowns
+        # We need to handle deactivated users properly
+        admin_usernames = set()
+        history_logs = HistoryLog.objects.filter(is_archived=False).select_related('admin')
+        
+        for log in history_logs:
+            try:
+                if log.admin:
+                    # Check if user is deactivated
+                    if log.admin.username.startswith('inactive_user_'):
+                        # Extract original username
+                        if log.admin.first_name and log.admin.first_name.startswith('ORIGINAL_USERNAME:'):
+                            parts = log.admin.first_name.split('|')
+                            original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+                            admin_usernames.add(original_username)
+                    else:
+                        admin_usernames.add(log.admin.username)
+            except Exception:
+                pass
+        
+        context['admins'] = sorted(admin_usernames)
         
         context['logs'] = HistoryLog.objects.filter(
             is_archived=False
@@ -1395,8 +1415,15 @@ class HistoryLogList(ListView):
 class SaleArchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         sale.is_archived = True
-        sale.save()
+        sale.save()  # Trigger will handle logging
+        
         return redirect('salesexpenses')
 
 class SaleArchiveOldView(View):
@@ -1441,8 +1468,15 @@ class ArchivedSalesExpensesCombinedView(TemplateView):
 class SaleUnarchiveView(View):
     def post(self, request, pk):
         sale = get_object_or_404(Sales, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         sale.is_archived = False
-        sale.save()
+        sale.save()  # Trigger will handle logging
+        
         messages.success(request, "✅ Sale restored successfully.")
         return redirect('salesexpense-archive')
 
@@ -1727,8 +1761,63 @@ class SalesExpensesList(ListView):
             expenses_count=Count("id"),
         )
         
-        # Calculate net profit
+        # Calculate financial loss (expired, damaged, replacement items)
+        # Determine which month to calculate financial loss for
+        if show_all:
+            financial_loss_qs = Withdrawals.objects.filter(
+                reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                is_archived=False
+            )
+        elif month:
+            try:
+                year_str, month_str = month.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                financial_loss_qs = Withdrawals.objects.filter(
+                    reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                    is_archived=False,
+                    date__year=year,
+                    date__month=month_num
+                )
+            except ValueError:
+                today = timezone.now()
+                financial_loss_qs = Withdrawals.objects.filter(
+                    reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                    is_archived=False,
+                    date__year=today.year,
+                    date__month=today.month
+                )
+        else:
+            today = timezone.now()
+            financial_loss_qs = Withdrawals.objects.filter(
+                reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                is_archived=False,
+                date__year=today.year,
+                date__month=today.month
+            )
+        
+        # Calculate total financial loss
+        total_financial_loss = Decimal('0.00')
+        for withdrawal in financial_loss_qs:
+            try:
+                if withdrawal.item_type == 'PRODUCT':
+                    product = Products.objects.select_related('unit_price').get(id=withdrawal.item_id)
+                    loss_amount = Decimal(withdrawal.quantity) * product.unit_price.unit_price
+                    total_financial_loss += loss_amount
+                elif withdrawal.item_type == 'RAW_MATERIAL':
+                    material = RawMaterials.objects.get(id=withdrawal.item_id)
+                    loss_amount = Decimal(withdrawal.quantity) * material.price_per_unit
+                    total_financial_loss += loss_amount
+            except (Products.DoesNotExist, RawMaterials.DoesNotExist):
+                continue
+        
+        context["financial_loss"] = total_financial_loss
+        
+        # Calculate net sales (sales - financial loss)
         total_sales = context["sales_summary"]["total_sales"] or 0
+        context["net_sales"] = total_sales - total_financial_loss
+        
+        # Calculate net profit (sales - expenses - financial loss)
         total_expenses = context["expenses_summary"]["total_expenses"] or 0
         context["net_profit"] = total_sales - total_expenses
         
@@ -1980,38 +2069,13 @@ class SalesUpdateView(UpdateView):
     success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
-        # Get the old instance before saving
-        old_instance = Sales.objects.get(pk=self.object.pk)
-        
-        # Capture before state
-        before_data = {
-            'category': old_instance.category,
-            'amount': str(old_instance.amount),
-            'date': str(old_instance.date),
-            'description': old_instance.description,
-        }
+        # Set current user ID for database trigger
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [auth_user.id])
         
         response = super().form_valid(form)
-        
-        # Capture after state
-        after_data = {
-            'category': self.object.category,
-            'amount': str(self.object.amount),
-            'date': str(self.object.date),
-            'description': self.object.description,
-        }
-        
-        # Create history log only if something changed
-        if before_data != after_data:
-            auth_user = AuthUser.objects.get(id=self.request.user.id)
-            create_history_log(
-                admin=auth_user,
-                log_category="Sale Updated",
-                entity_type="sale",
-                entity_id=self.object.id,
-                before=before_data,
-                after=after_data
-            )
         
         messages.success(self.request, "✏️ Sale updated successfully.")
         return response
@@ -2308,8 +2372,15 @@ class WithdrawalOrderUpdatePaymentView(View):
 class ExpenseArchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         expense.is_archived = True
-        expense.save()
+        expense.save()  # Trigger will handle logging
+        
         messages.success(request, "✅ Expense archived successfully.")
         return redirect('salesexpenses')
 
@@ -2366,10 +2437,52 @@ class ArchivedExpensesListView(ListView):
 class ExpenseUnarchiveView(View):
     def post(self, request, pk):
         expense = get_object_or_404(Expenses, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         expense.is_archived = False
-        expense.save()
+        expense.save()  # Trigger will handle logging
+        
         messages.success(request, "✅ Expense restored successfully.")
         return redirect('salesexpense-archive')
+
+class ExpenseBulkRestoreView(View):
+    def post(self, request):
+        import json
+        try:
+            expense_ids = json.loads(request.POST.get('expense_ids', '[]'))
+            if not expense_ids:
+                return JsonResponse({'success': False, 'message': 'No expenses selected'})
+            
+            # Set current user for trigger
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+            
+            # Restore selected expenses
+            count = Expenses.objects.filter(id__in=expense_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+class ExpenseBulkDeleteView(View):
+    def post(self, request):
+        import json
+        try:
+            expense_ids = json.loads(request.POST.get('expense_ids', '[]'))
+            if not expense_ids:
+                return JsonResponse({'success': False, 'message': 'No expenses selected'})
+            
+            # Delete selected expenses
+            count, _ = Expenses.objects.filter(id__in=expense_ids, is_archived=True).delete()
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 class ExpensesCreateView(CreateView):
     model = Expenses
@@ -2402,38 +2515,13 @@ class ExpensesUpdateView(UpdateView):
     success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
-        # Get the old instance before saving
-        old_instance = Expenses.objects.get(pk=self.object.pk)
-        
-        # Capture before state
-        before_data = {
-            'category': old_instance.category,
-            'amount': str(old_instance.amount),
-            'date': str(old_instance.date),
-            'description': old_instance.description,
-        }
+        # Set current user ID for database trigger
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [auth_user.id])
         
         response = super().form_valid(form)
-        
-        # Capture after state
-        after_data = {
-            'category': self.object.category,
-            'amount': str(self.object.amount),
-            'date': str(self.object.date),
-            'description': self.object.description,
-        }
-        
-        # Create history log only if something changed
-        if before_data != after_data:
-            auth_user = AuthUser.objects.get(id=self.request.user.id)
-            create_history_log(
-                admin=auth_user,
-                log_category="Expense Updated",
-                entity_type="expense",
-                entity_id=self.object.id,
-                before=before_data,
-                after=after_data
-            )
         
         messages.success(self.request, "✏️ Expense updated successfully.")
         return response
@@ -2605,20 +2693,14 @@ class ProductBatchDeleteView(DeleteView):
 class ProductBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
-        # Note: Database triggers will automatically create history log
-        batch.is_archived = True
-        batch.save()
         
-        # Delete any "Product Batch Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id=pk,
-            log_type__category='Product Batch Updated',
-            log_date__gte=recent_time
-        ).delete()
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        batch.is_archived = True
+        batch.save()  # Trigger will handle logging
         
         messages.success(request, "📦 Product Batch archived successfully.")
         page = request.GET.get('page')
@@ -2640,20 +2722,14 @@ class ArchivedProductBatchListView(ListView):
 class ProductBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(ProductBatches, pk=pk)
-        # Note: Database triggers will automatically create history log
-        batch.is_archived = False
-        batch.save()
         
-        # Delete any "Product Batch Updated" logs created by mistake
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=2)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id=pk,
-            log_type__category='Product Batch Updated',
-            log_date__gte=recent_time
-        ).delete()
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        batch.is_archived = False
+        batch.save()  # Trigger will handle logging
         
         messages.success(request, "✅ Product Batch restored successfully.")
         return redirect('product-batch-archived-list')
@@ -2694,33 +2770,13 @@ def product_batch_bulk_archive(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        # Get batches before archiving to log them
-        batches = ProductBatches.objects.filter(id__in=ids).select_related('product', 'product__product_type', 'product__variant', 'product__size', 'product__size_unit')
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Archive batches (this will trigger "Product Batch Archived" from database trigger)
-        archived_count = batches.update(is_archived=True)
-        
-        # Delete the trigger-created logs for these batches
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id__in=ids,
-            log_type__category='Product Batch Archived',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Product Batch Bulk Archived" logs
-        for batch in ProductBatches.objects.filter(id__in=ids):
-            create_history_log(
-                admin=request.user,
-                log_category="Product Batch Bulk Archived",
-                entity_type="product_batch",
-                entity_id=batch.id,
-                before={'is_archived': False},
-                after={'is_archived': True}
-            )
+        # Update will trigger database triggers for each batch
+        archived_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=True)
         
         return JsonResponse({
             'success': True,
@@ -2738,33 +2794,13 @@ def product_batch_bulk_restore(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        # Get batches before restoring to log them
-        batches = ProductBatches.objects.filter(id__in=ids).select_related('product', 'product__product_type', 'product__variant', 'product__size', 'product__size_unit')
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
-        # Restore batches (this will trigger "Product Batch Restored" from database trigger)
-        restored_count = batches.update(is_archived=False)
-        
-        # Delete the trigger-created logs for these batches
-        from django.utils import timezone
-        from datetime import timedelta
-        recent_time = timezone.now() - timedelta(seconds=5)
-        HistoryLog.objects.filter(
-            entity_type='product_batch',
-            entity_id__in=ids,
-            log_type__category='Product Batch Restored',
-            log_date__gte=recent_time
-        ).delete()
-        
-        # Manually create "Product Batch Bulk Restored" logs
-        for batch in ProductBatches.objects.filter(id__in=ids):
-            create_history_log(
-                admin=request.user,
-                log_category="Product Batch Bulk Restored",
-                entity_type="product_batch",
-                entity_id=batch.id,
-                before={'is_archived': True},
-                after={'is_archived': False}
-            )
+        # Update will trigger database triggers for each batch
+        restored_count = ProductBatches.objects.filter(id__in=ids).update(is_archived=False)
         
         return JsonResponse({
             'success': True,
@@ -2780,13 +2816,14 @@ class ProductInventoryList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
+        # Filter out archived products and their inventory
         queryset = super().get_queryset().select_related(
             "product",
             "product__product_type",
             "product__variant",
             "product__size",
             "product__size_unit",
-        )
+        ).filter(product__is_archived=False)
 
         # Unified search field for Product Type, Variant, and Size
         search = self.request.GET.get("search", "").strip()
@@ -2812,8 +2849,10 @@ class ProductInventoryList(ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
-        # Calculate total stock across all products
-        total_stock = ProductInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        # Calculate total stock across all non-archived products
+        total_stock = ProductInventory.objects.filter(
+            product__is_archived=False
+        ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_product_stock'] = total_stock
         return context
 
@@ -2830,7 +2869,7 @@ class RawMaterialBatchList(ListView):
             .get_queryset()
             .select_related("material", "created_by_admin")
             .filter(is_archived=False)
-            .order_by('-id')
+            .order_by('id')
         )
 
         query = self.request.GET.get("q", "").strip()
@@ -2901,8 +2940,15 @@ class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
 class RawMaterialBatchArchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(RawMaterialBatches, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         batch.is_archived = True
-        batch.save()
+        batch.save()  # Trigger will handle logging
+        
         messages.success(request, "📦 Raw Material Batch archived successfully.")
         page = request.GET.get('page')
         if page:
@@ -2923,11 +2969,60 @@ class ArchivedRawMaterialBatchListView(ListView):
 class RawMaterialBatchUnarchiveView(View):
     def post(self, request, pk):
         batch = get_object_or_404(RawMaterialBatches, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         batch.is_archived = False
-        batch.save()
+        batch.save()  # Trigger will handle logging
+        
         messages.success(request, "✅ Raw Material Batch restored successfully.")
         return redirect('rawmaterial-batch-archived-list')
 
+class RawMaterialBatchBulkRestoreView(View):
+    def post(self, request):
+        try:
+            # Get IDs from comma-separated string
+            ids_str = request.POST.get('ids', '')
+            if not ids_str:
+                return JsonResponse({'success': False, 'message': 'No batches selected'})
+            
+            batch_ids = [int(id.strip()) for id in ids_str.split(',') if id.strip()]
+            
+            if not batch_ids:
+                return JsonResponse({'success': False, 'message': 'No valid batch IDs provided'})
+            
+            # Set current user for trigger
+            from django.db import connection
+            with connection.cursor() as cursor:
+                cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+            
+            # Restore selected batches (triggers will handle logging)
+            count = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({
+                'success': True, 
+                'message': f'✅ {count} raw material batch(es) restored successfully!'
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+class RawMaterialBatchBulkDeleteView(View):
+    def post(self, request):
+        import json
+        try:
+            batch_ids = json.loads(request.POST.get('batch_ids', '[]'))
+            if not batch_ids:
+                return JsonResponse({'success': False, 'message': 'No batches selected'})
+            
+            # Delete selected batches
+            count, _ = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True).delete()
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 class RawMaterialBatchArchiveOldView(View):
     def post(self, request):
@@ -2978,7 +3073,10 @@ class RawMaterialInventoryList(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related("material").order_by('-material_id')
+        # Filter out archived raw materials and their inventory
+        queryset = super().get_queryset().select_related("material").filter(
+            material__is_archived=False
+        ).order_by('material_id')
 
         q = self.request.GET.get("q", "").strip()
         status = self.request.GET.get("status", "").strip()
@@ -3004,7 +3102,10 @@ class RawMaterialInventoryList(ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
-        total_stock = RawMaterialInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        # Calculate total stock across all non-archived raw materials
+        total_stock = RawMaterialInventory.objects.filter(
+            material__is_archived=False
+        ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
         return context
 
@@ -3879,27 +3980,13 @@ class WithdrawalsArchiveView(View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
-        # Capture withdrawal data for history log
-        withdrawal_data = {
-            'item_type': withdrawal.item_type,
-            'item_id': withdrawal.item_id,
-            'quantity': str(withdrawal.quantity),
-            'reason': withdrawal.reason,
-            'sales_channel': withdrawal.sales_channel,
-            'price_type': withdrawal.price_type,
-        }
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         withdrawal.is_archived = True
-        withdrawal.save()
-        
-        # Create history log
-        create_history_log(
-            admin=request.user,
-            log_category="Withdrawal Archived",
-            entity_type="withdrawal",
-            entity_id=withdrawal.id,
-            after=withdrawal_data
-        )
+        withdrawal.save()  # Trigger will handle logging
         
         messages.success(request, "📦 Withdrawal archived successfully.")
         page = request.GET.get('page')
@@ -3921,11 +4008,47 @@ class ArchivedWithdrawalsListView(ListView):
 class WithdrawalsUnarchiveView(View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         withdrawal.is_archived = False
-        withdrawal.save()
+        withdrawal.save()  # Trigger will handle logging
+        
         messages.success(request, "✅ Withdrawal restored successfully.")
         return redirect('withdrawals-archived-list')
 
+class WithdrawalBulkRestoreView(View):
+    def post(self, request):
+        import json
+        try:
+            withdrawal_ids = json.loads(request.POST.get('withdrawal_ids', '[]'))
+            if not withdrawal_ids:
+                return JsonResponse({'success': False, 'message': 'No withdrawals selected'})
+            
+            # Restore selected withdrawals
+            count = Withdrawals.objects.filter(id__in=withdrawal_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+class WithdrawalBulkDeleteView(View):
+    def post(self, request):
+        import json
+        try:
+            withdrawal_ids = json.loads(request.POST.get('withdrawal_ids', '[]'))
+            if not withdrawal_ids:
+                return JsonResponse({'success': False, 'message': 'No withdrawals selected'})
+            
+            # Delete selected withdrawals
+            count, _ = Withdrawals.objects.filter(id__in=withdrawal_ids, is_archived=True).delete()
+            
+            return JsonResponse({'success': True, 'count': count})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 class WithdrawalsArchiveOldView(View):
     def post(self, request):
@@ -3994,7 +4117,7 @@ class WithdrawUpdateView(UpdateView):
         before = {
             'item_type': withdrawal.item_type,
             'item_id': withdrawal.item_id,
-            'quantity': str(withdrawal.quantity),
+            'quantity': withdrawal.quantity,  # Keep as Decimal for calculations
             'reason': withdrawal.reason,
             'sales_channel': withdrawal.sales_channel,
             'price_type': withdrawal.price_type,
@@ -4010,11 +4133,78 @@ class WithdrawUpdateView(UpdateView):
         # Explicitly set the date to the original date
         self.object.date = original_date
         
-        # Save with update_fields to only update specific fields
+        # Note: Inventory adjustment is handled by database triggers (trg_withdrawals_fefo)
+        # The trigger handles INSERT/DELETE operations, but UPDATE needs special handling
+        # We need to simulate DELETE (restore old) + INSERT (deduct new) for proper FEFO
+        
+        old_quantity = before['quantity']
+        new_quantity = self.object.quantity
+        old_item_id = before['item_id']
+        new_item_id = self.object.item_id
+        
+        # Check if we need to handle inventory changes
+        inventory_changed = (old_item_id != new_item_id or old_quantity != new_quantity)
+        
+        if inventory_changed:
+            # Validate stock availability before making changes
+            # For validation, we need to check if the new quantity can be satisfied
+            # from the restored stock (current stock + old withdrawal quantity)
+            try:
+                if self.object.item_type == 'PRODUCT':
+                    if old_item_id != new_item_id:
+                        # Different item - check new item has enough stock for the full new quantity
+                        new_product = Products.objects.get(id=new_item_id)
+                        new_inv = new_product.productinventory
+                        if new_quantity > new_inv.total_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {new_product}. Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                    else:
+                        # Same item - check if new quantity can be satisfied from restored stock
+                        product = Products.objects.get(id=new_item_id)
+                        inv = product.productinventory
+                        # Calculate what stock would be after restoring the old withdrawal
+                        restored_stock = inv.total_stock + old_quantity
+                        if new_quantity > restored_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {product}. Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                                
+                elif self.object.item_type == 'RAW_MATERIAL':
+                    if old_item_id != new_item_id:
+                        # Different item - check new item has enough stock for the full new quantity
+                        new_material = RawMaterials.objects.get(id=new_item_id)
+                        new_inv = new_material.rawmaterialinventory
+                        if new_quantity > new_inv.total_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {new_material}. Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                    else:
+                        # Same item - check if new quantity can be satisfied from restored stock
+                        material = RawMaterials.objects.get(id=new_item_id)
+                        inv = material.rawmaterialinventory
+                        # Calculate what stock would be after restoring the old withdrawal
+                        restored_stock = inv.total_stock + old_quantity
+                        if new_quantity > restored_stock:
+                            messages.error(self.request, f"⚠️ Insufficient stock for {material}. Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                                
+            except Exception as e:
+                messages.error(self.request, f"❌ Error validating stock: {str(e)}")
+                return redirect(self.get_success_url())
+        
+        # Set current user for trigger context
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [self.request.user.id])
+        
+        # Save the withdrawal record with new values
+        # The updated trg_withdrawals_fefo() trigger will handle inventory adjustment automatically
         self.object.save(update_fields=[
             'item_id', 'quantity', 'reason', 'sales_channel', 
             'price_type', 'custom_price', 'discount_id', 'custom_discount_value'
         ])
+        
+        # Add success message for inventory update
+        if old_item_id != new_item_id or old_quantity != new_quantity:
+            messages.success(self.request, f"✅ Withdrawal updated successfully! Inventory has been adjusted accordingly.")
         
         # Refresh from database to ensure we have the latest data
         withdrawal.refresh_from_db()
@@ -4034,14 +4224,8 @@ class WithdrawUpdateView(UpdateView):
             'date': str(withdrawal.date),
         }
 
-        create_history_log(
-            admin=self.request.user,
-            log_category="Withdrawal Edited",
-            entity_type="withdrawal",
-            entity_id=withdrawal.id,
-            before=before,
-            after=after
-        )
+        # History logging is now handled by PostgreSQL triggers
+        # Removed manual create_history_log call to prevent double logging
 
         # Update sales entry if this is a PAID order with Unit/SRP price
         if (withdrawal.reason == 'SOLD' and 
@@ -4139,14 +4323,8 @@ class WithdrawDeleteView(DeleteView):
         # Call parent delete
         response = super().post(request, *args, **kwargs)
         
-        # Create history log after deletion
-        create_history_log(
-            admin=request.user,
-            log_category="Withdrawal Deleted",
-            entity_type="withdrawal",
-            entity_id=withdrawal_id,
-            before=before
-        )
+        # History logging is now handled by PostgreSQL triggers
+        # Removed manual create_history_log call to prevent double logging
         
         # Update sales entry if this was part of a PAID/PARTIAL order
         if (reason == 'SOLD' and 
@@ -4224,6 +4402,9 @@ class WithdrawalGroupArchiveView(View):
         count = withdrawals.count()
         
         if count > 0:
+            # History logging is now handled by PostgreSQL triggers
+            # Removed manual create_history_log calls to prevent double logging
+            
             withdrawals.update(is_archived=True)
             messages.success(request, f"✅ Archived {count} withdrawal(s) from Order #{order_group_id}")
         else:
@@ -4247,24 +4428,8 @@ class WithdrawalGroupDeleteView(View):
                 first_withdrawal.payment_status in ['PAID', 'PARTIAL']
             )
             
-            # Log each deletion
-            for withdrawal in withdrawals:
-                before = {
-                    'item_type': withdrawal.item_type,
-                    'item_id': withdrawal.item_id,
-                    'quantity': str(withdrawal.quantity),
-                    'reason': withdrawal.reason,
-                    'sales_channel': withdrawal.sales_channel,
-                    'order_group_id': withdrawal.order_group_id,
-                }
-                
-                create_history_log(
-                    admin=request.user,
-                    log_category="Withdrawal Group Deleted",
-                    entity_type="withdrawal",
-                    entity_id=withdrawal.id,
-                    before=before
-                )
+            # History logging is now handled by PostgreSQL triggers
+            # Removed manual create_history_log calls to prevent double logging
             
             # Delete all withdrawals in the group
             withdrawals.delete()
@@ -4651,13 +4816,7 @@ class NotificationsList(ListView):
                 return redirect(f"{request.path}?{params.urlencode()}")
             raise
 
-class NotificationsDeleteView(DeleteView):
-    model = Notifications
-    success_url = reverse_lazy('notifications')
-
-    def get_success_url(self):
-        messages.success(self.request, "🗑️ Notification deleted successfully.")
-        return super().get_success_url()
+# NotificationsDeleteView removed - notifications should not be deleted
 
 
 class BulkProductBatchCreateView(View):
@@ -4769,6 +4928,205 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
 def profile_view(request):
     return render(request, "profile.html")
 
+@login_required
+def download_my_data(request):
+    """
+    Generate and download a CSV file containing all user data
+    """
+    import csv
+    from io import StringIO
+    
+    user = request.user
+    # Convert Django User to AuthUser for querying
+    auth_user = AuthUser.objects.get(id=user.id)
+    
+    # Create CSV in memory
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['=== MY DATA EXPORT ==='])
+    writer.writerow([f'Generated: {timezone.now().strftime("%B %d, %Y at %I:%M %p")}'])
+    writer.writerow([])
+    
+    # Account Information Section
+    writer.writerow(['ACCOUNT INFORMATION'])
+    writer.writerow(['Field', 'Value'])
+    writer.writerow(['Username', user.username])
+    writer.writerow(['Email', user.email])
+    writer.writerow(['First Name', user.first_name or 'Not set'])
+    writer.writerow(['Last Name', user.last_name or 'Not set'])
+    writer.writerow(['Staff Status', 'Yes' if user.is_staff else 'No'])
+    writer.writerow(['Administrator', 'Yes' if user.is_superuser else 'No'])
+    writer.writerow(['Account Active', 'Yes' if user.is_active else 'No'])
+    writer.writerow(['Date Joined', user.date_joined.strftime('%B %d, %Y') if user.date_joined else 'N/A'])
+    writer.writerow(['Last Login', user.last_login.strftime('%B %d, %Y at %I:%M %p') if user.last_login else 'Never'])
+    writer.writerow([])
+    
+    # Two-Factor Authentication Section
+    writer.writerow(['TWO-FACTOR AUTHENTICATION'])
+    writer.writerow(['Field', 'Value'])
+    try:
+        if hasattr(user, 'twofa_settings'):
+            writer.writerow(['2FA Enabled', 'Yes' if user.twofa_settings.is_enabled else 'No'])
+            writer.writerow(['Method', user.twofa_settings.method or 'N/A'])
+            writer.writerow(['Backup Email', user.twofa_settings.backup_email or 'Not set'])
+        else:
+            writer.writerow(['2FA Enabled', 'No'])
+    except:
+        writer.writerow(['2FA Enabled', 'No'])
+    writer.writerow([])
+    
+    # User Activity Section
+    writer.writerow(['USER ACTIVITY'])
+    writer.writerow(['Field', 'Value'])
+    try:
+        if hasattr(user, 'useractivity'):
+            writer.writerow(['Last Logout', user.useractivity.last_logout.strftime('%B %d, %Y at %I:%M %p') if user.useractivity.last_logout else 'N/A'])
+            writer.writerow(['Currently Active', 'Yes' if user.useractivity.active else 'No'])
+        else:
+            writer.writerow(['Activity Tracking', 'Not available'])
+    except:
+        writer.writerow(['Activity Tracking', 'Not available'])
+    writer.writerow([])
+    
+    # Products Created
+    writer.writerow(['PRODUCTS CREATED'])
+    try:
+        products = Products.objects.filter(created_by_admin=auth_user)
+        if products.exists():
+            writer.writerow(['ID', 'Name', 'Barcode', 'Created At'])
+            for product in products:
+                writer.writerow([
+                    product.id,
+                    str(product),
+                    product.barcode or 'N/A',
+                    product.date_created.strftime('%B %d, %Y') if hasattr(product, 'date_created') and product.date_created else 'N/A'
+                ])
+        else:
+            writer.writerow(['No products created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving products: {str(e)}'])
+    writer.writerow([])
+    
+    # Raw Materials Created
+    writer.writerow(['RAW MATERIALS CREATED'])
+    try:
+        raw_materials = RawMaterials.objects.filter(created_by_admin=auth_user)
+        if raw_materials.exists():
+            writer.writerow(['ID', 'Name', 'Created At'])
+            for rm in raw_materials:
+                writer.writerow([
+                    rm.id,
+                    rm.name,
+                    rm.date_created.strftime('%B %d, %Y') if hasattr(rm, 'date_created') and rm.date_created else 'N/A'
+                ])
+        else:
+            writer.writerow(['No raw materials created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving raw materials: {str(e)}'])
+    writer.writerow([])
+    
+    # Sales Created
+    writer.writerow(['SALES RECORDS CREATED'])
+    try:
+        sales = Sales.objects.filter(created_by_admin=auth_user)
+        if sales.exists():
+            writer.writerow(['ID', 'Date', 'Amount'])
+            for sale in sales:
+                writer.writerow([
+                    sale.id,
+                    sale.date.strftime('%B %d, %Y') if sale.date else 'N/A',
+                    f'₱{float(sale.amount):,.2f}' if sale.amount else '₱0.00'
+                ])
+        else:
+            writer.writerow(['No sales records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving sales: {str(e)}'])
+    writer.writerow([])
+    
+    # Expenses Created
+    writer.writerow(['EXPENSE RECORDS CREATED'])
+    try:
+        expenses = Expenses.objects.filter(created_by_admin=auth_user)
+        if expenses.exists():
+            writer.writerow(['ID', 'Date', 'Amount', 'Description'])
+            for expense in expenses:
+                writer.writerow([
+                    expense.id,
+                    expense.date.strftime('%B %d, %Y') if expense.date else 'N/A',
+                    f'₱{float(expense.amount):,.2f}' if expense.amount else '₱0.00',
+                    expense.description if hasattr(expense, 'description') else 'N/A'
+                ])
+        else:
+            writer.writerow(['No expense records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving expenses: {str(e)}'])
+    writer.writerow([])
+    
+    # Withdrawals Created
+    writer.writerow(['WITHDRAWAL RECORDS CREATED'])
+    try:
+        withdrawals = Withdrawals.objects.filter(created_by_admin=user)
+        if withdrawals.exists():
+            writer.writerow(['ID', 'Date', 'Item Type', 'Quantity', 'Reason'])
+            for withdrawal in withdrawals:
+                writer.writerow([
+                    withdrawal.id,
+                    withdrawal.date.strftime('%B %d, %Y at %I:%M %p') if withdrawal.date else 'N/A',
+                    withdrawal.item_type,
+                    float(withdrawal.quantity) if withdrawal.quantity else 0,
+                    withdrawal.reason
+                ])
+        else:
+            writer.writerow(['No withdrawal records created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving withdrawals: {str(e)}'])
+    writer.writerow([])
+    
+    # Product Batches Created
+    writer.writerow(['PRODUCT BATCHES CREATED'])
+    try:
+        product_batches = ProductBatches.objects.filter(created_by_admin=auth_user)
+        if product_batches.exists():
+            writer.writerow(['ID', 'Product', 'Quantity', 'Batch Date'])
+            for batch in product_batches:
+                writer.writerow([
+                    batch.id,
+                    str(batch.product) if batch.product else 'N/A',
+                    batch.quantity if hasattr(batch, 'quantity') else 'N/A',
+                    batch.batch_date.strftime('%B %d, %Y') if hasattr(batch, 'batch_date') and batch.batch_date else 'N/A'
+                ])
+        else:
+            writer.writerow(['No product batches created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving product batches: {str(e)}'])
+    writer.writerow([])
+    
+    # Raw Material Batches Created
+    writer.writerow(['RAW MATERIAL BATCHES CREATED'])
+    try:
+        rm_batches = RawMaterialBatches.objects.filter(created_by_admin=auth_user)
+        if rm_batches.exists():
+            writer.writerow(['ID', 'Material', 'Quantity', 'Batch Date'])
+            for batch in rm_batches:
+                writer.writerow([
+                    batch.id,
+                    str(batch.material) if batch.material else 'N/A',
+                    batch.quantity if hasattr(batch, 'quantity') else 'N/A',
+                    batch.batch_date.strftime('%B %d, %Y') if hasattr(batch, 'batch_date') and batch.batch_date else 'N/A'
+                ])
+        else:
+            writer.writerow(['No raw material batches created'])
+    except Exception as e:
+        writer.writerow([f'Error retrieving raw material batches: {str(e)}'])
+    
+    # Create CSV response
+    response = HttpResponse(output.getvalue(), content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="my_data_{user.username}_{timezone.now().strftime("%Y%m%d_%H%M%S")}.csv"'
+    
+    return response
+
 def best_sellers_api(request):
     from datetime import datetime
     TOP_N = 5
@@ -4855,14 +5213,41 @@ class StockChangesList(ListView):
 class StockChangesArchiveView(View):
     def post(self, request, pk):
         stock_change = get_object_or_404(StockChanges, pk=pk)
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
         stock_change.is_archived = True
-        stock_change.save()
+        stock_change.save()  # Trigger will handle logging
         messages.success(request, "📦 Stock change archived successfully.")
         page = request.GET.get('page')
         if page:
             return redirect(f"{reverse('stock-changes')}?page={page}")
         return redirect('stock-changes')
 
+@require_http_methods(["POST"])
+def stock_changes_bulk_archive(request):
+    try:
+        ids = request.POST.get('ids', '').split(',')
+        ids = [int(id.strip()) for id in ids if id.strip()]
+        
+        if not ids:
+            return JsonResponse({'success': False, 'message': 'No stock changes selected'})
+        
+        # Set current user for trigger
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        archived_count = StockChanges.objects.filter(id__in=ids).update(is_archived=True)
+        return JsonResponse({
+            'success': True,
+            'message': f'Successfully archived {archived_count} stock change(s)'
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 class ArchivedStockChangesListView(ListView):
     model = StockChanges
@@ -4881,6 +5266,22 @@ class StockChangesUnarchiveView(View):
         stock_change.save()
         messages.success(request, "✅ Stock change restored successfully.")
         return redirect('stock-changes-archived-list')
+
+
+class StockChangesBulkRestoreView(View):
+    def post(self, request):
+        import json
+        try:
+            stock_change_ids = json.loads(request.POST.get('stock_change_ids', '[]'))
+            if not stock_change_ids:
+                return JsonResponse({'success': False, 'message': 'No stock changes selected'})
+            
+            # Restore selected stock changes
+            count = StockChanges.objects.filter(id__in=stock_change_ids, is_archived=True).update(is_archived=False)
+            
+            return JsonResponse({'success': True, 'count': count, 'message': f'{count} stock change(s) restored successfully!'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
 
 
 class StockChangesArchiveOldView(View):
@@ -4998,10 +5399,8 @@ Real's Food Products Security Team'''
             recipient_list=[user.email],
             fail_silently=True,
         )
-        print(f"[EMAIL] Notification sent to {user.email}")
     except Exception as e:
-        print(f"[EMAIL ERROR] Failed to send notification: {e}")
-
+        pass
 
 def login_view(request):
     if request.method == 'POST':
@@ -5013,6 +5412,7 @@ def login_view(request):
             
             from realsproj.models import UserOTP, User2FASettings, TrustedDevice, LoginAttempt
             from django.utils import timezone
+            from datetime import timedelta
             
             try:
                 user = User.objects.get(id=user_id)
@@ -5083,6 +5483,42 @@ def login_view(request):
         
         username = request.POST.get('username', '')
         password = request.POST.get('password', '')
+                
+        # Check for login lockout
+        from realsproj.models import LoginAttempt
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        ip_address = request.META.get('REMOTE_ADDR', '0.0.0.0')
+        lockout_duration = timedelta(minutes=5)
+        max_attempts = 5
+        
+        # Check failed attempts in the last 5 minutes from this IP address (regardless of username)
+        # This prevents someone from trying random usernames
+        recent_failed_attempts = LoginAttempt.objects.filter(
+            ip_address=ip_address,
+            success=False,
+            timestamp__gte=timezone.now() - lockout_duration
+        ).count()
+        
+        if recent_failed_attempts >= max_attempts:
+            # Get the time of the last failed attempt
+            last_attempt = LoginAttempt.objects.filter(
+                ip_address=ip_address,
+                success=False
+            ).order_by('-timestamp').first()
+            
+            if last_attempt:
+                time_remaining = (last_attempt.timestamp + lockout_duration) - timezone.now()
+                minutes_remaining = int(time_remaining.total_seconds() / 60)
+                seconds_remaining = int(time_remaining.total_seconds() % 60)
+                
+                if minutes_remaining > 0:
+                    messages.error(request, f"🔒 Too many failed login attempts. Please try again in {minutes_remaining} minute(s) and {seconds_remaining} second(s).")
+                else:
+                    messages.error(request, f"🔒 Too many failed login attempts. Please try again in {seconds_remaining} second(s).")
+                return render(request, 'login.html')
+        
         user = authenticate(request, username=username, password=password)
 
         if user is not None:
@@ -5104,14 +5540,7 @@ def login_view(request):
                     device_fingerprint=device_fingerprint,
                     is_active=True
                 ).first()
-                
-                # DEBUG: Log the login attempt details
-                print(f"[LOGIN DEBUG] User: {user.username} (ID: {user.id})")
-                print(f"[LOGIN DEBUG] Device Fingerprint: {device_fingerprint}")
-                print(f"[LOGIN DEBUG] Trusted Device Found: {trusted_device is not None}")
-                if trusted_device:
-                    print(f"[LOGIN DEBUG] Trusted Device ID: {trusted_device.id}, Last Used: {trusted_device.last_used}")
-                
+                                
                 if trusted_device:
                     # Trusted device - login directly
                     trusted_device.last_used = timezone.now()
@@ -5143,8 +5572,6 @@ def login_view(request):
                     return redirect('home')
                 else:
                     # New device - require OTP for account confirmation
-                    print(f"[OTP DEBUG] Generating OTP for new device login")
-                    print(f"[OTP DEBUG] User: {user.username}, Email: {user.email}")
                     otp_code = str(random.randint(100000, 999999))
                     
                     UserOTP.objects.create(
@@ -5153,7 +5580,6 @@ def login_view(request):
                         expires_at=timezone.now() + timedelta(minutes=5),
                         ip_address=ip_address
                     )
-                    print(f"[OTP DEBUG] OTP created in database: {otp_code}")
                     
                     try:
                         send_mail(
@@ -5163,10 +5589,9 @@ def login_view(request):
                             recipient_list=[user.email],
                             fail_silently=False,
                         )
-                        print(f"[OTP DEBUG] OTP email sent successfully to {user.email}")
                     except Exception as e:
-                        print(f"[OTP EMAIL ERROR] Failed to send OTP: {e}")
-                    
+                        pass  
+
                     LoginAttempt.objects.create(
                         user=user,
                         username=user.username,
@@ -5187,10 +5612,50 @@ def login_view(request):
                     messages.info(request, f" Account confirmation required! OTP sent to {masked_email}")
                     return render(request, '2fa_verify.html', {'user_email': masked_email})
             else:
+                 # Record failed attempt for inactive account
+                device_info = get_device_info(request)
+                LoginAttempt.objects.create(
+                    user=user,
+                    username=username,
+                    ip_address=ip_address,
+                    device_fingerprint=get_device_fingerprint(request),
+                    browser=device_info['browser'],
+                    os=device_info['os'],
+                    success=False,
+                    required_otp=False,
+                    is_trusted_device=False
+                )
                 messages.error(request, "❌ Your account is inactive. Please contact the administrator.")
                 return render(request, 'login.html')
         else:
-            messages.error(request, "❌ Invalid username or password. Please try again.")
+            # Record failed login attempt
+            device_info = get_device_info(request)
+            LoginAttempt.objects.create(
+                user=None,
+                username=username,
+                ip_address=ip_address,
+                device_fingerprint=get_device_fingerprint(request),
+                browser=device_info['browser'],
+                os=device_info['os'],
+                success=False,
+                required_otp=False,
+                is_trusted_device=False
+            )
+            
+            # Check how many attempts remain (based on IP address only)
+            attempts_count = LoginAttempt.objects.filter(
+                ip_address=ip_address,
+                success=False,
+                timestamp__gte=timezone.now() - lockout_duration
+            ).count()
+            
+            attempts_remaining = max_attempts - attempts_count
+            
+            if attempts_remaining > 0:
+                messages.error(request, f"❌ Invalid username or password. {attempts_remaining} attempt(s) remaining.")
+            else:
+                messages.error(request, f"🔒 Too many failed login attempts. Please wait again after 5 minutes.")
+            
             return render(request, 'login.html')
     return render(request, 'login.html')
 
@@ -5227,9 +5692,8 @@ Real's Food Products Team''',
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
-                print(f"[REGISTRATION] Confirmation email sent to {user.email}")
             except Exception as e:
-                print(f"[REGISTRATION ERROR] Failed to send email: {e}")
+                pass
             
             # Don't auto-login inactive users
             messages.success(request, 'Your account has been created successfully! Please check your email and wait for admin approval before you can log in.')
@@ -5291,10 +5755,15 @@ def user_management(request):
         user.display_username = display_username
         user.display_email = display_email
         inactive_users.append(user)
+
+     # Get rejected users (rejected during registration)
+    rejected_users = User.objects.filter(
+        username__startswith='rejected_user_'
+    ).order_by('-date_joined')
     
     # Get deleted users (soft deleted)
     deleted_users_queryset = User.objects.filter(
-        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_')
+        username__startswith='deleted_user_'
     ).order_by('-date_joined')
     
     # Paginate deleted users - 5 per page
@@ -5306,6 +5775,7 @@ def user_management(request):
         'pending_users': pending_users,
         'active_users': active_users,
         'inactive_users': inactive_users,
+        'rejected_users': rejected_users,
         'deleted_users': deleted_users,
     }
     return render(request, 'user_management.html', context)
@@ -5347,9 +5817,8 @@ Real's Food Products Team''',
                 recipient_list=[user_email],
                 fail_silently=True,
             )
-            print(f"[APPROVAL] Notification email sent to {user_email}")
         except Exception as e:
-            print(f"[APPROVAL ERROR] Failed to send email: {e}")
+            pass
         
         return JsonResponse({'success': True, 'message': f'User {username} approved successfully'})
     except User.DoesNotExist:
@@ -6305,7 +6774,7 @@ def financial_loss(request):
     # Product withdrawals with separate filter
     product_withdrawals = Withdrawals.objects.filter(
         item_type='PRODUCT',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
@@ -6327,7 +6796,7 @@ def financial_loss(request):
     # Raw material withdrawals with separate filter
     raw_material_withdrawals = Withdrawals.objects.filter(
         item_type='RAW_MATERIAL',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
@@ -6395,6 +6864,33 @@ def financial_loss(request):
     
     total_loss = total_product_loss + total_raw_material_loss
     
+    # Calculate monthly sales for the current month (or filtered month)
+    # Determine which month to calculate sales for
+    if product_date_filter:
+        try:
+            year_str, month_str = product_date_filter.split('-')
+            sales_year = int(year_str)
+            sales_month = int(month_str.lstrip('0'))
+        except ValueError:
+            sales_year = today.year
+            sales_month = today.month
+    else:
+        sales_year = today.year
+        sales_month = today.month
+    
+    # Get monthly sales (only if not showing all data)
+    monthly_sales = Decimal('0.00')
+    if not product_show_all:
+        monthly_sales_qs = Sales.objects.filter(
+            date__year=sales_year,
+            date__month=sales_month,
+            is_archived=False
+        ).aggregate(total=models.Sum('amount'))
+        monthly_sales = monthly_sales_qs['total'] or Decimal('0.00')
+    
+    # Calculate net sales (sales - financial loss)
+    net_sales = monthly_sales - total_loss
+    
     product_page = request.GET.get('product_page', 1)
     product_paginator = Paginator(product_loss_data, 10)
     product_page_obj = product_paginator.get_page(product_page)
@@ -6415,6 +6911,8 @@ def financial_loss(request):
         'product_loss': total_product_loss,
         'raw_material_loss': total_raw_material_loss,
         'total_loss': total_loss,
+        'monthly_sales': monthly_sales,
+        'net_sales': net_sales,
         'current_month_value': today.strftime("%Y-%m"),
     }
     
@@ -6430,13 +6928,13 @@ def financial_loss_export(request):
 
     product_qs = Withdrawals.objects.filter(
         item_type='PRODUCT',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     )
 
     raw_material_qs = Withdrawals.objects.filter(
         item_type='RAW_MATERIAL',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     )
 
@@ -6736,8 +7234,76 @@ def delete_account(request):
             return redirect('delete_account')
     
     # GET request - show confirmation page
-    return render(request, 'delete_account.html')
+    return render(request, 'delete_account_confirm.html')
 
+@login_required
+def direct_password_reset(request):
+    """Direct password reset for logged-in users who forgot their current password"""
+    if request.method == 'POST':
+        new_password = request.POST.get('new_password1', '').strip()
+        confirm_password = request.POST.get('new_password2', '').strip()
+        
+        # Validate passwords match
+        if new_password != confirm_password:
+            messages.error(request, "Passwords do not match.")
+            return render(request, 'direct_password_reset.html')
+        
+        # Validate password requirements
+        try:
+            validate_password(new_password, user=request.user)
+        except ValidationError as e:
+            for msg in e.messages:
+                messages.error(request, msg)
+            return render(request, 'direct_password_reset.html')
+        
+        # Set new password
+        request.user.set_password(new_password)
+        request.user.save()
+        update_session_auth_hash(request, request.user)
+        
+        # Send email notification
+        from django.core.mail import send_mail
+        from django.conf import settings
+        from django.utils import timezone
+        
+        try:
+            send_mail(
+                subject='🔐 Password Reset Successfully - Real\'s Food Products',
+                message=f'''Hello {request.user.username},
+
+Your password has been reset successfully.
+
+Reset Details:
+- Date & Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
+- Account: {request.user.email}
+
+If you did not make this change, please contact our support team immediately.
+
+For security reasons, we recommend:
+✓ Using a strong, unique password
+✓ Enabling two-factor authentication
+✓ Never sharing your password with anyone
+
+Thank you,
+Real's Food Products Team''',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[request.user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+        
+        messages.success(request, "✅ Your password has been reset successfully!")
+        return redirect('profile')
+    
+    return render(request, 'direct_password_reset.html')
+
+def privacy_policy(request):
+    return render(request, 'privacy_policy.html')
+
+def terms_of_use(request):
+    """Display the terms of use page"""
+    return render(request, 'terms_of_use.html')
 
 class PriceHistoryList(ListView):
     """View for displaying price change history"""

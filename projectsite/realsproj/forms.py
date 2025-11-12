@@ -256,6 +256,11 @@ class ProductBatchForm(ModelForm):
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'deduct_raw_material': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter out archived products
+        self.fields['product'].queryset = Products.objects.filter(is_archived=False)
 
 
 class ProductInventoryForm(ModelForm):
@@ -278,6 +283,11 @@ class RawMaterialBatchForm(ModelForm):
             'received_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Filter out archived raw materials
+        self.fields['material'].queryset = RawMaterials.objects.filter(is_archived=False)
 
 class RawMaterialInventoryForm(ModelForm):
     class Meta:
@@ -333,7 +343,7 @@ class WithdrawEditForm(forms.ModelForm):
         ('SOLD', 'Sold'),
         ('EXPIRED', 'Expired'),
         ('DAMAGED', 'Damaged'),
-        ('RETURNED', 'Returned'),
+        ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
         ('OTHERS', 'Others'),
     ]
     PAYMENT_STATUS_CHOICES = [
@@ -408,7 +418,7 @@ class WithdrawEditForm(forms.ModelForm):
                 self.fields['reason'].choices = [
                     ('EXPIRED', 'Expired'),
                     ('DAMAGED', 'Damaged'),
-                    ('RETURNED', 'Returned'),
+                    ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
                     ('OTHERS', 'Others'),
                 ]
                 self.fields['price_type_or_custom'].required = False
@@ -525,7 +535,7 @@ class UnifiedWithdrawForm(forms.Form):
         ('SOLD', 'Sold'),
         ('EXPIRED', 'Expired'),
         ('DAMAGED', 'Damaged'),
-        ('RETURNED', 'Returned'),
+        ('REPLACEMENT_FOR_RETURNED', 'Replacement for Returned Items'),
         ('OTHERS', 'Others'),
     ]
 
@@ -548,7 +558,8 @@ class UnifiedWithdrawForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['item'].choices = [(p.id, str(p)) for p in Products.objects.all()]
+        # Filter out archived products
+        self.fields['item'].choices = [(p.id, str(p)) for p in Products.objects.filter(is_archived=False)]
 
     def clean(self):
         cleaned_data = super().clean()
@@ -589,7 +600,8 @@ class BulkProductBatchForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.products = []
-        for product in Products.objects.all().order_by('id'):
+        # Filter out archived products
+        for product in Products.objects.filter(is_archived=False).order_by('id'):
             field_name = f'product_{product.id}_qty'
             self.fields[field_name] = forms.DecimalField(
                 required=False,
@@ -608,7 +620,7 @@ class BulkRawMaterialBatchForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.rawmaterials = []
-        for rawmaterial in RawMaterials.objects.all():
+        for rawmaterial in RawMaterials.objects.filter(is_archived=False):
             qty_field_name = f'rawmaterial_{rawmaterial.id}_qty'
             exp_field_name = f'rawmaterial_{rawmaterial.id}_exp'
 

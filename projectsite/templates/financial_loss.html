@@ -7,18 +7,19 @@
   <div class="container-fluid">
     <h4 class="page-title">Financial Loss Report</h4>
     
-    <!-- Total Financial Loss Card -->
-    <div class="row mb-3">
+    <!-- Total Financial Loss Summary -->
+    <div class="row mb-4">
       <div class="col-md-12">
         <div class="card">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center">
               <div>
                 <h5 class="card-title mb-1">Total Financial Loss</h5>
-                <p class="text-muted mb-0">Total loss from expired & damaged items</p>
+                <p class="text-muted mb-0">Combined loss from products and raw materials</p>
               </div>
               <div class="text-right">
-                <h2 id="totalLoss" class="mb-0 text-danger">₱{{ total_loss|floatformat:2|intcomma }}</h2>
+                <h2 class="mb-0 text-danger">₱{{ product_loss|add:raw_material_loss|floatformat:2|intcomma }}</h2>
+                <small class="text-muted">Products: ₱{{ product_loss|floatformat:2|intcomma }} + Raw Materials: ₱{{ raw_material_loss|floatformat:2|intcomma }}</small>
               </div>
             </div>
           </div>
@@ -35,8 +36,8 @@
               <div class="card-title">Products - Expired & Damaged</div>
             </div>
             <div>
-              <button type="button" class="btn btn-outline-primary btn-rounded" data-toggle="modal" data-target="#exportLossModal">
-                <i class="la la-download"></i> Export Report
+              <button type="button" class="btn btn-primary btn-rounded" data-toggle="modal" data-target="#exportLossModal">
+                <i class="la la-download"></i> Export
               </button>
             </div>
           </div>

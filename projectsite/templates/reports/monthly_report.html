@@ -14,33 +14,55 @@
               <div class="card-title">Revenue & Profit Trends</div>
             </div>
             <div class="d-flex align-items-center" style="gap:0.5rem;">
-              <a href="{% url 'monthly-report-export' %}" class="btn btn-primary btn-rounded">Export</a>
+              <a href="{% url 'monthly-report-export' %}" class="btn btn-primary btn-rounded">
+                <i class="la la-download"></i> Export
+              </a>
             </div>
           </div>
 
           <div class="card-body">
-            <div class="row mb-1 text-center">
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Total Revenue</h5>
-                    <h3 class="text-success">₱{{ summary.total_revenue|floatformat:2|intcomma }}</h3>
+            <!-- Revenue & Profit Summary Cards - 2x2 Layout -->
+            <div class="row mb-3">
+              <!-- First Row -->
+              <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Total Revenue</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">After financial loss</p>
+                    <h2 class="mb-2 text-success">₱{{ summary.total_revenue|floatformat:2|intcomma }}</h2>
+                    <small class="text-muted">&nbsp;</small>
                   </div>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Total Profit</h5>
-                    <h3 class="text-primary">₱{{ summary.total_profit|floatformat:2|intcomma }}</h3>
+              <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Financial Loss</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">Expired & damaged</p>
+                    <h2 class="mb-2 text-danger">₱{{ summary.total_financial_loss|floatformat:2|intcomma }}</h2>
+                    <small class="text-muted">&nbsp;</small>
                   </div>
                 </div>
               </div>
-              <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <h5 class="card-title">Average Profit</h5>
-                    <h3 class="text-info">₱{{ summary.average_profit|floatformat:2|intcomma }}</h3>
+              
+              <!-- Second Row -->
+              <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Total Profit</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">Net profit for the period</p>
+                    <h2 class="mb-2 text-primary">₱{{ summary.total_profit|floatformat:2|intcomma }}</h2>
+                    <small class="text-muted">&nbsp;</small>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mb-3">
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Average Profit</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">Monthly average profit</p>
+                    <h2 class="mb-2 text-info">₱{{ summary.average_profit|floatformat:2|intcomma }}</h2>
+                    <small class="text-muted">&nbsp;</small>
                   </div>
                 </div>
               </div>
@@ -51,6 +73,7 @@
                   <tr>
                     <th>Month</th>
                     <th>Revenue</th>
+                    <th>Financial Loss</th>
                     <th>Expenses</th>
                     <th>Profit</th>
                     <th>Revenue Change</th>
@@ -63,6 +86,7 @@
                   <tr>
                     <td>{{ row.month|date:"F Y" }}</td>
                     <td>₱{{ row.revenue|floatformat:2|intcomma }}</td>
+                    <td class="text-danger">₱{{ row.financial_loss|floatformat:2|intcomma }}</td>
                     <td>₱{{ row.expenses|floatformat:2|intcomma }}</td>
                     <td>₱{{ row.profit|floatformat:2|intcomma }}</td>
                     <td>
@@ -105,7 +129,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="7" class="text-center text-muted">No monthly report available</td>
+                    <td colspan="8" class="text-center text-muted">No monthly report available</td>
                   </tr>
                   {% endfor %}
                 </tbody>

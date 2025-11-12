@@ -34,57 +34,39 @@
           <div class="card-body">
 
             <!-- Withdrawal Summary Cards -->
-            <div class="row mb-3">
+            <div class="row mb-3" id="withdrawalSummary">
               <!-- Total Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Total Withdrawals</h5>
-                        <p class="text-muted mb-0">All withdrawal quantities</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Total Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">All withdrawal quantities</p>
+                    <h2 class="mb-2 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
               
               <!-- Product Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Product Withdrawals</h5>
-                        <p class="text-muted mb-0">{{ product_withdrawals_count }} withdrawal(s)</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Product Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">{{ product_withdrawals_count }} withdrawal(s)</p>
+                    <h2 class="mb-2 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
               
               <!-- Raw Material Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Raw Material Withdrawals</h5>
-                        <p class="text-muted mb-0">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Raw Material Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
+                    <h2 class="mb-2 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
@@ -153,7 +135,7 @@
                         <input type="checkbox" class="row-checkbox" value="{{ group.order_group_id }}" data-group="true" onchange="updateBulkButtons()">
                         {% endif %}
                     </td>
-                    <td>{{ group.date|localtime|date:"Y-m-d g:i A" }}</td>
+                    <td>{{ group.date|date:"Y-m-d g:i A" }}</td>
                     <td>{{ group.item_type_display }}</td>
                     <td>
                       {{ group.reason_display }}
@@ -175,7 +157,7 @@
                     <td>{{ group.created_by_admin.username }}</td>
                     <td>
                       {% if not group.is_single %}
-                        <a href="#" data-toggle="modal" data-target="#viewGroupModal{{ group.group_key }}" title="View Details" style="color: blue;">
+                        <a href="#" data-toggle="modal" data-target="#viewGroupModal{{ group.group_key }}" title="View Details" style="color: #6c757d;">
                           <i class="la la-eye la-lg"></i>
                         </a>
                       {% endif %}
@@ -248,7 +230,7 @@
             <strong>Item:</strong> {{ object.get_item_display }}<br>
             <strong>Quantity:</strong> {{ object.quantity|floatformat:0 }}<br>
             <strong>Reason:</strong> {{ object.get_reason_display }}<br>
-            <strong>Date:</strong> {{ object.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ object.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdrawals-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.get_item_display }} (Qty: {{ object.quantity }})')">
@@ -277,7 +259,7 @@
             <strong>Item:</strong> {{ object.get_item_display }}<br>
             <strong>Quantity:</strong> {{ object.quantity|floatformat:0 }}<br>
             <strong>Reason:</strong> {{ object.get_reason_display }}<br>
-            <strong>Date:</strong> {{ object.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ object.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdraw-delete' object.id %}" onsubmit="handleDeleteSubmit(event, '{{ object.get_item_display }} (Qty: {{ object.quantity }})')">
@@ -305,7 +287,7 @@
           <div class="modal-body">
             <div class="row mb-3">
               <div class="col-md-6">
-                <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}<br>
+                <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}<br>
                 <strong>Reason:</strong> {{ group.reason_display }}
                 {% if group.sales_channel_display %}
                   <br><strong>Channel:</strong> {{ group.sales_channel_display }}
@@ -392,7 +374,7 @@
             <strong>Order #:</strong> {{ group.order_group_id }}<br>
             <strong>Items:</strong> {{ group.item_count }}<br>
             <strong>Customer:</strong> {{ group.customer_name|default:"-" }}<br>
-            <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdrawal-group-archive' group.order_group_id %}" onsubmit="handleArchiveSubmit(event, 'Order #{{ group.order_group_id }}')">
@@ -421,7 +403,7 @@
             <strong>Order #:</strong> {{ group.order_group_id }}<br>
             <strong>Items:</strong> {{ group.item_count }}<br>
             <strong>Customer:</strong> {{ group.customer_name|default:"-" }}<br>
-            <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}
             <br><br>
             <span class="text-danger"><strong>Warning:</strong> This will delete all {{ group.item_count }} items in this order!</span>
           </div>
@@ -461,6 +443,46 @@
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-warning">Yes, Archive Old Data</button>
         </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Archive Confirmation Modal -->
+<div class="modal fade" id="bulkArchiveModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Archive</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> withdrawal(s)?
+        <br><br>
+        <small class="text-muted">These withdrawals will be moved to the archived list.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkArchiveModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="confirmBulkArchive()">Archive</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Delete</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to delete <strong id="bulkDeleteCount">0</strong> withdrawal(s)?
+        <br><br>
+        <span class="text-danger"><strong>Warning:</strong> This action cannot be undone!</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkDeleteModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="confirmBulkDelete()">Delete</button>
       </div>
     </div>
   </div>
@@ -577,13 +599,20 @@ function bulkDeleteWithdrawal() {
         return;
     }
     
-    if (!confirm(`Are you sure you want to delete ${selectedIds.length} withdrawal(s)?`)) {
-        return;
-    }
+    // Update modal message and show it
+    document.getElementById('bulkDeleteCount').textContent = selectedIds.length;
+    $('#bulkDeleteModal').modal('show');
+}
+
+function confirmBulkDelete() {
+    const selectedIds = getSelectedIds();
     
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     formData.append('ids', selectedIds.join(','));
+    
+    // Hide modal
+    $('#bulkDeleteModal').modal('hide');
     
     fetch('{% url "withdrawals-bulk-delete" %}', {
         method: 'POST',
@@ -595,8 +624,8 @@ function bulkDeleteWithdrawal() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message, 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            sessionStorage.setItem('withdrawalSuccess', data.message);
+            window.location.reload();
         } else {
             showToast(data.message || 'Failed to delete withdrawals', 'error');
         }
@@ -614,13 +643,20 @@ function bulkArchiveWithdrawal() {
         return;
     }
     
-    if (!confirm(`Are you sure you want to archive ${selectedIds.length} withdrawal(s)?`)) {
-        return;
-    }
+    // Update modal message and show it
+    document.getElementById('bulkArchiveCount').textContent = selectedIds.length;
+    $('#bulkArchiveModal').modal('show');
+}
+
+function confirmBulkArchive() {
+    const selectedIds = getSelectedIds();
     
     const formData = new FormData();
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     formData.append('ids', selectedIds.join(','));
+    
+    // Hide modal
+    $('#bulkArchiveModal').modal('hide');
     
     fetch('{% url "withdrawals-bulk-archive" %}', {
         method: 'POST',
@@ -632,8 +668,8 @@ function bulkArchiveWithdrawal() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            showToast(data.message, 'success');
-            setTimeout(() => window.location.reload(), 1000);
+            sessionStorage.setItem('withdrawalSuccess', data.message);
+            window.location.reload();
         } else {
             showToast(data.message || 'Failed to archive withdrawals', 'error');
         }

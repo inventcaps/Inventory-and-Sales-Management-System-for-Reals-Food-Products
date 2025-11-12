@@ -18,10 +18,20 @@
             <div class="card-title">List of Archived Stock Changes</div>
           </div>
           <div class="card-body">
+            <!-- Bulk Action Buttons -->
+            <div class="mb-3">
+              <button type="button" class="btn btn-success btn-rounded" id="bulkRestoreBtn" style="display:none;" onclick="bulkRestore()">
+                <i class="la la-undo"></i> Restore Selected
+              </button>
+            </div>
+
             <div class="table-responsive">
               <table class="table table-striped">
                 <thead>
                   <tr>
+                    <th scope="col" style="width: 40px;">
+                      <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+                    </th>
                     <th>Item ID</th>
                     <th>Quantity Change</th>
                     <th>Category</th>
@@ -32,6 +42,9 @@
                 <tbody>
                   {% for object in object_list %}
                   <tr>
+                    <td>
+                      <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
+                    </td>
                     <td>{{ object.item_display }}</td>
                     <td>{{ object.quantity_change }}</td>
                     <td>{{ object.category }}</td>
@@ -44,7 +57,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="5" class="text-center text-muted">No archived stock changes found.</td>
+                    <td colspan="6" class="text-center text-muted">No archived stock changes found.</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -86,7 +99,111 @@
 </div>
 {% endfor %}
 
+<!-- Bulk Restore Confirmation Modal -->
+<div class="modal fade" id="bulkRestoreModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Restore</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to restore <strong id="bulkRestoreCount">0</strong> stock change(s)?
+        <br><br>
+        <small class="text-muted">These stock changes will be moved back to the active stock changes list.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkRestoreModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="confirmBulkRestore()">Restore</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Check for success message after page reload
+    const unarchiveSuccess = sessionStorage.getItem('unarchiveSuccess');
+    if (unarchiveSuccess) {
+        showToast(unarchiveSuccess, 'success');
+        sessionStorage.removeItem('unarchiveSuccess');
+    }
+});
+
+// Bulk selection functions
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateBulkButtons();
+}
+
+function updateBulkButtons() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    const bulkRestoreBtn = document.getElementById('bulkRestoreBtn');
+    
+    if (checkedBoxes.length > 0) {
+        bulkRestoreBtn.style.display = 'inline-block';
+    } else {
+        bulkRestoreBtn.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && checkedBoxes.length === allCheckboxes.length;
+}
+
+function getSelectedIds() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function bulkRestore() {
+    const selectedIds = getSelectedIds();
+    if (selectedIds.length === 0) {
+        showToast('Please select at least one stock change', 'warning');
+        return;
+    }
+    
+    // Update modal message and show it
+    document.getElementById('bulkRestoreCount').textContent = selectedIds.length;
+    $('#bulkRestoreModal').modal('show');
+}
+
+function confirmBulkRestore() {
+    const selectedIds = getSelectedIds();
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('stock_change_ids', JSON.stringify(selectedIds));
+    
+    // Hide modal
+    $('#bulkRestoreModal').modal('hide');
+    
+    fetch('{% url "stock-changes-bulk-restore" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Store success message in sessionStorage
+            sessionStorage.setItem('unarchiveSuccess', data.message);
+            // Reload page immediately
+            window.location.reload();
+        } else {
+            showToast(data.message || 'Failed to restore stock changes', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Bulk restore error:', error);
+        showToast('An error occurred while restoring stock changes', 'error');
+    });
+}
+
 // Handle unarchive form submission with toast
 function handleUnarchiveSubmit(event, stockChangeName) {
     event.preventDefault();
@@ -94,9 +211,6 @@ function handleUnarchiveSubmit(event, stockChangeName) {
     
     // Close the modal
     $(form).closest('.modal').modal('hide');
-    
-    // Show loading toast
-    showToast('Restoring stock change...', 'info');
     
     // Submit form via fetch
     fetch(form.action, {
@@ -108,11 +222,10 @@ function handleUnarchiveSubmit(event, stockChangeName) {
     })
     .then(response => {
         if (response.ok) {
-            showToast(`Stock change "${stockChangeName}" restored successfully!`, 'success');
-            // Reload page after short delay
-            setTimeout(() => {
-                window.location.reload();
-            }, 1000);
+            // Store success message in sessionStorage
+            sessionStorage.setItem('unarchiveSuccess', `Stock change "${stockChangeName}" restored successfully!`);
+            // Reload page immediately
+            window.location.reload();
         } else {
             showToast('Failed to restore stock change. Please try again.', 'error');
         }

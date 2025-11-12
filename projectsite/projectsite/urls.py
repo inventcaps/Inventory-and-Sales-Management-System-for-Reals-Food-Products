@@ -80,6 +80,8 @@ urlpatterns = [
     path('expenses/<int:pk>/unarchive/', a.ExpenseUnarchiveView.as_view(), name='expenses-unarchive'),
     path('expenses/bulk-delete/', a.expenses_bulk_delete, name='expenses-bulk-delete'),
     path('expenses/bulk-archive/', a.expenses_bulk_archive, name='expenses-bulk-archive'),
+    path('expenses/bulk-restore/', a.ExpenseBulkRestoreView.as_view(), name='expenses-bulk-restore'),
+    path('expenses/bulk-delete-archived/', a.ExpenseBulkDeleteView.as_view(), name='expenses-bulk-delete-archived'),
 
     path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch'),
     path('prodbatch/add', a.BulkProductBatchCreateView.as_view(), name='product-batch-add'),
@@ -107,6 +109,8 @@ urlpatterns = [
     path('rawmatbatch/archive-old/', a.RawMaterialBatchArchiveOldView.as_view(), name='rawmaterial-batch-archive-old'),
     path('rawmatbatch/bulk-delete/', a.rawmaterial_batch_bulk_delete, name='rawmaterial-batch-bulk-delete'),
     path('rawmatbatch/bulk-archive/', a.rawmaterial_batch_bulk_archive, name='rawmaterial-batch-bulk-archive'),
+    path('rawmatbatch/bulk-restore/', a.RawMaterialBatchBulkRestoreView.as_view(), name='rawmaterial-batch-bulk-restore'),
+    path('rawmatbatch/bulk-delete-archived/', a.RawMaterialBatchBulkDeleteView.as_view(), name='rawmaterial-batch-bulk-delete-archived'),
 
     path('rawmaterial-inventory/', a.RawMaterialInventoryList.as_view(), name='rawmaterial-inventory'),
 
@@ -167,6 +171,8 @@ urlpatterns = [
 
     path('withdrawals/bulk-delete/', a.withdrawals_bulk_delete, name='withdrawals-bulk-delete'),
     path('withdrawals/bulk-archive/', a.withdrawals_bulk_archive, name='withdrawals-bulk-archive'),
+    path('withdrawals/bulk-restore/', a.WithdrawalBulkRestoreView.as_view(), name='withdrawals-bulk-restore'),
+    path('withdrawals/bulk-delete-archived/', a.WithdrawalBulkDeleteView.as_view(), name='withdrawals-bulk-delete-archived'),
     path("api/get-stock/", a.get_stock, name="get-stock"),
 
     path("login/", a.login_view, name="login"),
@@ -187,7 +193,7 @@ urlpatterns = [
     path("api/sales-vs-expenses/", a.sales_vs_expenses, name="sales-vs-expenses"),
 
     path('notifications/', a.NotificationsList.as_view(), name='notifications'),
-    path('notifications/<pk>/delete/', a.NotificationsDeleteView.as_view(), name='notification-delete'),
+    # path('notifications/<pk>/delete/', a.NotificationsDeleteView.as_view(), name='notification-delete'),  # Disabled - notifications should not be deleted
 
     path("register/", a.register, name="register"),
 
@@ -201,14 +207,16 @@ urlpatterns = [
     path('stock-changes/<int:pk>/archive/', a.StockChangesArchiveView.as_view(), name='stock-changes-archive'),
     path('stock-changes/archived/', a.ArchivedStockChangesListView.as_view(), name='stock-changes-archived-list'),
     path('stock-changes/<int:pk>/unarchive/', a.StockChangesUnarchiveView.as_view(), name='stock-changes-unarchive'),
+    path('stock-changes/bulk-restore/', a.StockChangesBulkRestoreView.as_view(), name='stock-changes-bulk-restore'),
     path('stock-changes/archive-old/', a.StockChangesArchiveOldView.as_view(), name='stock-changes-archive-old'),
+    path('stock-changes/bulk-archive/', a.stock_changes_bulk_archive, name='stock-changes-bulk-archive'),
 
     path("revenue-x-recent_sales", a.HomePageView.as_view(), name="home"),
     path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),    
 
     path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),
-
+    path('profile/download-my-data/', a.download_my_data, name='download_my_data'),
     # User Management
     path('user-management/', a.user_management, name='user-management'),
     path('user/create-admin/', a.create_admin_user, name='create-admin-user'),
@@ -250,5 +258,8 @@ urlpatterns = [
     path('2fa-setup/', a.setup_2fa, name='2fa_setup'),
     path('2fa-disable/', a.disable_2fa, name='2fa_disable'),
     path('account/delete/', a.delete_account, name='delete_account'),
+    path('direct-password-reset/', a.direct_password_reset, name='direct_password_reset'),
+    path('privacy-policy/', a.privacy_policy, name='privacy_policy'),
+    path('terms-of-use/', a.terms_of_use, name='terms_of_use'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

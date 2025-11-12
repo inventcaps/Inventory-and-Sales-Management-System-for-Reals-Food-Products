@@ -108,7 +108,7 @@
                     <td>{{ order.date|date:"Y-m-d g:i A" }}</td>
                     <td>
                       {% if order.actual_group_id %}
-                        <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" title="View Details" style="color: blue;">
+                        <a href="{% url 'withdrawal-order-detail' order.actual_group_id %}" title="View Details" style="color: #6c757d;">
                           <i class="la la-eye la-lg"></i>
                         </a>
                       {% endif %}

@@ -39,11 +39,21 @@
                 <i class="la la-times"></i>
               </button>
             </div>
+
+            <!-- Bulk Action Buttons -->
+            <div class="mb-3">
+              <button type="button" class="btn btn-warning btn-rounded" id="bulkArchiveBtn" style="display:none;" onclick="bulkArchive()">
+                <i class="la la-archive"></i> Archive Selected
+              </button>
+            </div>
             
             <div class="table-responsive">
               <table class="table table-striped" id="stockChangesTable">
                 <thead>
                   <tr>
+                    <th scope="col" style="width: 40px;">
+                      <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
+                    </th>
                     <th scope="col">Item</th>
                     <th scope="col">Quantity Change</th>
                     <th scope="col">Category</th>
@@ -54,6 +64,9 @@
                 <tbody id="stockChangesTableBody">
                   {% for object in object_list %}
                   <tr>
+                    <td>
+                      <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
+                    </td>
                     <td>{{ object.item_display }}</td>
                     <td>{{ object.quantity_change }}</td>
                     <td>{{ object.category }}</td>
@@ -137,7 +150,36 @@
   </div>
 </div>
 
+<!-- Bulk Archive Confirmation Modal -->
+<div class="modal fade" id="bulkArchiveModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Bulk Archive</h5>
+      </div>
+      <div class="modal-body">
+        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> stock change(s)?
+        <br><br>
+        <small class="text-muted">You can restore archived stock changes later from the Archive Options menu.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#bulkArchiveModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="confirmBulkArchive()">Archive</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+document.addEventListener("DOMContentLoaded", function () {
+    // Check for success message after page reload
+    const stockChangeSuccess = sessionStorage.getItem('stockChangeSuccess');
+    if (stockChangeSuccess) {
+        showToast(stockChangeSuccess, 'success');
+        sessionStorage.removeItem('stockChangeSuccess');
+    }
+});
+
 // Handle archive form submission with toast
 function handleArchiveSubmit(event, stockChangeName) {
     event.preventDefault();
@@ -167,6 +209,79 @@ function handleArchiveSubmit(event, stockChangeName) {
     .catch(error => {
         console.error('Archive error:', error);
         showToast('An error occurred while archiving the stock change.', 'error');
+    });
+}
+
+// Bulk selection functions
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.row-checkbox');
+    checkboxes.forEach(cb => cb.checked = checkbox.checked);
+    updateBulkButtons();
+}
+
+function updateBulkButtons() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
+    
+    if (checkedBoxes.length > 0) {
+        bulkArchiveBtn.style.display = 'inline-block';
+    } else {
+        bulkArchiveBtn.style.display = 'none';
+    }
+    
+    // Update select all checkbox state
+    const allCheckboxes = document.querySelectorAll('.row-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAll');
+    selectAllCheckbox.checked = allCheckboxes.length > 0 && checkedBoxes.length === allCheckboxes.length;
+}
+
+function getSelectedIds() {
+    const checkedBoxes = document.querySelectorAll('.row-checkbox:checked');
+    return Array.from(checkedBoxes).map(cb => cb.value);
+}
+
+function bulkArchive() {
+    const selectedIds = getSelectedIds();
+    if (selectedIds.length === 0) {
+        showToast('Please select at least one stock change', 'warning');
+        return;
+    }
+    
+    // Update modal message and show it
+    document.getElementById('bulkArchiveCount').textContent = selectedIds.length;
+    $('#bulkArchiveModal').modal('show');
+}
+
+function confirmBulkArchive() {
+    const selectedIds = getSelectedIds();
+    
+    // Create form data
+    const formData = new FormData();
+    formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+    formData.append('ids', selectedIds.join(','));
+    
+    // Hide modal
+    $('#bulkArchiveModal').modal('hide');
+    
+    fetch('{% url "stock-changes-bulk-archive" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            showToast(data.message || 'Failed to archive stock changes', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Bulk archive error:', error);
+        showToast('An error occurred while archiving stock changes', 'error');
     });
 }
 
