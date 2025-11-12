@@ -5,7 +5,7 @@
     "buildCommand": "pip install -r requirements.txt && python projectsite/manage.py collectstatic --no-input"
   },
   "deploy": {
-    "startCommand": "cd projectsite && daphne -b 0.0.0.0 -p $PORT projectsite.asgi:application",
+    "startCommand": "cd projectsite && python manage.py migrate --noinput && daphne -b 0.0.0.0 -p $PORT projectsite.asgi:application",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }
