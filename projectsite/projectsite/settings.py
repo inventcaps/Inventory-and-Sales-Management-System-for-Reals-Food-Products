@@ -83,7 +83,12 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 DATABASE_URL = config('DATABASE_URL', default='postgresql://postgres:Reals_db_123@db.rczsumkmhoxjaycvggzt.supabase.co:5432/postgres')
 
 DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+}
+
+# Add SSL requirement for Supabase
+DATABASES['default']['OPTIONS'] = {
+    'sslmode': 'require',
 }
 # Alternative local database configuration (commented out)
 # DATABASES = {
