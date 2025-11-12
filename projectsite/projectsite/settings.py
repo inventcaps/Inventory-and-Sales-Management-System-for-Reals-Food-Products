@@ -211,82 +211,50 @@ BACKUP_KEEP_DAYS = 7
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 
 
-LOGS_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOGS_DIR, exist_ok=True)
-
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
+# Simplified logging for Railway deployment
+if not DEBUG:
+    # Production: simple console logging only
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
+        'root': {
+            'handlers': ['console'],
         },
-        'backup': {
-            'format': '[{asctime}] {levelname}: {message}',
-            'style': '{',
+    }
+else:
+    # Development: keep file logging
+    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+            'simple': {
+                'format': '{levelname} {message}',
+                'style': '{',
+            },
         },
-    },
-    'handlers': {
-        'backup_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'backup.log'),
-            'formatter': 'backup',
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
         },
-        'django_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'django.log'),
-            'formatter': 'verbose',
+        'root': {
+            'handlers': ['console'],
         },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'performance_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'performance.log'),
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['django_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'backup': {
-            'handlers': ['backup_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'realsproj.management.commands': {
-            'handlers': ['backup_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'realsproj.utils.perfromance_optimizer': {
-            'handlers': ['performance_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'realsproj.utils.backup_manager': {
-            'handlers': ['backup_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
+    }
 
 # Email Configuration - Use Resend (HTTP API, bypasses Railway SMTP blocks)
 # Define email variables globally to avoid NameError
