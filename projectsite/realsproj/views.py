@@ -5395,7 +5395,7 @@ Real's Food Products Security Team'''
         send_mail(
             subject=subject,
             message=message,
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,
         )
@@ -5585,7 +5585,7 @@ def login_view(request):
                         send_mail(
                             subject='🔐 Account Confirmation Required - Real\'s Food Products',
                             message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 5 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
-                            from_email=settings.EMAIL_HOST_USER,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[user.email],
                             fail_silently=False,
                         )
@@ -5688,7 +5688,7 @@ You will receive another email once your account has been approved. After approv
 If you have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
@@ -5813,7 +5813,7 @@ Login URL: {request.build_absolute_uri('/login/')}
 Welcome to the team!
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,
             )
@@ -5855,7 +5855,7 @@ If you believe this was a mistake or have any questions, please contact the admi
 Thank you for your interest.
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,
             )
@@ -6000,7 +6000,7 @@ You will no longer be able to log in until your account is reactivated.
 If you believe this was a mistake or have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
@@ -6027,7 +6027,7 @@ Username: {username}
 If you have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
@@ -6299,7 +6299,7 @@ For security reasons, we recommend:
 Thank you for keeping your account secure.
 
 Real's Food Products Security Team''',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=False,
                 )
@@ -7089,7 +7089,7 @@ If you did not enable this feature, please contact support immediately.
 Thank you for keeping your account secure!
 
 Real's Food Products Security Team''',
-                        from_email=django_settings.EMAIL_HOST_USER,
+                        from_email=django_settings.DEFAULT_FROM_EMAIL,
                         recipient_list=[email_to],
                         fail_silently=True,
                     )
@@ -7134,7 +7134,7 @@ This code will expire in 5 minutes.
 If you did not request this, please ignore this email.
 
 Real's Food Products Security Team''',
-                from_email=django_settings.EMAIL_HOST_USER,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email_to],
                 fail_silently=False,
             )
