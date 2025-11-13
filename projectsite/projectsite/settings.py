@@ -269,7 +269,7 @@ if DEBUG:
 else:
     # Production: use SendGrid HTTP API (works on Railway, doesn't use SMTP)
     if SENDGRID_API_KEY:
-        EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
+        EMAIL_BACKEND = 'realsproj.backends.SendGridBackend'
     else:
         # Fallback to console if no API key
         EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

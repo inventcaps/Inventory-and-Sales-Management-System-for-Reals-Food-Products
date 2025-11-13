@@ -21,7 +21,6 @@ Pillow==10.4.0
 # Email - HTTP API (bypasses SMTP blocks)
 requests==2.31.0
 sendgrid==6.11.0
-django-sendgrid-v5==1.9.0
 
 # ASGI/WSGI Server for Production
 gunicorn==23.0.0
