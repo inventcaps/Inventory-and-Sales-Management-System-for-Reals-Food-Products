@@ -259,21 +259,21 @@ else:
         },
     }
 
-# Email Configuration - Use Resend (HTTP API, bypasses Railway SMTP blocks)
-RESEND_API_KEY = config('RESEND_API_KEY', default='')
+# Email Configuration - Use SendGrid (HTTP API, bypasses Railway SMTP blocks)
+SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
 
 if DEBUG:
     # Development: use console backend for testing
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'test@example.com'
 else:
-    # Production: use custom Resend backend (HTTP API, works on Railway)
-    if RESEND_API_KEY:
-        EMAIL_BACKEND = 'realsproj.backends.ResendEmailBackend'
+    # Production: use SendGrid HTTP API (works on Railway, doesn't use SMTP)
+    if SENDGRID_API_KEY:
+        EMAIL_BACKEND = 'sendgrid_backend.SendgridBackend'
     else:
         # Fallback to console if no API key
         EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='onboarding@resend.dev')
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@example.com')
 
 # Email timeout settings
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
