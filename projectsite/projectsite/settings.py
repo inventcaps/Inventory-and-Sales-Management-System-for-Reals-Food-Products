@@ -260,14 +260,19 @@ else:
     }
 
 # Email Configuration - Use Resend (HTTP API, bypasses Railway SMTP blocks)
+RESEND_API_KEY = config('RESEND_API_KEY', default='')
+
 if DEBUG:
     # Development: use console backend for testing
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = 'test@example.com'
 else:
-    # Production: use Resend HTTP API (works on Railway, doesn't use SMTP)
-    EMAIL_BACKEND = 'django_resend.backends.ResendBackend'
-    RESEND_API_KEY = config('RESEND_API_KEY', default='')
+    # Production: use custom Resend backend (HTTP API, works on Railway)
+    if RESEND_API_KEY:
+        EMAIL_BACKEND = 'realsproj.backends.ResendEmailBackend'
+    else:
+        # Fallback to console if no API key
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='onboarding@resend.dev')
 
 # Email timeout settings
