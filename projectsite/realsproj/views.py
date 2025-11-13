@@ -5879,6 +5879,51 @@ Real's Food Products Team''',
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
+def send_role_change_email_async(username, email, new_role):
+    """Send role change email in background thread"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    try:
+        if new_role == 'Administrator':
+            subject = '🎉 Congratulations! You\'ve Been Promoted to Administrator'
+            message = f'''Hello {username},
+
+Great news! You have been promoted to Administrator by an administrator.
+
+Your new role: Administrator
+- You now have full access to all system features
+- You can manage users, approve registrations, and configure system settings
+- Please log out and log back in to see the updated interface
+
+If you have any questions, please contact the system administrator.
+
+Real's Food Products Team'''
+        else:  # Demoted to Staff
+            subject = '📋 Role Change: You\'ve Been Demoted to Staff'
+            message = f'''Hello {username},
+
+Your account role has been changed to Staff by an administrator.
+
+Your new role: Staff
+- You have standard user access to the system
+- Please log out and log back in to see the updated interface
+
+If you believe this was a mistake or have any questions, please contact the administrator.
+
+Real's Food Products Team'''
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        print(f"[ROLE CHANGE] Email sent to {email} - New role: {new_role}")
+    except Exception as e:
+        print(f"[ROLE CHANGE ERROR] Failed to send email: {e}")
+
 @login_required
 @require_http_methods(["POST"])
 def toggle_user_role(request, user_id):
@@ -5902,6 +5947,14 @@ def toggle_user_role(request, user_id):
             new_role = 'Administrator'
         
         user.save()
+        
+        # Send role change email asynchronously (non-blocking)
+        email_thread = threading.Thread(
+            target=send_role_change_email_async,
+            args=(user.username, user.email, new_role)
+        )
+        email_thread.daemon = True
+        email_thread.start()
         
         # Don't force logout here - let the JavaScript polling detect the role change
         # and show the appropriate modal before logging out
