@@ -265,7 +265,7 @@ SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
 if DEBUG:
     # Development: use console backend for testing
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = 'test@example.com'
+    DEFAULT_FROM_EMAIL = 'inventcaps@gmail.com'
 else:
     # Production: use SendGrid HTTP API (works on Railway, doesn't use SMTP)
     if SENDGRID_API_KEY:
@@ -273,7 +273,7 @@ else:
     else:
         # Fallback to console if no API key
         EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='noreply@example.com')
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='inventcaps@gmail.com')
 
 # Email timeout settings
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
