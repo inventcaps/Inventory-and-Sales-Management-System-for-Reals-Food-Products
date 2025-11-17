@@ -3753,6 +3753,11 @@ class WithdrawItemView(View):
         customer_name = request.POST.get("customer_name")
         payment_status = request.POST.get("payment_status", "PAID")
         paid_amount_input = request.POST.get("paid_amount")
+       
+        if reason == "REPLACEMENT_FOR_RETURNED":
+            print(f"DEBUG: Processing REPLACEMENT_FOR_RETURNED withdrawal")
+            print(f"DEBUG: item_type={item_type}, reason={reason}")
+            print(f"DEBUG: POST data keys: {list(request.POST.keys())}")
 
         # Parse price input
         if price_input in ['UNIT', 'SRP']:
@@ -3792,6 +3797,10 @@ class WithdrawItemView(View):
                         quantity = Decimal(value)  # Use Decimal instead of float
                         if quantity <= 0:
                             continue
+                        
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: Processing product {product_id} with quantity {quantity}")
+                        
                         product = Products.objects.get(id=product_id)
                         inv = product.productinventory
 
@@ -3842,7 +3851,12 @@ class WithdrawItemView(View):
                             final_price_per_unit = final_price
                             total_amount = total
 
-                        Withdrawals.objects.create(
+                       
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: About to create withdrawal for product {product.id}, quantity {quantity}")
+                            print(f"DEBUG: Current stock before deduction: {inv.total_stock}")
+                        
+                        withdrawal = Withdrawals.objects.create(
                             item_id=product.id,
                             item_type="PRODUCT",
                             quantity=quantity,
@@ -3866,14 +3880,23 @@ class WithdrawItemView(View):
                             total_amount=total_amount,
                         )
 
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
+                        
                         inv.total_stock -= quantity
                         inv.save()
+                        
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: Inventory updated. New stock: {inv.total_stock}")
+                        
                         count += 1
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                    
+                        print(f"ERROR withdrawing product {product_id}: {str(e)}")
+                        print(f"Full traceback: {error_details}")
                         messages.error(request, f"❌ Error withdrawing product: {str(e)}")
+                        continue
 
         elif item_type == "RAW_MATERIAL":
             for key, value in request.POST.items():
@@ -3903,8 +3926,16 @@ class WithdrawItemView(View):
                         inv.save()
                         count += 1
                     except Exception as e:
-                        messages.error(request, f"❌ Error withdrawing raw material: {e}")
+                        import traceback
+                        error_details = traceback.format_exc()
+                        print(f"ERROR withdrawing raw material {material_id}: {str(e)}")
+                        print(f"Full traceback: {error_details}")
+                        messages.error(request, f"❌ Error withdrawing raw material: {str(e)}")
+                        continue
 
+        if reason == "REPLACEMENT_FOR_RETURNED":
+            print(f"DEBUG: Final count of processed items: {count}")
+        
         if count > 0:
             
             if reason == "SOLD" and sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and order_group_id:
