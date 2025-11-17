@@ -224,10 +224,7 @@ function handleUnarchiveSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            // Decode the escaped JavaScript string to convert \u002D back to hyphens
-            const decodedBatchName = batchName.replace(/\\u002D/g, '-');
-            sessionStorage.setItem('unarchiveRawMaterialBatchSuccess', Raw material batch "${decodedBatchName}" restored successfully!);
+            sessionStorage.setItem('unarchiveBatchSuccess', `Raw Material batch "${batchName}" restored successfully!`);
             // Reload page immediately
             window.location.reload();
         } else {
