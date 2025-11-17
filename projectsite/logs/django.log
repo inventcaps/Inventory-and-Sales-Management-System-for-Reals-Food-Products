@@ -19558,3 +19558,62 @@ INFO 2025-11-17 16:31:25,426 basehttp 16140 12220 "GET /api/check-account-status
 INFO 2025-11-17 16:31:29,459 basehttp 16140 12220 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-17 16:31:31,313 basehttp 16140 12220 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-17 16:31:34,310 basehttp 16140 20120 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:36:27,003 autoreload 16216 25792 C:\Users\Admin\Desktop\capstone\Inventory-and-Sales-Management-System-for-Reals-Food-Products\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-17 18:38:01,329 autoreload 27236 9564 Watching for file changes with StatReloader
+INFO 2025-11-17 18:38:08,142 basehttp 27236 22592 "GET / HTTP/1.1" 302 0
+INFO 2025-11-17 18:38:10,620 basehttp 27236 22592 "GET /login/?next=/ HTTP/1.1" 200 38539
+INFO 2025-11-17 18:39:24,728 basehttp 27236 21028 "POST /login/?next=/ HTTP/1.1" 302 0
+INFO 2025-11-17 18:39:42,281 basehttp 27236 21028 "GET /revenue-x-recent_sales HTTP/1.1" 200 50417
+WARNING 2025-11-17 18:39:42,388 basehttp 27236 21028 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-17 18:39:46,082 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:39:46,109 basehttp 27236 21092 "GET /api/revenue-change/?year=2025&month=11 HTTP/1.1" 200 115
+INFO 2025-11-17 18:39:47,061 basehttp 27236 13668 "GET /api/sales-vs-expenses/ HTTP/1.1" 200 3110
+INFO 2025-11-17 18:39:49,715 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:39:51,917 basehttp 27236 16656 "GET /api/best-sellers/?year=2025&month=11 HTTP/1.1" 200 265
+INFO 2025-11-17 18:39:53,342 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:39:56,983 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:00,842 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:04,771 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:08,564 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:12,180 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:15,930 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:16,569 basehttp 27236 26488 "GET /rawmatbatch/ HTTP/1.1" 200 96827
+WARNING 2025-11-17 18:40:16,615 basehttp 27236 26488 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-17 18:40:19,615 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:23,302 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:26,884 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:30,470 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:30,778 basehttp 27236 28200 "POST /rawmatbatch/bulk-archive/ HTTP/1.1" 200 65
+INFO 2025-11-17 18:40:34,367 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:38,146 basehttp 27236 26196 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:41,192 basehttp 27236 28200 "GET /rawmatbatch/ HTTP/1.1" 200 96804
+WARNING 2025-11-17 18:40:41,238 basehttp 27236 28200 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-17 18:40:41,739 basehttp 27236 26196 - Broken pipe from ('127.0.0.1', 55009)
+INFO 2025-11-17 18:40:44,909 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:48,493 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:51,952 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:54,926 basehttp 27236 8168 "GET /rawmatbatch/archived/ HTTP/1.1" 200 53562
+WARNING 2025-11-17 18:40:54,970 basehttp 27236 8168 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-17 18:40:55,420 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:40:58,730 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:02,361 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:06,038 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:07,429 basehttp 27236 20048 "POST /rawmatbatch/bulk-restore/ HTTP/1.1" 200 86
+INFO 2025-11-17 18:41:09,692 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:13,280 basehttp 27236 20340 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:14,411 basehttp 27236 20048 "GET /rawmatbatch/archived/ HTTP/1.1" 200 49725
+WARNING 2025-11-17 18:41:14,454 basehttp 27236 19480 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-17 18:41:16,864 basehttp 27236 20340 - Broken pipe from ('127.0.0.1', 56675)
+INFO 2025-11-17 18:41:17,874 basehttp 27236 20048 - Broken pipe from ('127.0.0.1', 57146)
+INFO 2025-11-17 18:41:17,874 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:21,344 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:25,129 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:27,320 basehttp 27236 9428 "GET /rawmatbatch/ HTTP/1.1" 200 96827
+WARNING 2025-11-17 18:41:27,366 basehttp 27236 9428 "GET /static/js/ready.js HTTP/1.1" 404 1792
+INFO 2025-11-17 18:41:28,599 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:32,218 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:35,903 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:39,405 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:43,072 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:47,019 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-17 18:41:50,491 basehttp 27236 19564 "GET /api/check-account-status/ HTTP/1.1" 200 62

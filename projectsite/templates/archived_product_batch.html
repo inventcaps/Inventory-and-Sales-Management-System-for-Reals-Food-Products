@@ -221,11 +221,8 @@ function handleUnarchiveSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            // Decode the escaped JavaScript string to convert \u002D back to hyphens
-            const decodedBatchName = batchName.replace(/\\u002D/g, '-');
-            sessionStorage.setItem('unarchiveBatchSuccess', `Product batch "${decodedBatchName}" restored successfully!`);
-            // Reload page immediately
+             sessionStorage.setItem('unarchiveRawMaterialBatchSuccess', `Product batch "${batchName}" restored successfully!`);
+
             window.location.reload();
         } else {
             showToast('Failed to restore product batch. Please try again.', 'error');
