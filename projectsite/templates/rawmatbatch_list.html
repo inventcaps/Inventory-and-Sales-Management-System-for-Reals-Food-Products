@@ -378,11 +378,19 @@ function updateBulkButtons() {
     const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
     
     if (checkedBoxes.length > 0) {
-        bulkDeleteBtn.style.display = 'inline-block';
-        bulkArchiveBtn.style.display = 'inline-block';
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.style.display = 'inline-block';
+        }
+        if (bulkArchiveBtn) {
+            bulkArchiveBtn.style.display = 'inline-block';
+        }
     } else {
-        bulkDeleteBtn.style.display = 'none';
-        bulkArchiveBtn.style.display = 'none';
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.style.display = 'none';
+        }
+        if (bulkArchiveBtn) {
+            bulkArchiveBtn.style.display = 'none';
+        }
     }
     
     const allCheckboxes = document.querySelectorAll('.row-checkbox');

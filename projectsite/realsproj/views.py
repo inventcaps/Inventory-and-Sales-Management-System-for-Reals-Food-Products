@@ -2869,7 +2869,7 @@ class RawMaterialBatchList(ListView):
             .get_queryset()
             .select_related("material", "created_by_admin")
             .filter(is_archived=False)
-            .order_by('id')
+            .order_by('-batch_date')
         )
 
         query = self.request.GET.get("q", "").strip()
@@ -4137,10 +4137,7 @@ class WithdrawUpdateView(UpdateView):
     def form_valid(self, form):
         withdrawal = self.get_object()
         
-        # Save the original date before any changes
         original_date = withdrawal.date
-        
-        # Log the current time for debugging
         current_time = timezone.now()
         print(f"Current time: {current_time}")
         print(f"Original date before save: {original_date}")
@@ -4148,7 +4145,7 @@ class WithdrawUpdateView(UpdateView):
         before = {
             'item_type': withdrawal.item_type,
             'item_id': withdrawal.item_id,
-            'quantity': withdrawal.quantity,  # Keep as Decimal for calculations
+            'quantity': withdrawal.quantity,
             'reason': withdrawal.reason,
             'sales_channel': withdrawal.sales_channel,
             'price_type': withdrawal.price_type,
@@ -4158,88 +4155,95 @@ class WithdrawUpdateView(UpdateView):
             'date': str(original_date),
         }
 
-        # Get the form data but don't save yet
+        # Get form data but don't save yet
         self.object = form.save(commit=False)
-        
-        # Explicitly set the date to the original date
         self.object.date = original_date
-        
-        # Note: Inventory adjustment is handled by database triggers (trg_withdrawals_fefo)
-        # The trigger handles INSERT/DELETE operations, but UPDATE needs special handling
-        # We need to simulate DELETE (restore old) + INSERT (deduct new) for proper FEFO
-        
+
+        # -----------------------------------------
+        # ✅ IMPORTANT FIX:
+        # RAW MATERIAL withdrawals must NOT have:
+        # - sales_channel
+        # - price_type
+        # - discounts
+        # - custom discount
+        # -----------------------------------------
+        if self.object.item_type == "RAW_MATERIAL":
+            self.object.sales_channel = None
+            self.object.price_type = None
+            self.object.discount = None
+            self.object.custom_discount_value = None
+            self.object.custom_price = None
+        # -----------------------------------------
+
         old_quantity = before['quantity']
         new_quantity = self.object.quantity
         old_item_id = before['item_id']
         new_item_id = self.object.item_id
-        
-        # Check if we need to handle inventory changes
         inventory_changed = (old_item_id != new_item_id or old_quantity != new_quantity)
-        
+
+        # Inventory validation
         if inventory_changed:
-            # Validate stock availability before making changes
-            # For validation, we need to check if the new quantity can be satisfied
-            # from the restored stock (current stock + old withdrawal quantity)
             try:
                 if self.object.item_type == 'PRODUCT':
                     if old_item_id != new_item_id:
-                        # Different item - check new item has enough stock for the full new quantity
                         new_product = Products.objects.get(id=new_item_id)
                         new_inv = new_product.productinventory
                         if new_quantity > new_inv.total_stock:
-                            messages.error(self.request, f"⚠️ Insufficient stock for {new_product}. Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {new_product}. "
+                                f"Available: {new_inv.total_stock}, Needed: {new_quantity}")
                             return redirect(self.get_success_url())
                     else:
-                        # Same item - check if new quantity can be satisfied from restored stock
                         product = Products.objects.get(id=new_item_id)
                         inv = product.productinventory
-                        # Calculate what stock would be after restoring the old withdrawal
                         restored_stock = inv.total_stock + old_quantity
                         if new_quantity > restored_stock:
-                            messages.error(self.request, f"⚠️ Insufficient stock for {product}. Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {product}. "
+                                f"Available after restore: {restored_stock}, Needed: {new_quantity}")
                             return redirect(self.get_success_url())
-                                
+
                 elif self.object.item_type == 'RAW_MATERIAL':
                     if old_item_id != new_item_id:
-                        # Different item - check new item has enough stock for the full new quantity
                         new_material = RawMaterials.objects.get(id=new_item_id)
                         new_inv = new_material.rawmaterialinventory
                         if new_quantity > new_inv.total_stock:
-                            messages.error(self.request, f"⚠️ Insufficient stock for {new_material}. Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {new_material}. "
+                                f"Available: {new_inv.total_stock}, Needed: {new_quantity}")
                             return redirect(self.get_success_url())
                     else:
-                        # Same item - check if new quantity can be satisfied from restored stock
                         material = RawMaterials.objects.get(id=new_item_id)
                         inv = material.rawmaterialinventory
-                        # Calculate what stock would be after restoring the old withdrawal
                         restored_stock = inv.total_stock + old_quantity
                         if new_quantity > restored_stock:
-                            messages.error(self.request, f"⚠️ Insufficient stock for {material}. Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {material}. "
+                                f"Available after restore: {restored_stock}, Needed: {new_quantity}")
                             return redirect(self.get_success_url())
-                                
+
             except Exception as e:
                 messages.error(self.request, f"❌ Error validating stock: {str(e)}")
                 return redirect(self.get_success_url())
-        
-        # Set current user for trigger context
+
+        # Set trigger context
         from django.db import connection
         with connection.cursor() as cursor:
             cursor.execute("SET LOCAL app.current_user_id = %s", [self.request.user.id])
-        
-        # Save the withdrawal record with new values
-        # The updated trg_withdrawals_fefo() trigger will handle inventory adjustment automatically
+
+        # Save changes (inventory handled by trigger)
         self.object.save(update_fields=[
-            'item_id', 'quantity', 'reason', 'sales_channel', 
-            'price_type', 'custom_price', 'discount_id', 'custom_discount_value'
+            'item_id', 'quantity', 'reason',
+            'sales_channel', 'price_type',
+            'custom_price', 'discount_id',
+            'custom_discount_value'
         ])
-        
-        # Add success message for inventory update
-        if old_item_id != new_item_id or old_quantity != new_quantity:
-            messages.success(self.request, f"✅ Withdrawal updated successfully! Inventory has been adjusted accordingly.")
-        
-        # Refresh from database to ensure we have the latest data
+
+        if inventory_changed:
+            messages.success(self.request,
+                "✅ Withdrawal updated successfully! Inventory has been adjusted.")
+
         withdrawal.refresh_from_db()
-        
         print(f"Date after save: {withdrawal.date}")
 
         after = {
@@ -4255,72 +4259,56 @@ class WithdrawUpdateView(UpdateView):
             'date': str(withdrawal.date),
         }
 
-        # History logging is now handled by PostgreSQL triggers
-        # Removed manual create_history_log call to prevent double logging
-
-        # Update sales entry if this is a PAID order with Unit/SRP price
-        if (withdrawal.reason == 'SOLD' and 
+        # Update sales entry if needed
+        if (withdrawal.reason == 'SOLD' and
+            withdrawal.item_type == 'PRODUCT' and
             withdrawal.sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and
             withdrawal.payment_status == 'PAID' and
             withdrawal.price_type in ['UNIT', 'SRP'] and
             withdrawal.order_group_id):
-            
-            # Check if quantity or discount changed
+
             quantity_changed = before['quantity'] != after['quantity']
-            discount_changed = (before['discount_id'] != after['discount_id'] or 
-                              before['custom_discount_value'] != after['custom_discount_value'])
-            
+            discount_changed = (before['discount_id'] != after['discount_id'] or
+                                before['custom_discount_value'] != after['custom_discount_value'])
+
             if quantity_changed or discount_changed:
                 print(f"🔄 Updating sales entry for order #{withdrawal.order_group_id}")
-                
-                # Get all withdrawals in this order
+
                 order_withdrawals = Withdrawals.objects.filter(order_group_id=withdrawal.order_group_id)
-                
-                # Recalculate total
                 new_total = Decimal(0)
+
                 for w in order_withdrawals:
                     if w.price_type:
                         product = Products.objects.get(id=w.item_id)
-                        base_price = Decimal(0)
-                        
-                        if w.price_type == 'UNIT':
-                            base_price = product.unit_price.unit_price
-                        elif w.price_type == 'SRP':
-                            base_price = product.srp_price.srp_price
-                        
-                        # Apply discount
+                        base_price = product.unit_price.unit_price if w.price_type == 'UNIT' else product.srp_price.srp_price
+
                         discount_percent = Decimal(0)
                         if w.discount_id:
                             discount = Discounts.objects.get(id=w.discount_id)
                             discount_percent = Decimal(discount.value)
                         elif w.custom_discount_value:
                             discount_percent = Decimal(w.custom_discount_value)
-                        
+
                         discounted_price = base_price * (1 - (discount_percent / 100))
                         item_total = Decimal(w.quantity) * discounted_price
                         new_total += item_total
-                
-                # Update the sales entry
+
                 sales_entry = Sales.objects.filter(
                     Q(description__icontains=f"Order #{withdrawal.order_group_id}") &
                     Q(description__icontains="Status: PAID"),
                     is_archived=False
                 ).first()
-                
+
                 if sales_entry:
-                    old_amount = sales_entry.amount
                     sales_entry.amount = new_total
                     sales_entry.save()
-                  
-                    messages.success(self.request, f"✅ Withdrawal and sales entry updated. New total: ₱{new_total:,.2f}")
-                else:
-                    messages.success(self.request, "✅ Withdrawal successfully updated.")
+                    messages.success(self.request,
+                        f"✅ Withdrawal and sales entry updated. New total: ₱{new_total:,.2f}")
             else:
                 messages.success(self.request, "✅ Withdrawal successfully updated.")
         else:
             messages.success(self.request, "✅ Withdrawal successfully updated.")
-        
-        # Return a redirect response instead of the original response
+
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
