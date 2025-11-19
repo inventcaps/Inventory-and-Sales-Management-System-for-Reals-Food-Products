@@ -2607,7 +2607,7 @@ class ProductBatchList(ListView):
             .get_queryset()
             .select_related("product", "created_by_admin")
             .filter(is_archived=False)
-            .order_by('-id')
+            .order_by('-batch_date')
         )
 
         search = self.request.GET.get("search", "").strip()
