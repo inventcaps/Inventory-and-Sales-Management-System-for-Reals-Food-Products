@@ -41,8 +41,8 @@ class Command(BaseCommand):
             logger.info(f"Starting backup process: {backup_filename}")
             logger.info(f"Target database: {settings.DATABASES['default']['HOST']}")
             
-            self.stdout.write(f"🔄 Creating Python-based backup: {backup_filename}")
-            self.stdout.write(f"📡 Host: {settings.DATABASES['default']['HOST']}")
+            self.stdout.write(f"Creating Python-based backup: {backup_filename}")
+            self.stdout.write(f"Host: {settings.DATABASES['default']['HOST']}")
             
             # Get all models from your app
             app_models = apps.get_app_config('realsproj').get_models()
@@ -64,10 +64,10 @@ class Command(BaseCommand):
                             'data': serialized_data
                         }
                         total_records += count
-                        self.stdout.write(f"  📋 {model_name}: {count} records")
+                        self.stdout.write(f"  {model_name}: {count} records")
                     
                 except Exception as e:
-                    self.stdout.write(f"  ⚠️ Skipped {model_name}: {str(e)}")
+                    self.stdout.write(f"  WARNING: Skipped {model_name}: {str(e)}")
             
             # Add metadata
             backup_data['_metadata'] = {
@@ -101,10 +101,10 @@ class Command(BaseCommand):
                 
                 self.stdout.write(
                     self.style.SUCCESS(
-                        f'✅ Successfully created backup: {backup_filename} ({file_size:.2f} MB)'
+                        f'Successfully created backup: {backup_filename} ({file_size:.2f} MB)'
                     )
                 )
-                self.stdout.write(f'📊 Total records backed up: {total_records}')
+                self.stdout.write(f'Total records backed up: {total_records}')
                 
                 # Send email notification if requested
                 if options['email_notification']:
@@ -114,12 +114,12 @@ class Command(BaseCommand):
                 self.cleanup_old_backups()
                 
             else:
-                error_msg = "❌ Backup file was not created or is empty"
+                error_msg = "ERROR: Backup file was not created or is empty"
                 logger.error(error_msg)
                 self.stdout.write(self.style.ERROR(error_msg))
                 
         except Exception as e:
-            error_msg = f"❌ Backup process failed: {str(e)}"
+            error_msg = f"ERROR: Backup process failed: {str(e)}"
             self.stdout.write(self.style.ERROR(error_msg))
             logger.error(error_msg)
             
@@ -130,25 +130,25 @@ class Command(BaseCommand):
         """Send email notification about backup status"""
         try:
             if success:
-                subject = f"✅ Python Backup Successful - {filename}"
+                subject = f"Python Backup Successful - {filename}"
                 message = f"""
-🎉 Database backup completed successfully using Python serialization!
+Database backup completed successfully using Python serialization!
 
-📁 File: {filename}
-📊 Size: {file_size:.2f} MB
-📋 Records: {record_count:,}
-⏰ Time: {datetime.datetime.now()}
-🗄️ Database: {settings.DATABASES['default']['HOST']}
-🐍 Method: Django Serialization (Python-based)
+File: {filename}
+Size: {file_size:.2f} MB
+Records: {record_count:,}
+Time: {datetime.datetime.now()}
+Database: {settings.DATABASES['default']['HOST']}
+Method: Django Serialization (Python-based)
                 """
             else:
-                subject = "❌ Python Backup Failed"
+                subject = "Python Backup Failed"
                 message = f"""
-⚠️ Database backup failed!
+Database backup failed!
 
-❌ Error: {error_msg}
-⏰ Time: {datetime.datetime.now()}
-🗄️ Database: {settings.DATABASES['default']['HOST']}
+Error: {error_msg}
+Time: {datetime.datetime.now()}
+Database: {settings.DATABASES['default']['HOST']}
                 """
             
             # Get admin email(s) from settings
@@ -164,10 +164,10 @@ class Command(BaseCommand):
                 fail_silently=False,
             )
             
-            self.stdout.write(self.style.SUCCESS("📧 Email notification sent"))
+            self.stdout.write(self.style.SUCCESS("Email notification sent"))
             
         except Exception as e:
-            self.stdout.write(self.style.WARNING(f"⚠️ Failed to send notification email: {e}"))
+            self.stdout.write(self.style.WARNING(f"WARNING: Failed to send notification email: {e}"))
 
     def cleanup_old_backups(self):
         """Remove backups older than 4 weeks (28 days) for weekly backups"""

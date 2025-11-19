@@ -1,0 +1,17 @@
+[2025-11-17 20:34:37,993] INFO: Starting backup process: reals_backup_python_20251117_203437.json
+[2025-11-17 20:34:37,994] INFO: Target database: db.ynmwkydtjzqppyecqhux.supabase.co
+[2025-11-17 20:34:59,437] INFO: Backup completed successfully: reals_backup_python_20251117_203437.json
+[2025-11-17 20:34:59,437] INFO: File size: 0.67 MB, Records: 2316
+[2025-11-17 21:00:37,080] INFO: Starting backup process: reals_backup_python_20251117_210037.json
+[2025-11-17 21:00:37,080] INFO: Target database: db.ynmwkydtjzqppyecqhux.supabase.co
+[2025-11-17 21:02:34,937] INFO: Starting backup process: reals_backup_python_20251117_210234.json
+[2025-11-17 21:02:34,937] INFO: Target database: db.ynmwkydtjzqppyecqhux.supabase.co
+[2025-11-17 21:02:37,869] ERROR: ERROR: Backup process failed: 'charmap' codec can't encode characters in position 2-3: character maps to <undefined>
+[2025-11-17 21:03:31,968] INFO: Starting backup process: reals_backup_python_20251117_210331.json
+[2025-11-17 21:03:31,968] INFO: Target database: db.ynmwkydtjzqppyecqhux.supabase.co
+[2025-11-17 21:03:53,620] INFO: Backup completed successfully: reals_backup_python_20251117_210331.json
+[2025-11-17 21:03:53,620] INFO: File size: 0.67 MB, Records: 2316
+[2025-11-18 13:59:35,579] INFO: Starting backup process: reals_backup_python_20251118_135935.json
+[2025-11-18 13:59:35,579] INFO: Target database: db.ynmwkydtjzqppyecqhux.supabase.co
+[2025-11-18 13:59:56,877] INFO: Backup completed successfully: reals_backup_python_20251118_135935.json
+[2025-11-18 13:59:56,877] INFO: File size: 0.70 MB, Records: 2391
