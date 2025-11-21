@@ -1227,7 +1227,7 @@ class Withdrawals(models.Model):
         max_length=20,
         choices=SALES_CHANNEL_CHOICES,
         null=True,
-        blank=True
+        blank=True,
     )
 
     PRICE_TYPE_CHOICES = [

@@ -4917,6 +4917,12 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
         form = BulkRawMaterialBatchForm()
         return render(request, self.template_name, {'form': form, 'raw_materials': form.rawmaterials})
 
+    def get_queryset(self):
+        queryset = (
+            super()
+            .order_by('material_id')
+        )
+
     def post(self, request):
         form = BulkRawMaterialBatchForm(request.POST)
         if form.is_valid():
