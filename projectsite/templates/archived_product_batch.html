@@ -221,9 +221,8 @@ function handleUnarchiveSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('unarchiveBatchSuccess', `Product batch "${batchName}" restored successfully!`);
-            // Reload page immediately
+             sessionStorage.setItem('unarchiveRawMaterialBatchSuccess', `Product batch "${batchName}" restored successfully!`);
+
             window.location.reload();
         } else {
             showToast('Failed to restore product batch. Please try again.', 'error');

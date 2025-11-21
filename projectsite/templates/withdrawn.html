@@ -34,57 +34,39 @@
           <div class="card-body">
 
             <!-- Withdrawal Summary Cards -->
-            <div class="row mb-3">
+            <div class="row mb-3" id="withdrawalSummary">
               <!-- Total Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Total Withdrawals</h5>
-                        <p class="text-muted mb-0">All withdrawal quantities</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Total Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">All withdrawal quantities</p>
+                    <h2 class="mb-2 text-primary">{{ total_withdrawals|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
               
               <!-- Product Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Product Withdrawals</h5>
-                        <p class="text-muted mb-0">{{ product_withdrawals_count }} withdrawal(s)</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Product Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">{{ product_withdrawals_count }} withdrawal(s)</p>
+                    <h2 class="mb-2 text-success">{{ product_withdrawals_qty|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
               
               <!-- Raw Material Withdrawals Card -->
               <div class="col-md-4">
-                <div class="card">
-                  <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                        <h5 class="card-title mb-1">Raw Material Withdrawals</h5>
-                        <p class="text-muted mb-0">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
-                      </div>
-                      <div class="text-right">
-                        <h2 class="mb-0 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
-                        <small class="text-muted">units</small>
-                      </div>
-                    </div>
+                <div class="card h-100">
+                  <div class="card-body d-flex flex-column justify-content-center">
+                    <h6 class="card-title text-muted mb-1">Raw Material Withdrawals</h6>
+                    <p class="text-muted mb-2" style="font-size: 0.875rem;">{{ rawmat_withdrawals_count }} withdrawal(s)</p>
+                    <h2 class="mb-2 text-warning">{{ rawmat_withdrawals_qty|floatformat:0 }}</h2>
+                    <small class="text-muted">units</small>
                   </div>
                 </div>
               </div>
@@ -153,7 +135,7 @@
                         <input type="checkbox" class="row-checkbox" value="{{ group.order_group_id }}" data-group="true" onchange="updateBulkButtons()">
                         {% endif %}
                     </td>
-                    <td>{{ group.date|localtime|date:"Y-m-d g:i A" }}</td>
+                    <td>{{ group.date|date:"Y-m-d g:i A" }}</td>
                     <td>{{ group.item_type_display }}</td>
                     <td>
                       {{ group.reason_display }}
@@ -248,7 +230,7 @@
             <strong>Item:</strong> {{ object.get_item_display }}<br>
             <strong>Quantity:</strong> {{ object.quantity|floatformat:0 }}<br>
             <strong>Reason:</strong> {{ object.get_reason_display }}<br>
-            <strong>Date:</strong> {{ object.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ object.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdrawals-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.get_item_display }} (Qty: {{ object.quantity }})')">
@@ -277,7 +259,7 @@
             <strong>Item:</strong> {{ object.get_item_display }}<br>
             <strong>Quantity:</strong> {{ object.quantity|floatformat:0 }}<br>
             <strong>Reason:</strong> {{ object.get_reason_display }}<br>
-            <strong>Date:</strong> {{ object.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ object.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdraw-delete' object.id %}" onsubmit="handleDeleteSubmit(event, '{{ object.get_item_display }} (Qty: {{ object.quantity }})')">
@@ -305,7 +287,7 @@
           <div class="modal-body">
             <div class="row mb-3">
               <div class="col-md-6">
-                <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}<br>
+                <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}<br>
                 <strong>Reason:</strong> {{ group.reason_display }}
                 {% if group.sales_channel_display %}
                   <br><strong>Channel:</strong> {{ group.sales_channel_display }}
@@ -392,7 +374,7 @@
             <strong>Order #:</strong> {{ group.order_group_id }}<br>
             <strong>Items:</strong> {{ group.item_count }}<br>
             <strong>Customer:</strong> {{ group.customer_name|default:"-" }}<br>
-            <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}
           </div>
           <div class="modal-footer">
             <form method="post" action="{% url 'withdrawal-group-archive' group.order_group_id %}" onsubmit="handleArchiveSubmit(event, 'Order #{{ group.order_group_id }}')">
@@ -421,7 +403,7 @@
             <strong>Order #:</strong> {{ group.order_group_id }}<br>
             <strong>Items:</strong> {{ group.item_count }}<br>
             <strong>Customer:</strong> {{ group.customer_name|default:"-" }}<br>
-            <strong>Date:</strong> {{ group.date|localtime|date:"Y-m-d g:i A" }}
+            <strong>Date:</strong> {{ group.date|date:"Y-m-d g:i A" }}
             <br><br>
             <span class="text-danger"><strong>Warning:</strong> This will delete all {{ group.item_count }} items in this order!</span>
           </div>
@@ -593,11 +575,19 @@ function updateBulkButtons() {
     const bulkArchiveBtn = document.getElementById('bulkArchiveBtn');
     
     if (checkedBoxes.length > 0) {
-        bulkDeleteBtn.style.display = 'inline-block';
-        bulkArchiveBtn.style.display = 'inline-block';
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.style.display = 'inline-block';
+        }
+        if (bulkArchiveBtn) {
+            bulkArchiveBtn.style.display = 'inline-block';
+        }
     } else {
-        bulkDeleteBtn.style.display = 'none';
-        bulkArchiveBtn.style.display = 'none';
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.style.display = 'none';
+        }
+        if (bulkArchiveBtn) {
+            bulkArchiveBtn.style.display = 'none';
+        }
     }
     
     const allCheckboxes = document.querySelectorAll('.row-checkbox');

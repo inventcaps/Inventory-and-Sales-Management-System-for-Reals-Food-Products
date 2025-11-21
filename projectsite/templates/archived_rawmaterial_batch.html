@@ -224,8 +224,7 @@ function handleUnarchiveSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('unarchiveRawMaterialBatchSuccess', `Raw material batch "${batchName}" restored successfully!`);
+            sessionStorage.setItem('unarchiveBatchSuccess', `Raw Material batch "${batchName}" restored successfully!`);
             // Reload page immediately
             window.location.reload();
         } else {

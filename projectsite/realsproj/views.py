@@ -316,14 +316,62 @@ def monthly_report(request):
         .order_by("month") 
     )
 
-    expenses_dict = {e["month"]: e["total_expenses"] for e in expenses}
+    # Calculate financial loss per month (expired, damaged, replacement items)
+    financial_loss_withdrawals = Withdrawals.objects.filter(
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+        is_archived=False
+    ).annotate(month=TruncMonth("date")).values("month", "item_type", "item_id", "quantity")
+    
+    # Group financial loss by month
+    financial_loss_dict = {}
+    for withdrawal in financial_loss_withdrawals:
+        month = withdrawal["month"]
+        if month not in financial_loss_dict:
+            financial_loss_dict[month] = Decimal('0.00')
+        
+        try:
+            if withdrawal["item_type"] == 'PRODUCT':
+                product = Products.objects.select_related('unit_price').get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * product.unit_price.unit_price
+                financial_loss_dict[month] += loss_amount
+            elif withdrawal["item_type"] == 'RAW_MATERIAL':
+                material = RawMaterials.objects.get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * material.price_per_unit
+                financial_loss_dict[month] += loss_amount
+        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
+            continue
+
+    # Normalize all dictionaries to use date objects as keys
+    def normalize_date(dt):
+        if hasattr(dt, 'date'):
+            return dt.date()
+        return dt
+
+    expenses_dict = {normalize_date(e["month"]): e["total_expenses"] for e in expenses}
+    sales_dict = {normalize_date(s["month"]): s["total_sales"] for s in sales}
+    
+    # Normalize financial_loss_dict keys as well
+    normalized_financial_loss_dict = {}
+    for month, loss in financial_loss_dict.items():
+        normalized_month = normalize_date(month)
+        normalized_financial_loss_dict[normalized_month] = loss
+
+    # Get all unique months from sales, expenses, and financial loss
+    all_months = set()
+    all_months.update(sales_dict.keys())
+    all_months.update(expenses_dict.keys())
+    all_months.update(normalized_financial_loss_dict.keys())
+    
+    # Sort months chronologically
+    all_months = sorted(all_months)
 
     report = []
     prev = None
 
-    for s in sales:
-        month = s["month"]
-        revenue = s["total_sales"] or 0
+    for month in all_months:
+        gross_revenue = sales_dict.get(month, 0) or 0
+        financial_loss = normalized_financial_loss_dict.get(month, 0) or 0
+        revenue = gross_revenue - financial_loss  # Net revenue after financial loss
         cost = expenses_dict.get(month, 0) or 0
         profit = revenue - cost
 
@@ -336,6 +384,7 @@ def monthly_report(request):
         report.append({
             "month": month,
             "revenue": revenue,
+            "financial_loss": financial_loss,
             "expenses": cost,
             "profit": profit,
             "revenue_change": revenue_change,
@@ -345,6 +394,7 @@ def monthly_report(request):
 
     summary = {
         "total_revenue": sum(r["revenue"] for r in report),
+        "total_financial_loss": sum(r["financial_loss"] for r in report),
         "total_profit": sum(r["profit"] for r in report),
         "average_profit": (sum(r["profit"] for r in report) / len(report)) if report else 0,
     }
@@ -363,7 +413,7 @@ def monthly_report_export(request):
     response["Content-Disposition"] = 'attachment; filename="financial_report.csv"'
     response.write(u'\ufeff'.encode('utf8'))
     writer = csv.writer(response)
-    writer.writerow(["Month", "Revenue", "Expenses", "Profit", "Revenue Change", "Profit Change", "Trend"])
+    writer.writerow(["Month", "Revenue", "Financial Loss", "Expenses", "Profit", "Revenue Change", "Profit Change", "Trend"])
     sales = (
         Sales.objects.annotate(month=TruncMonth("date"))
         .values("month")
@@ -376,18 +426,64 @@ def monthly_report_export(request):
         .annotate(total_expenses=Sum("amount"))
         .order_by("month")
     )
-    sales_dict = {s["month"]: Decimal(s["total_sales"] or 0) for s in sales}
-    expenses_dict = {e["month"]: Decimal(e["total_expenses"] or 0) for e in expenses}
-    all_months = sorted(set(list(sales_dict.keys()) + list(expenses_dict.keys())))
+    
+    # Calculate financial loss per month (same logic as main view)
+    financial_loss_withdrawals = Withdrawals.objects.filter(
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+        is_archived=False
+    ).annotate(month=TruncMonth("date")).values("month", "item_type", "item_id", "quantity")
+    
+    financial_loss_dict = {}
+    for withdrawal in financial_loss_withdrawals:
+        month = withdrawal["month"]
+        if month not in financial_loss_dict:
+            financial_loss_dict[month] = Decimal('0.00')
+        
+        try:
+            if withdrawal["item_type"] == 'PRODUCT':
+                product = Products.objects.select_related('unit_price').get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * product.unit_price.unit_price
+                financial_loss_dict[month] += loss_amount
+            elif withdrawal["item_type"] == 'RAW_MATERIAL':
+                material = RawMaterials.objects.get(id=withdrawal["item_id"])
+                loss_amount = Decimal(withdrawal["quantity"]) * material.price_per_unit
+                financial_loss_dict[month] += loss_amount
+        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
+            continue
+    
+    # Normalize all dictionaries to use date objects as keys
+    def normalize_date(dt):
+        if hasattr(dt, 'date'):
+            return dt.date()
+        return dt
+
+    sales_dict = {normalize_date(s["month"]): Decimal(s["total_sales"] or 0) for s in sales}
+    expenses_dict = {normalize_date(e["month"]): Decimal(e["total_expenses"] or 0) for e in expenses}
+    
+    # Normalize financial_loss_dict keys as well
+    normalized_financial_loss_dict = {}
+    for month, loss in financial_loss_dict.items():
+        normalized_month = normalize_date(month)
+        normalized_financial_loss_dict[normalized_month] = loss
+    
+    # Get all unique months from sales, expenses, and financial loss
+    all_months = set()
+    all_months.update(sales_dict.keys())
+    all_months.update(expenses_dict.keys())
+    all_months.update(normalized_financial_loss_dict.keys())
+    all_months = sorted(all_months)
 
     report = []
     for month in all_months:
-        revenue = sales_dict.get(month, Decimal(0))
+        gross_revenue = sales_dict.get(month, Decimal(0))
+        financial_loss = normalized_financial_loss_dict.get(month, Decimal(0))
+        revenue = gross_revenue - financial_loss  # Net revenue after financial loss
         cost = expenses_dict.get(month, Decimal(0))
         profit = revenue - cost
         report.append({
             "month": month,
             "revenue": revenue,
+            "financial_loss": financial_loss,
             "expenses": cost,
             "profit": profit,
         })
@@ -419,6 +515,7 @@ def monthly_report_export(request):
         writer.writerow([
             report[i]["month"].strftime("%B %Y"),
             f"₱{report[i]['revenue']:,.2f}",
+            f"₱{report[i]['financial_loss']:,.2f}",
             f"₱{report[i]['expenses']:,.2f}",
             f"₱{report[i]['profit']:,.2f}",
             rev_change,
@@ -825,45 +922,15 @@ class ProductsUpdateView(UpdateView):
         auth_user = AuthUser.objects.get(username=self.request.user.username)
         form.instance.created_by_admin = auth_user
         
-        # Get the old instance before saving
-        old_instance = Products.objects.get(pk=self.object.pk)
-        
-        # Capture before state
-        before_data = {
-            'product_type_id': old_instance.product_type_id,
-            'variant_id': old_instance.variant_id,
-            'size_id': old_instance.size_id,
-            'size_unit_id': old_instance.size_unit_id,
-            'unit_price_id': old_instance.unit_price_id,
-            'srp_price_id': old_instance.srp_price_id,
-        }
-        
         # Check if photo should be deleted
         if self.request.POST.get('delete_photo_flag') == '1':
             form.instance.photo = None
+
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [auth_user.id])
         
         product = form.save()
-        
-        # Capture after state
-        after_data = {
-            'product_type_id': product.product_type_id,
-            'variant_id': product.variant_id,
-            'size_id': product.size_id,
-            'size_unit_id': product.size_unit_id,
-            'unit_price_id': product.unit_price_id,
-            'srp_price_id': product.srp_price_id,
-        }
-        
-        # Create history log only if something changed
-        if before_data != after_data:
-            create_history_log(
-                admin=auth_user,
-                log_category="Product Updated",
-                entity_type="product",
-                entity_id=product.id,
-                before=before_data,
-                after=after_data
-            )
         
         messages.success(self.request, "✅ Product updated successfully.")
         
@@ -911,7 +978,7 @@ class ProductsDeleteView(UserPassesTestMixin, DeleteView):
         from django.db import connection
         
         with connection.cursor() as cursor:
-            cursor.execute("SET LOCAL myapp.current_user_id = %s", [request.user.id])
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
         
         return super().delete(request, *args, **kwargs)
 
@@ -987,7 +1054,7 @@ class RawMaterialsList(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = RawMaterials.objects.filter(is_archived=False).select_related("unit", "created_by_admin").order_by('-id')
+        queryset = RawMaterials.objects.filter(is_archived=False).select_related("unit", "created_by_admin").order_by('-date_created')
         
         query = self.request.GET.get("q", "").strip()
         date_created = self.request.GET.get("date_created", "").strip()
@@ -1212,32 +1279,16 @@ class RawMaterialsDeleteView(LoginRequiredMixin, DeleteView):
         return super().dispatch(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
-        """Override delete to handle cascading deletion of related records"""
-        self.object = self.get_object()
-        material_id = self.object.id
-        material_name = str(self.object)
+        """Set current user ID in database session for trigger to use"""
+        from django.db import connection
         
-        try:
-            # Delete related raw material batches
-            batches_deleted = RawMaterialBatches.objects.filter(material_id=material_id).delete()[0]
-            
-            # Delete related raw material inventory
-            inventory_deleted = RawMaterialInventory.objects.filter(material_id=material_id).delete()[0]
-            
-            # Now delete the raw material itself
-            self.object.delete()
-            
-            messages.success(
-                self.request, 
-                f"🗑️ Raw Material '{material_name}' deleted successfully. "
-                f"Also deleted {batches_deleted} batch(es) and {inventory_deleted} inventory record(s)."
-            )
-            return redirect(self.get_success_url())
-        except Exception as e:
-            messages.error(self.request, f"❌ Error deleting raw material: {str(e)}")
-            return redirect('rawmaterials-list')
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [request.user.id])
+        
+        return super().delete(request, *args, **kwargs)
 
     def get_success_url(self):
+        messages.success(self.request, "🗑️ Raw material deleted successfully.")
         return reverse_lazy('rawmaterials')
 
 class HistoryLogList(ListView):
@@ -1710,8 +1761,63 @@ class SalesExpensesList(ListView):
             expenses_count=Count("id"),
         )
         
-        # Calculate net profit
+        # Calculate financial loss (expired, damaged, replacement items)
+        # Determine which month to calculate financial loss for
+        if show_all:
+            financial_loss_qs = Withdrawals.objects.filter(
+                reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                is_archived=False
+            )
+        elif month:
+            try:
+                year_str, month_str = month.split("-")
+                year = int(year_str)
+                month_num = int(month_str.lstrip("0"))
+                financial_loss_qs = Withdrawals.objects.filter(
+                    reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                    is_archived=False,
+                    date__year=year,
+                    date__month=month_num
+                )
+            except ValueError:
+                today = timezone.now()
+                financial_loss_qs = Withdrawals.objects.filter(
+                    reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                    is_archived=False,
+                    date__year=today.year,
+                    date__month=today.month
+                )
+        else:
+            today = timezone.now()
+            financial_loss_qs = Withdrawals.objects.filter(
+                reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
+                is_archived=False,
+                date__year=today.year,
+                date__month=today.month
+            )
+        
+        # Calculate total financial loss
+        total_financial_loss = Decimal('0.00')
+        for withdrawal in financial_loss_qs:
+            try:
+                if withdrawal.item_type == 'PRODUCT':
+                    product = Products.objects.select_related('unit_price').get(id=withdrawal.item_id)
+                    loss_amount = Decimal(withdrawal.quantity) * product.unit_price.unit_price
+                    total_financial_loss += loss_amount
+                elif withdrawal.item_type == 'RAW_MATERIAL':
+                    material = RawMaterials.objects.get(id=withdrawal.item_id)
+                    loss_amount = Decimal(withdrawal.quantity) * material.price_per_unit
+                    total_financial_loss += loss_amount
+            except (Products.DoesNotExist, RawMaterials.DoesNotExist):
+                continue
+        
+        context["financial_loss"] = total_financial_loss
+        
+        # Calculate net sales (sales - financial loss)
         total_sales = context["sales_summary"]["total_sales"] or 0
+        context["net_sales"] = total_sales - total_financial_loss
+        
+        # Calculate net profit (sales - expenses - financial loss)
         total_expenses = context["expenses_summary"]["total_expenses"] or 0
         context["net_profit"] = total_sales - total_expenses
         
@@ -1963,38 +2069,13 @@ class SalesUpdateView(UpdateView):
     success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
-        # Get the old instance before saving
-        old_instance = Sales.objects.get(pk=self.object.pk)
-        
-        # Capture before state
-        before_data = {
-            'category': old_instance.category,
-            'amount': str(old_instance.amount),
-            'date': str(old_instance.date),
-            'description': old_instance.description,
-        }
+        # Set current user ID for database trigger
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [auth_user.id])
         
         response = super().form_valid(form)
-        
-        # Capture after state
-        after_data = {
-            'category': self.object.category,
-            'amount': str(self.object.amount),
-            'date': str(self.object.date),
-            'description': self.object.description,
-        }
-        
-        # Create history log only if something changed
-        if before_data != after_data:
-            auth_user = AuthUser.objects.get(id=self.request.user.id)
-            create_history_log(
-                admin=auth_user,
-                log_category="Sale Updated",
-                entity_type="sale",
-                entity_id=self.object.id,
-                before=before_data,
-                after=after_data
-            )
         
         messages.success(self.request, "✏️ Sale updated successfully.")
         return response
@@ -2434,38 +2515,13 @@ class ExpensesUpdateView(UpdateView):
     success_url = reverse_lazy('salesexpenses')
 
     def form_valid(self, form):
-        # Get the old instance before saving
-        old_instance = Expenses.objects.get(pk=self.object.pk)
-        
-        # Capture before state
-        before_data = {
-            'category': old_instance.category,
-            'amount': str(old_instance.amount),
-            'date': str(old_instance.date),
-            'description': old_instance.description,
-        }
+        # Set current user ID for database trigger
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [auth_user.id])
         
         response = super().form_valid(form)
-        
-        # Capture after state
-        after_data = {
-            'category': self.object.category,
-            'amount': str(self.object.amount),
-            'date': str(self.object.date),
-            'description': self.object.description,
-        }
-        
-        # Create history log only if something changed
-        if before_data != after_data:
-            auth_user = AuthUser.objects.get(id=self.request.user.id)
-            create_history_log(
-                admin=auth_user,
-                log_category="Expense Updated",
-                entity_type="expense",
-                entity_id=self.object.id,
-                before=before_data,
-                after=after_data
-            )
         
         messages.success(self.request, "✏️ Expense updated successfully.")
         return response
@@ -2551,7 +2607,7 @@ class ProductBatchList(ListView):
             .get_queryset()
             .select_related("product", "created_by_admin")
             .filter(is_archived=False)
-            .order_by('-id')
+            .order_by('-batch_date')
         )
 
         search = self.request.GET.get("search", "").strip()
@@ -2760,13 +2816,14 @@ class ProductInventoryList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
+        # Filter out archived products and their inventory
         queryset = super().get_queryset().select_related(
             "product",
             "product__product_type",
             "product__variant",
             "product__size",
             "product__size_unit",
-        )
+        ).filter(product__is_archived=False)
 
         # Unified search field for Product Type, Variant, and Size
         search = self.request.GET.get("search", "").strip()
@@ -2792,8 +2849,10 @@ class ProductInventoryList(ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
-        # Calculate total stock across all products
-        total_stock = ProductInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        # Calculate total stock across all non-archived products
+        total_stock = ProductInventory.objects.filter(
+            product__is_archived=False
+        ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_product_stock'] = total_stock
         return context
 
@@ -2810,7 +2869,7 @@ class RawMaterialBatchList(ListView):
             .get_queryset()
             .select_related("material", "created_by_admin")
             .filter(is_archived=False)
-            .order_by('-id')
+            .order_by('-batch_date')
         )
 
         query = self.request.GET.get("q", "").strip()
@@ -3014,7 +3073,10 @@ class RawMaterialInventoryList(ListView):
     paginate_by = 10
     
     def get_queryset(self):
-        queryset = super().get_queryset().select_related("material").order_by('-material_id')
+        # Filter out archived raw materials and their inventory
+        queryset = super().get_queryset().select_related("material").filter(
+            material__is_archived=False
+        ).order_by('material_id')
 
         q = self.request.GET.get("q", "").strip()
         status = self.request.GET.get("status", "").strip()
@@ -3040,7 +3102,10 @@ class RawMaterialInventoryList(ListView):
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
-        total_stock = RawMaterialInventory.objects.aggregate(total=Sum('total_stock'))['total'] or 0
+        # Calculate total stock across all non-archived raw materials
+        total_stock = RawMaterialInventory.objects.filter(
+            material__is_archived=False
+        ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
         return context
 
@@ -3688,6 +3753,11 @@ class WithdrawItemView(View):
         customer_name = request.POST.get("customer_name")
         payment_status = request.POST.get("payment_status", "PAID")
         paid_amount_input = request.POST.get("paid_amount")
+       
+        if reason == "REPLACEMENT_FOR_RETURNED":
+            print(f"DEBUG: Processing REPLACEMENT_FOR_RETURNED withdrawal")
+            print(f"DEBUG: item_type={item_type}, reason={reason}")
+            print(f"DEBUG: POST data keys: {list(request.POST.keys())}")
 
         # Parse price input
         if price_input in ['UNIT', 'SRP']:
@@ -3727,6 +3797,10 @@ class WithdrawItemView(View):
                         quantity = Decimal(value)  # Use Decimal instead of float
                         if quantity <= 0:
                             continue
+                        
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: Processing product {product_id} with quantity {quantity}")
+                        
                         product = Products.objects.get(id=product_id)
                         inv = product.productinventory
 
@@ -3777,7 +3851,12 @@ class WithdrawItemView(View):
                             final_price_per_unit = final_price
                             total_amount = total
 
-                        Withdrawals.objects.create(
+                       
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: About to create withdrawal for product {product.id}, quantity {quantity}")
+                            print(f"DEBUG: Current stock before deduction: {inv.total_stock}")
+                        
+                        withdrawal = Withdrawals.objects.create(
                             item_id=product.id,
                             item_type="PRODUCT",
                             quantity=quantity,
@@ -3801,14 +3880,23 @@ class WithdrawItemView(View):
                             total_amount=total_amount,
                         )
 
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
+                        
                         inv.total_stock -= quantity
                         inv.save()
+                        
+                        if reason == "REPLACEMENT_FOR_RETURNED":
+                            print(f"DEBUG: Inventory updated. New stock: {inv.total_stock}")
+                        
                         count += 1
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                    
+                        print(f"ERROR withdrawing product {product_id}: {str(e)}")
+                        print(f"Full traceback: {error_details}")
                         messages.error(request, f"❌ Error withdrawing product: {str(e)}")
+                        continue
 
         elif item_type == "RAW_MATERIAL":
             for key, value in request.POST.items():
@@ -3838,8 +3926,16 @@ class WithdrawItemView(View):
                         inv.save()
                         count += 1
                     except Exception as e:
-                        messages.error(request, f"❌ Error withdrawing raw material: {e}")
+                        import traceback
+                        error_details = traceback.format_exc()
+                        print(f"ERROR withdrawing raw material {material_id}: {str(e)}")
+                        print(f"Full traceback: {error_details}")
+                        messages.error(request, f"❌ Error withdrawing raw material: {str(e)}")
+                        continue
 
+        if reason == "REPLACEMENT_FOR_RETURNED":
+            print(f"DEBUG: Final count of processed items: {count}")
+        
         if count > 0:
             
             if reason == "SOLD" and sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and order_group_id:
@@ -4041,10 +4137,7 @@ class WithdrawUpdateView(UpdateView):
     def form_valid(self, form):
         withdrawal = self.get_object()
         
-        # Save the original date before any changes
         original_date = withdrawal.date
-        
-        # Log the current time for debugging
         current_time = timezone.now()
         print(f"Current time: {current_time}")
         print(f"Original date before save: {original_date}")
@@ -4052,7 +4145,7 @@ class WithdrawUpdateView(UpdateView):
         before = {
             'item_type': withdrawal.item_type,
             'item_id': withdrawal.item_id,
-            'quantity': str(withdrawal.quantity),
+            'quantity': withdrawal.quantity,
             'reason': withdrawal.reason,
             'sales_channel': withdrawal.sales_channel,
             'price_type': withdrawal.price_type,
@@ -4062,21 +4155,95 @@ class WithdrawUpdateView(UpdateView):
             'date': str(original_date),
         }
 
-        # Get the form data but don't save yet
+        # Get form data but don't save yet
         self.object = form.save(commit=False)
-        
-        # Explicitly set the date to the original date
         self.object.date = original_date
-        
-        # Save with update_fields to only update specific fields
+
+        # -----------------------------------------
+        # ✅ IMPORTANT FIX:
+        # RAW MATERIAL withdrawals must NOT have:
+        # - sales_channel
+        # - price_type
+        # - discounts
+        # - custom discount
+        # -----------------------------------------
+        if self.object.item_type == "RAW_MATERIAL":
+            self.object.sales_channel = None
+            self.object.price_type = None
+            self.object.discount = None
+            self.object.custom_discount_value = None
+            self.object.custom_price = None
+        # -----------------------------------------
+
+        old_quantity = before['quantity']
+        new_quantity = self.object.quantity
+        old_item_id = before['item_id']
+        new_item_id = self.object.item_id
+        inventory_changed = (old_item_id != new_item_id or old_quantity != new_quantity)
+
+        # Inventory validation
+        if inventory_changed:
+            try:
+                if self.object.item_type == 'PRODUCT':
+                    if old_item_id != new_item_id:
+                        new_product = Products.objects.get(id=new_item_id)
+                        new_inv = new_product.productinventory
+                        if new_quantity > new_inv.total_stock:
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {new_product}. "
+                                f"Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                    else:
+                        product = Products.objects.get(id=new_item_id)
+                        inv = product.productinventory
+                        restored_stock = inv.total_stock + old_quantity
+                        if new_quantity > restored_stock:
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {product}. "
+                                f"Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+
+                elif self.object.item_type == 'RAW_MATERIAL':
+                    if old_item_id != new_item_id:
+                        new_material = RawMaterials.objects.get(id=new_item_id)
+                        new_inv = new_material.rawmaterialinventory
+                        if new_quantity > new_inv.total_stock:
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {new_material}. "
+                                f"Available: {new_inv.total_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+                    else:
+                        material = RawMaterials.objects.get(id=new_item_id)
+                        inv = material.rawmaterialinventory
+                        restored_stock = inv.total_stock + old_quantity
+                        if new_quantity > restored_stock:
+                            messages.error(self.request,
+                                f"⚠️ Insufficient stock for {material}. "
+                                f"Available after restore: {restored_stock}, Needed: {new_quantity}")
+                            return redirect(self.get_success_url())
+
+            except Exception as e:
+                messages.error(self.request, f"❌ Error validating stock: {str(e)}")
+                return redirect(self.get_success_url())
+
+        # Set trigger context
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL app.current_user_id = %s", [self.request.user.id])
+
+        # Save changes (inventory handled by trigger)
         self.object.save(update_fields=[
-            'item_id', 'quantity', 'reason', 'sales_channel', 
-            'price_type', 'custom_price', 'discount_id', 'custom_discount_value'
+            'item_id', 'quantity', 'reason',
+            'sales_channel', 'price_type',
+            'custom_price', 'discount_id',
+            'custom_discount_value'
         ])
-        
-        # Refresh from database to ensure we have the latest data
+
+        if inventory_changed:
+            messages.success(self.request,
+                "✅ Withdrawal updated successfully! Inventory has been adjusted.")
+
         withdrawal.refresh_from_db()
-        
         print(f"Date after save: {withdrawal.date}")
 
         after = {
@@ -4092,78 +4259,56 @@ class WithdrawUpdateView(UpdateView):
             'date': str(withdrawal.date),
         }
 
-        create_history_log(
-            admin=self.request.user,
-            log_category="Withdrawal Edited",
-            entity_type="withdrawal",
-            entity_id=withdrawal.id,
-            before=before,
-            after=after
-        )
-
-        # Update sales entry if this is a PAID order with Unit/SRP price
-        if (withdrawal.reason == 'SOLD' and 
+        # Update sales entry if needed
+        if (withdrawal.reason == 'SOLD' and
+            withdrawal.item_type == 'PRODUCT' and
             withdrawal.sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and
             withdrawal.payment_status == 'PAID' and
             withdrawal.price_type in ['UNIT', 'SRP'] and
             withdrawal.order_group_id):
-            
-            # Check if quantity or discount changed
+
             quantity_changed = before['quantity'] != after['quantity']
-            discount_changed = (before['discount_id'] != after['discount_id'] or 
-                              before['custom_discount_value'] != after['custom_discount_value'])
-            
+            discount_changed = (before['discount_id'] != after['discount_id'] or
+                                before['custom_discount_value'] != after['custom_discount_value'])
+
             if quantity_changed or discount_changed:
                 print(f"🔄 Updating sales entry for order #{withdrawal.order_group_id}")
-                
-                # Get all withdrawals in this order
+
                 order_withdrawals = Withdrawals.objects.filter(order_group_id=withdrawal.order_group_id)
-                
-                # Recalculate total
                 new_total = Decimal(0)
+
                 for w in order_withdrawals:
                     if w.price_type:
                         product = Products.objects.get(id=w.item_id)
-                        base_price = Decimal(0)
-                        
-                        if w.price_type == 'UNIT':
-                            base_price = product.unit_price.unit_price
-                        elif w.price_type == 'SRP':
-                            base_price = product.srp_price.srp_price
-                        
-                        # Apply discount
+                        base_price = product.unit_price.unit_price if w.price_type == 'UNIT' else product.srp_price.srp_price
+
                         discount_percent = Decimal(0)
                         if w.discount_id:
                             discount = Discounts.objects.get(id=w.discount_id)
                             discount_percent = Decimal(discount.value)
                         elif w.custom_discount_value:
                             discount_percent = Decimal(w.custom_discount_value)
-                        
+
                         discounted_price = base_price * (1 - (discount_percent / 100))
                         item_total = Decimal(w.quantity) * discounted_price
                         new_total += item_total
-                
-                # Update the sales entry
+
                 sales_entry = Sales.objects.filter(
                     Q(description__icontains=f"Order #{withdrawal.order_group_id}") &
                     Q(description__icontains="Status: PAID"),
                     is_archived=False
                 ).first()
-                
+
                 if sales_entry:
-                    old_amount = sales_entry.amount
                     sales_entry.amount = new_total
                     sales_entry.save()
-                  
-                    messages.success(self.request, f"✅ Withdrawal and sales entry updated. New total: ₱{new_total:,.2f}")
-                else:
-                    messages.success(self.request, "✅ Withdrawal successfully updated.")
+                    messages.success(self.request,
+                        f"✅ Withdrawal and sales entry updated. New total: ₱{new_total:,.2f}")
             else:
                 messages.success(self.request, "✅ Withdrawal successfully updated.")
         else:
             messages.success(self.request, "✅ Withdrawal successfully updated.")
-        
-        # Return a redirect response instead of the original response
+
         return redirect(self.get_success_url())
 
     def form_invalid(self, form):
@@ -4197,14 +4342,8 @@ class WithdrawDeleteView(DeleteView):
         # Call parent delete
         response = super().post(request, *args, **kwargs)
         
-        # Create history log after deletion
-        create_history_log(
-            admin=request.user,
-            log_category="Withdrawal Deleted",
-            entity_type="withdrawal",
-            entity_id=withdrawal_id,
-            before=before
-        )
+        # History logging is now handled by PostgreSQL triggers
+        # Removed manual create_history_log call to prevent double logging
         
         # Update sales entry if this was part of a PAID/PARTIAL order
         if (reason == 'SOLD' and 
@@ -4282,24 +4421,8 @@ class WithdrawalGroupArchiveView(View):
         count = withdrawals.count()
         
         if count > 0:
-            # Log each withdrawal in the group before archiving
-            for withdrawal in withdrawals:
-                withdrawal_data = {
-                    'item_type': withdrawal.item_type,
-                    'item_id': withdrawal.item_id,
-                    'quantity': str(withdrawal.quantity),
-                    'reason': withdrawal.reason,
-                    'sales_channel': withdrawal.sales_channel,
-                    'order_group_id': withdrawal.order_group_id,
-                }
-                
-                create_history_log(
-                    admin=request.user,
-                    log_category="Withdrawal Group Archived",
-                    entity_type="withdrawal",
-                    entity_id=withdrawal.id,
-                    after=withdrawal_data
-                )
+            # History logging is now handled by PostgreSQL triggers
+            # Removed manual create_history_log calls to prevent double logging
             
             withdrawals.update(is_archived=True)
             messages.success(request, f"✅ Archived {count} withdrawal(s) from Order #{order_group_id}")
@@ -4324,24 +4447,8 @@ class WithdrawalGroupDeleteView(View):
                 first_withdrawal.payment_status in ['PAID', 'PARTIAL']
             )
             
-            # Log each deletion
-            for withdrawal in withdrawals:
-                before = {
-                    'item_type': withdrawal.item_type,
-                    'item_id': withdrawal.item_id,
-                    'quantity': str(withdrawal.quantity),
-                    'reason': withdrawal.reason,
-                    'sales_channel': withdrawal.sales_channel,
-                    'order_group_id': withdrawal.order_group_id,
-                }
-                
-                create_history_log(
-                    admin=request.user,
-                    log_category="Withdrawal Group Deleted",
-                    entity_type="withdrawal",
-                    entity_id=withdrawal.id,
-                    before=before
-                )
+            # History logging is now handled by PostgreSQL triggers
+            # Removed manual create_history_log calls to prevent double logging
             
             # Delete all withdrawals in the group
             withdrawals.delete()
@@ -4809,6 +4916,12 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
     def get(self, request):
         form = BulkRawMaterialBatchForm()
         return render(request, self.template_name, {'form': form, 'raw_materials': form.rawmaterials})
+
+    def get_queryset(self):
+        queryset = (
+            super()
+            .order_by('material_id')
+        )
 
     def post(self, request):
         form = BulkRawMaterialBatchForm(request.POST)
@@ -6709,7 +6822,7 @@ def financial_loss(request):
     # Product withdrawals with separate filter
     product_withdrawals = Withdrawals.objects.filter(
         item_type='PRODUCT',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
@@ -6731,7 +6844,7 @@ def financial_loss(request):
     # Raw material withdrawals with separate filter
     raw_material_withdrawals = Withdrawals.objects.filter(
         item_type='RAW_MATERIAL',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     ).select_related('created_by_admin').order_by('-date')
 
@@ -6799,6 +6912,33 @@ def financial_loss(request):
     
     total_loss = total_product_loss + total_raw_material_loss
     
+    # Calculate monthly sales for the current month (or filtered month)
+    # Determine which month to calculate sales for
+    if product_date_filter:
+        try:
+            year_str, month_str = product_date_filter.split('-')
+            sales_year = int(year_str)
+            sales_month = int(month_str.lstrip('0'))
+        except ValueError:
+            sales_year = today.year
+            sales_month = today.month
+    else:
+        sales_year = today.year
+        sales_month = today.month
+    
+    # Get monthly sales (only if not showing all data)
+    monthly_sales = Decimal('0.00')
+    if not product_show_all:
+        monthly_sales_qs = Sales.objects.filter(
+            date__year=sales_year,
+            date__month=sales_month,
+            is_archived=False
+        ).aggregate(total=models.Sum('amount'))
+        monthly_sales = monthly_sales_qs['total'] or Decimal('0.00')
+    
+    # Calculate net sales (sales - financial loss)
+    net_sales = monthly_sales - total_loss
+    
     product_page = request.GET.get('product_page', 1)
     product_paginator = Paginator(product_loss_data, 10)
     product_page_obj = product_paginator.get_page(product_page)
@@ -6819,6 +6959,8 @@ def financial_loss(request):
         'product_loss': total_product_loss,
         'raw_material_loss': total_raw_material_loss,
         'total_loss': total_loss,
+        'monthly_sales': monthly_sales,
+        'net_sales': net_sales,
         'current_month_value': today.strftime("%Y-%m"),
     }
     
@@ -6834,13 +6976,13 @@ def financial_loss_export(request):
 
     product_qs = Withdrawals.objects.filter(
         item_type='PRODUCT',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     )
 
     raw_material_qs = Withdrawals.objects.filter(
         item_type='RAW_MATERIAL',
-        reason__in=['EXPIRED', 'DAMAGED'],
+        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
         is_archived=False
     )
 

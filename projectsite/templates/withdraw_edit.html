@@ -53,15 +53,55 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Check if this is a raw material withdrawal
     const isRawMaterial = {{ is_raw_material|yesno:"true,false" }};
+    
+    // Debug logging
+    console.log('Raw Material Status:', isRawMaterial);
+    console.log('Badge element:', document.querySelector('.badge'));
 
     // Function to hide/show a field's parent container
     function setFieldVisibility(field, visible) {
-        if (!field) return;
+        if (!field) {
+            console.log('Field not found:', field);
+            return;
+        }
+        
+        // Try multiple container selectors
         let container = field.closest('.field.item') || 
                       field.closest('.field') || 
-                      field.closest('.form-group');
+                      field.closest('.form-group') ||
+                      field.closest('div') ||
+                      field.parentElement;
+        
         if (container) {
             container.style.display = visible ? 'block' : 'none';
+            console.log('Field visibility set:', field.name, 'visible:', visible, 'container:', container);
+        } else {
+            console.log('No container found for field:', field.name);
+        }
+    }
+
+    // Alternative function to hide fields by adding/removing disabled and hidden attributes
+    function hideFieldCompletely(field, hide) {
+        if (!field) return;
+        
+        if (hide) {
+            field.style.display = 'none';
+            field.disabled = true;
+            field.required = false;
+            // Also hide the label if it exists
+            const label = document.querySelector(`label[for="${field.id}"]`) || 
+                         document.querySelector(`label[for="${field.name}"]`);
+            if (label) {
+                label.style.display = 'none';
+            }
+        } else {
+            field.style.display = '';
+            field.disabled = false;
+            const label = document.querySelector(`label[for="${field.id}"]`) || 
+                         document.querySelector(`label[for="${field.name}"]`);
+            if (label) {
+                label.style.display = '';
+            }
         }
     }
 
@@ -73,6 +113,9 @@ document.addEventListener("DOMContentLoaded", function () {
         
         // Raw material logic
         if (isRawMaterial) {
+            console.log('Hiding fields for raw material...');
+            
+            // Use both methods to ensure fields are hidden
             setFieldVisibility(salesChannelField, false);
             setFieldVisibility(customerNameField, false);
             setFieldVisibility(paymentStatusField, false);
@@ -80,6 +123,16 @@ document.addEventListener("DOMContentLoaded", function () {
             setFieldVisibility(priceField, false);
             setFieldVisibility(discountField, false);
             setFieldVisibility(customDiscountField, false);
+            
+            // Backup method - hide fields directly
+            hideFieldCompletely(salesChannelField, true);
+            hideFieldCompletely(customerNameField, true);
+            hideFieldCompletely(paymentStatusField, true);
+            hideFieldCompletely(paidAmountField, true);
+            hideFieldCompletely(priceField, true);
+            hideFieldCompletely(discountField, true);
+            hideFieldCompletely(customDiscountField, true);
+            
             return;
         }
         
@@ -151,6 +204,50 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Initial update
     updateFieldVisibility();
+    
+    // Backup execution after a short delay to ensure DOM is fully loaded
+    setTimeout(function() {
+        console.log('Backup execution - checking raw material status again...');
+        if (isRawMaterial) {
+            console.log('Backup: Hiding fields for raw material...');
+            
+            // Force hide using CSS classes
+            const fieldsToHide = [
+                '[name="sales_channel"]',
+                '[name="customer_name"]', 
+                '[name="payment_status"]',
+                '[name="paid_amount"]',
+                '[name="price_type_or_custom"]',
+                '[name="discount"]',
+                '[name="custom_discount_value"]'
+            ];
+            
+            fieldsToHide.forEach(selector => {
+                const field = document.querySelector(selector);
+                if (field) {
+                    // Hide the field and its container
+                    field.style.display = 'none !important';
+                    field.disabled = true;
+                    field.required = false;
+                    
+                    // Find and hide parent containers
+                    let parent = field.parentElement;
+                    while (parent && parent !== document.body) {
+                        if (parent.classList.contains('field') || 
+                            parent.classList.contains('form-group') ||
+                            parent.tagName === 'TR' || 
+                            parent.tagName === 'TD') {
+                            parent.style.display = 'none';
+                            break;
+                        }
+                        parent = parent.parentElement;
+                    }
+                    
+                    console.log('Backup: Hidden field', selector);
+                }
+            });
+        }
+    }, 500);
 
     function isNumeric(value) {
         return !isNaN(value) && value.trim() !== "";
@@ -194,5 +291,50 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 });
 </script>
+
+<!-- CSS to force hide sales fields for raw materials -->
+{% if is_raw_material %}
+<style>
+/* Force hide sales-related fields for raw materials */
+[name="sales_channel"],
+[name="customer_name"], 
+[name="payment_status"],
+[name="paid_amount"],
+[name="price_type_or_custom"],
+[name="discount"],
+[name="custom_discount_value"] {
+    display: none !important;
+}
+
+/* Hide parent containers that might contain these fields */
+[name="sales_channel"] ~ *,
+[name="customer_name"] ~ *,
+[name="payment_status"] ~ *,
+[name="paid_amount"] ~ *,
+[name="price_type_or_custom"] ~ *,
+[name="discount"] ~ *,
+[name="custom_discount_value"] ~ * {
+    display: none !important;
+}
+
+/* Hide table rows or form groups containing these fields */
+tr:has([name="sales_channel"]),
+tr:has([name="customer_name"]),
+tr:has([name="payment_status"]),
+tr:has([name="paid_amount"]),
+tr:has([name="price_type_or_custom"]),
+tr:has([name="discount"]),
+tr:has([name="custom_discount_value"]),
+.form-group:has([name="sales_channel"]),
+.form-group:has([name="customer_name"]),
+.form-group:has([name="payment_status"]),
+.form-group:has([name="paid_amount"]),
+.form-group:has([name="price_type_or_custom"]),
+.form-group:has([name="discount"]),
+.form-group:has([name="custom_discount_value"]) {
+    display: none !important;
+}
+</style>
+{% endif %}
 
 {% endblock %}

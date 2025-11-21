@@ -79,33 +79,6 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#  'default': {
-#      'ENGINE': 'django.db.backends.postgresql',
-#      'NAME': 'postgres',
-#      'USER': 'postgres',
-#      'PASSWORD': 'Reals_db_123',
-#      'HOST': 'db.rczsumkmhoxjaycvggzt.supabase.co',
-#      'PORT': '5432',
-#      'CONN_MAX_AGE': 60,
-#        'CONN_HEALTH_CHECKS': True,
-#        'OPTIONS': {
-#            'connect_timeout': 10,
-#        },
-#  }
-# }
-
-# DATABASES = {
-#  'default': {
-#      'ENGINE': 'django.db.backends.postgresql',
-#      'NAME': 'postgres',
-#      'USER': 'postgres',
-#      'PASSWORD': 'Reals_db_123',
-#      'HOST': 'db.ynmwkydtjzqppyecqhux.supabase.co',
-#      'PORT': '5432',
-#      'CONN_MAX_AGE': 600, 
-#  }
-# }
 
 # DATABASES = {
 #  'default': {
@@ -138,16 +111,19 @@ DATABASES = {
         'PASSWORD': 'reals',
         'HOST': 'localhost',
         'PORT': '5432',
+        'OPTIONS': {
+            'sslmode': 'require',
+        },
     }
 }
 
 # DATABASES = {
 #    'default': {
 #        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'postgres',
+#        'NAME': 'reals_local',
 #        'USER': 'postgres',
-#        'PASSWORD': 'Inventcaps_2025',
-#        'HOST': 'db.bmpwrztfukjnzdubtjox.supabase.co',
+#        'PASSWORD': 'root',
+#        'HOST': 'localhost',
 #        'PORT': '5432',
 #    }
 # }
@@ -209,15 +185,99 @@ LOGOUT_REDIRECT_URL = 'login'
 LOGIN_REDIRECT_URL = 'home' 
 LOGIN_URL = 'login'
 
-# Cache Configuration for Performance
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'unique-snowflake',
+        'LOCATION': 'reals-inventory-cache',
         'OPTIONS': {
-            'MAX_ENTRIES': 1000
-        }
+            'MAX_ENTRIES': 2000,
+            'CULL_FREQUENCY': 3,
+        },
+        'TIMEOUT': 300,  
     }
+}
+
+BACKUP_DIR = os.path.join(BASE_DIR, 'backups')
+BACKUP_KEEP_DAYS = 7
+
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 
+
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+        'backup': {
+            'format': '[{asctime}] {levelname}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'backup_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOGS_DIR, 'backup.log'),
+            'formatter': 'backup',
+        },
+        'django_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOGS_DIR, 'django.log'),
+            'formatter': 'verbose',
+        },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'performance_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOGS_DIR, 'performance.log'),
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['django_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'backup': {
+            'handlers': ['backup_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'realsproj.management.commands': {
+            'handlers': ['backup_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'realsproj.utils.perfromance_optimizer': {
+            'handlers': ['performance_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'realsproj.utils.backup_manager': {
+            'handlers': ['backup_file', 'console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }
 
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"

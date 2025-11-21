@@ -16,7 +16,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Pending Approvals</div>
-                        <div class="card-category">Users waiting for admin approval</div>
+                        <div class="card-category">Staff users waiting for admin approval</div>
                     </div>
                     <div class="card-body">
                         {% if pending_users %}
@@ -182,7 +182,7 @@
                 <div class="card">
                     <div class="card-header">
                         <div class="card-title">Inactive Users</div>
-                        <div class="card-category">Users deactivated by admin</div>
+                        <div class="card-category">Deactivated users</div>
                     </div>
                     <div class="card-body">
                         {% if inactive_users %}
@@ -318,10 +318,9 @@
                                 <tbody>
                                     {% for user in deleted_users %}
                                     <tr>
-                                        <td><strong>{{ user.id }}</strong></td>
-                                        <td>{{ user.first_name }} {{ user.last_name }}</td>
-                                        <td>{{ user.email }}</td>
-                                        <td>{{ user.date_joined|date:"M d, Y H:i" }}</td>
+                                        <td>{{ user.display_name|default:"Unknown User" }}</td>
+                                        <td>{{ user.display_email|default:"No email available" }}</td>
+                                        <td>{{ user.date_joined|date:"Y-m-d g:i A" }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
