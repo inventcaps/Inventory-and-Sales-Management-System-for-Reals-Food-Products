@@ -10965,3 +10965,9 @@ INFO 2025-11-20 00:29:50,585 basehttp 3052 24504 "GET /api/check-account-status/
 INFO 2025-11-20 00:29:51,044 basehttp 3052 1352 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-20 00:29:54,420 basehttp 3052 1352 "GET /api/check-account-status/ HTTP/1.1" 200 62
 INFO 2025-11-20 00:29:57,858 basehttp 3052 1352 "GET /api/check-account-status/ HTTP/1.1" 200 62
+INFO 2025-11-21 14:07:34,782 autoreload 8448 13232 Watching for file changes with StatReloader
+INFO 2025-11-21 14:14:09,338 autoreload 19440 10412 Watching for file changes with StatReloader
+INFO 2025-11-21 14:14:21,525 autoreload 19440 10412 C:\Users\Dee\Desktop\Reals\reals-food-inventory\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-21 14:14:23,025 autoreload 22184 9304 Watching for file changes with StatReloader
+INFO 2025-11-21 14:14:27,857 autoreload 22184 9304 C:\Users\Dee\Desktop\Reals\reals-food-inventory\projectsite\projectsite\settings.py changed, reloading.
+INFO 2025-11-21 14:14:28,957 autoreload 2020 16556 Watching for file changes with StatReloader

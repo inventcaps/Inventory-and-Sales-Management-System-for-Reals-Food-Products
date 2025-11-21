@@ -111,9 +111,6 @@ DATABASES = {
         'PASSWORD': 'reals',
         'HOST': 'localhost',
         'PORT': '5432',
-        'OPTIONS': {
-            'sslmode': 'require',
-        },
     }
 }
 

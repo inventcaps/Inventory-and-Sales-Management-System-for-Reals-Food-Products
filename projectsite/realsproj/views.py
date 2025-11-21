@@ -193,7 +193,12 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         return context
 
 
+@login_required
 def sales_vs_expenses(request):
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to access financial reports.")
+        return redirect('home')
     sales_monthly = (
         Sales.objects
         .annotate(month=TruncMonth('date'))
@@ -300,7 +305,11 @@ def revenue_change_api(request):
     })
 
 
+@login_required
 def monthly_report(request):
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to view financial reports.")
+        return redirect('home')
 
     sales = (
         Sales.objects.annotate(month=TruncMonth("date"))
@@ -6364,7 +6373,12 @@ Real's Food Products Security Team''',
     form = UserChangeForm(instance=user)
     return render(request, "editprofile.html", {"form": form, "active_tab": "account-general"})
 
+@login_required
 def export_sales(request):
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to export sales data.")
+        return redirect('home')
     filter_type = request.GET.get('filter', 'date')
     start_date = request.GET.get('start')
     end_date = request.GET.get('end')
@@ -6412,7 +6426,12 @@ def export_sales(request):
     writer.writerow(['', 'TOTAL SALES', total_sales])
     return response
 
+@login_required
 def export_expenses(request):
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to export expenses data.")
+        return redirect('home')
     filter_type = request.GET.get('filter', 'date')
     start_date = request.GET.get('start')
     end_date = request.GET.get('end')
