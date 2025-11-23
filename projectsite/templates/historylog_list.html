@@ -15,13 +15,15 @@
           </div>
           <div class="card-body">
             <form method="get" id="filterForm" class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
+              {% if can_view_all_history %}
               <!-- Admin Filter -->
               <select name="admin" id="adminFilter" class="form-control auto-submit" style="width:180px;">
-                <option value="">All Admins</option>
+                <option value="">All Users</option>
                 {% for admin in admins %}
-                  <option value="{{ admin }}" {% if request.GET.admin == admin|stringformat:'s' %}selected{% endif %}>{{ admin }}</option>
+                  <option value="{{ admin.id }}" {% if request.GET.admin == admin.id|stringformat:'s' %}selected{% endif %}>{{ admin.name }}</option>
                 {% endfor %}
               </select>
+              {% endif %}
               
               <!-- Log Filter -->
               <select name="log" id="logFilter" class="form-control auto-submit" style="width:180px;">
@@ -121,10 +123,12 @@
         const params = new URLSearchParams(window.location.search);
         
         // Update or remove admin filter
-        if (adminFilter.value) {
-          params.set("admin", adminFilter.value);
-        } else {
-          params.delete("admin");
+        if (adminFilter) {
+          if (adminFilter.value) {
+            params.set("admin", adminFilter.value);
+          } else {
+            params.delete("admin");
+          }
         }
         
         // Update or remove log filter
@@ -175,7 +179,9 @@
     }
     
     // Event listeners for filters
-    adminFilter.addEventListener('change', () => fetchHistory(true));
+    if (adminFilter) {
+      adminFilter.addEventListener('change', () => fetchHistory(true));
+    }
     logFilter.addEventListener('change', () => fetchHistory(true));
     dateFilter.addEventListener('change', () => fetchHistory(true));
     

@@ -53,6 +53,7 @@
                 <table class="table table-striped mt-3">
                 <thead>
                   <tr>
+                    <th>Code</th>
                     <th>Product</th>
                     <th>Current Stock</th>
                     <th>Restock Threshold</th>
@@ -73,6 +74,7 @@
                 <tbody id="inventoryTableBody">
                   {% for object in product_inventory %}
                   <tr>
+                    <td>{{ object.product.product_code }}</td>
                     <td>{{ object.product }}</td>
                     <td>{{ object.total_stock|floatformat:0 }}</td>
                     <td>{{ object.restock_threshold|floatformat:0 }}</td>

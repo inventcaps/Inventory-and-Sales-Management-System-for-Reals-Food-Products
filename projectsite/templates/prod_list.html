@@ -102,6 +102,7 @@
                                     <th scope="col" style="width: 40px;">
                                         <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                                     </th>
+                                    <th scope="col">Code</th>
                                     <th scope="col">Product</th>
                                     <th scope="col">Unit Price</th>
                                     <th scope="col">SRP Price</th>
@@ -116,6 +117,7 @@
                                     <td>
                                         <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
                                     </td>
+                                    <td>{{ object.product_code }}</td>
                                     <td>{{ object.product_type.name }} - {{ object.variant.name }} ({{ object.size.size_label }} {{ object.size_unit.unit_name }})</td>
                                     <td>{{ object.unit_price.unit_price }}</td>
                                     <td>{{ object.srp_price.srp_price }}</td>

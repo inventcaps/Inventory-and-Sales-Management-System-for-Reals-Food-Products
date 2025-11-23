@@ -881,7 +881,6 @@ class ProductBatches(models.Model):
     quantity = models.IntegerField()
     manufactured_date = models.DateField(default=timezone.localdate)
     created_by_admin = models.ForeignKey('AuthUser', models.DO_NOTHING)
-    deduct_raw_material = models.BooleanField(default=True)
     is_archived = models.BooleanField(default=False)
     is_expired = models.BooleanField(blank=True, null=True)
 
@@ -890,6 +889,7 @@ class ProductBatches(models.Model):
         output_field=models.DateField(),
         db_persist=True,
     )
+    batch_code = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:
         managed = False
@@ -969,6 +969,7 @@ class Products(models.Model):
     photo = models.ImageField(upload_to="product_photos/", blank=True, null=True)
     is_archived = models.BooleanField(default=False)
     barcode = models.CharField(max_length=255, null=True, blank=True)
+    product_code = models.CharField(max_length=10)
 
     class Meta:
         managed = False
@@ -1013,6 +1014,7 @@ class RawMaterials(models.Model):
     size = models.DecimalField(max_digits=10, decimal_places=2)
     date_created = models.DateTimeField(default=timezone.now)
     is_archived = models.BooleanField(default=False)
+    category = models.CharField(max_length=30)
 
     class Meta:
         managed = False
