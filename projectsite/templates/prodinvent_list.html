@@ -12,6 +12,13 @@
             <div>
               <div class="card-title">List of Product Stock</div>
             </div>
+            <form method="get" action="{% url 'product_inventory_export' %}" class="mb-0">
+              <input type="hidden" name="search" value="{{ request.GET.search|default:'' }}">
+              <input type="hidden" name="status" value="{{ request.GET.status|default:'' }}">
+              <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="la la-download mr-1"></i> Generate Inventory Report
+              </button>
+            </form>
           </div>
 
           <div class="card-body">

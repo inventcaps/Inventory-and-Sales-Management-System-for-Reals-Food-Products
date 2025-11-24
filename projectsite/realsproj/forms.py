@@ -171,6 +171,44 @@ class ProductsForm(forms.ModelForm):
             obj.save()
         return obj
 
+    def clean(self):
+        cleaned_data = super().clean()
+
+        # If other field-level errors exist, skip duplicate validation for now
+        if self.errors:
+            return cleaned_data
+
+        product_type = cleaned_data.get('product_type')
+        variant = cleaned_data.get('variant')
+        size = cleaned_data.get('size')
+        size_unit = cleaned_data.get('size_unit')
+        unit_price = cleaned_data.get('unit_price')
+        srp_price = cleaned_data.get('srp_price')
+
+        # Only perform duplicate check if the core attributes are present
+        required_fields = [product_type, variant, size_unit, unit_price, srp_price]
+        if any(field is None for field in required_fields):
+            return cleaned_data
+
+        duplicate_qs = Products.objects.filter(
+            product_type=product_type,
+            variant=variant,
+            size=size,
+            size_unit=size_unit,
+            unit_price=unit_price,
+            srp_price=srp_price,
+        )
+
+        if self.instance.pk:
+            duplicate_qs = duplicate_qs.exclude(pk=self.instance.pk)
+
+        if duplicate_qs.exists():
+            raise ValidationError(
+                "A product with the same type, variant, size, unit, unit price, and SRP already exists."
+            )
+
+        return cleaned_data
+
 class ProductRecipeForm(forms.ModelForm):
     class Meta:
         model = ProductRecipes

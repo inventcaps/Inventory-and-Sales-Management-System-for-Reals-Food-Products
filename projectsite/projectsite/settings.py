@@ -1,5 +1,7 @@
 from pathlib import Path
 import os
+from decouple import config, Csv
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -8,15 +10,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-hf7!w=oxut=ipo$@r0r&8^h1j^lg4-j2++qmgx)!ulm=!-$afb'
+SECRET_KEY = config('SECRET_KEY', default='django-insecure-hf7!w=oxut=ipo$@r0r&8^h1j^lg4-j2++qmgx)!ulm=!-$afb')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-ALLOWED_HOSTS = ['*', 'localhost', '127.0.0.1', '.ngrok-free.app']
-CSRF_TRUSTED_ORIGINS = [
-    'https://*.ngrok-free.app',
-]
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='*,localhost,127.0.0.1,.ngrok-free.app,.onrender.com,.railway.app', cast=Csv())
+CSRF_TRUSTED_ORIGINS = config('CSRF_TRUSTED_ORIGINS', default='https://*.ngrok-free.app,https://*.onrender.com,https://*.railway.app,https://reals-food-inventory-production.up.railway.app', cast=Csv())
+CSRF_COOKIE_SECURE = config('CSRF_COOKIE_SECURE', default=True, cast=bool)
+CSRF_COOKIE_HTTPONLY = config('CSRF_COOKIE_HTTPONLY', default=False, cast=bool)
+
+# WebSocket settings for production
+SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=False, cast=bool)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # Application definition
 
@@ -79,31 +85,57 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# Database configuration with fallback
+import os
+DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.ynmwkydtjzqppyecqhux:Reals_DB_123@aws-1-us-east-1.pooler.supabase.com:6543/postgres')
 
+DATABASES = {
+    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+}
+
+# Add SSL requirement for Supabase
+DATABASES['default']['OPTIONS'] = {
+    'sslmode': 'require',
+}
+
+# Alternative local database configuration (commented out)
 # DATABASES = {
 #     'default': {
 #         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'postgres',
+#         'NAME': 'reals_local',
 #         'USER': 'postgres',
-#         'PASSWORD': 'Reals_DB_123',
-#         'HOST': 'db.ynmwkydtjzqppyecqhux.supabase.co',
+#         'PASSWORD': 'root',
+#         'HOST': 'localhost',
 #         'PORT': '5432',
+#     }
+# }
 #         'OPTIONS': {
 #             'sslmode': 'require',
 #         },
 #     }
 # }
 
-DATABASES = {
-   'default': {
-       'ENGINE': 'django.db.backends.postgresql',
-       'NAME': 'reals_db_local',
-       'USER': 'postgres',
-       'PASSWORD': 'admin',
-       'HOST': 'localhost',
-       'PORT': '5432',
-   }
-}
+# DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'reals_local',
+#        'USER': 'postgres',
+#        'PASSWORD': 'root',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+# }
+
+# DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'reals_local',
+#        'USER': 'postgres',
+#        'PASSWORD': 'root',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -121,14 +153,25 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
+    {
+        'NAME': 'realsproj.validators.ComplexPasswordValidator',
+    },
 ]
 
-PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.PBKDF2PasswordHasher',      # accept old PBKDF2
-    'django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher',  # legacy
-    'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
-    'django.contrib.auth.hashers.ScryptPasswordHasher',
-]
+# Password hashers - optimized for development speed
+if DEBUG:
+    # Fast hashing for development
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.MD5PasswordHasher',  # Fast for dev
+        'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+    ]
+else:
+    # Secure hashing for production
+    PASSWORD_HASHERS = [
+        'django.contrib.auth.hashers.PBKDF2PasswordHasher',
+        'django.contrib.auth.hashers.BCryptSHA256PasswordHasher',
+        'django.contrib.auth.hashers.ScryptPasswordHasher',
+    ]
 
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
@@ -151,7 +194,6 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
 
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # Default primary key field type
@@ -161,6 +203,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGOUT_REDIRECT_URL = 'login'
 LOGIN_REDIRECT_URL = 'home' 
 LOGIN_URL = 'login'
+
+# Session optimization for faster login
+SESSION_ENGINE = 'django.contrib.sessions.backends.cached_db'
+SESSION_CACHE_ALIAS = 'default'
+SESSION_COOKIE_AGE = 86400  # 24 hours
+SESSION_SAVE_EVERY_REQUEST = False
 
 CACHES = {
     'default': {
@@ -180,90 +228,69 @@ BACKUP_KEEP_DAYS = 7
 DATA_UPLOAD_MAX_MEMORY_SIZE = 10485760 
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10485760 
 
-LOGS_DIR = os.path.join(BASE_DIR, 'logs')
-os.makedirs(LOGS_DIR, exist_ok=True)
+# Simplified logging for Railway deployment
+if not DEBUG:
+    # Production: simple console logging only
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+        },
+    }
+else:
+    # Development: keep file logging
+    LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            'verbose': {
+                'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+                'style': '{',
+            },
+            'simple': {
+                'format': '{levelname} {message}',
+                'style': '{',
+            },
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'simple',
+            },
+        },
+        'root': {
+            'handlers': ['console'],
+        },
+    }
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-        'backup': {
-            'format': '[{asctime}] {levelname}: {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'backup_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'backup.log'),
-            'formatter': 'backup',
-        },
-        'django_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'django.log'),
-            'formatter': 'verbose',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'performance_file': {
-            'level': 'INFO',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(LOGS_DIR, 'performance.log'),
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['django_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'backup': {
-            'handlers': ['backup_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'realsproj.management.commands': {
-            'handlers': ['backup_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'realsproj.utils.perfromance_optimizer': {
-            'handlers': ['performance_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'realsproj.utils.backup_manager': {
-            'handlers': ['backup_file', 'console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
+# Email Configuration - Use SendGrid (HTTP API, bypasses Railway SMTP blocks)
+SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = "inventcaps@gmail.com"
-EMAIL_HOST_PASSWORD = "mwko idqd bjzv ujww"
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+if DEBUG:
+    # Development: use console backend for testing
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = 'inventcaps@gmail.com'
+else:
+    # Production: use SendGrid HTTP API (works on Railway, doesn't use SMTP)
+    if SENDGRID_API_KEY:
+        EMAIL_BACKEND = 'realsproj.backends.SendGridBackend'
+    else:
+        # Fallback to console if no API key
+        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='inventcaps@gmail.com')
+
+# Email timeout settings
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'

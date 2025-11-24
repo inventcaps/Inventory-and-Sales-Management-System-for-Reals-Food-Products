@@ -7,7 +7,27 @@
     <h4 class="page-title">Sales & Expenses</h4>
     <div class="row">
       <div class="col-md-12">
-        <div class="card">
+        <ul class="nav nav-tabs nav-fill flex-column flex-md-row" id="salesExpensesTabs" role="tablist">
+          <li class="nav-item" role="presentation">
+            <a class="nav-link active" id="salesListTab" data-toggle="tab" href="#salesListPanel" role="tab" aria-controls="salesListPanel" aria-selected="true">
+              <i class="la la-list mr-1"></i> List of Sales
+            </a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a class="nav-link" id="withdrawalSalesTab" data-toggle="tab" href="#withdrawalSalesPanel" role="tab" aria-controls="withdrawalSalesPanel" aria-selected="false">
+              <i class="la la-exchange mr-1"></i> Sales from Withdrawals
+            </a>
+          </li>
+          <li class="nav-item" role="presentation">
+            <a class="nav-link" id="expensesRecordsTab" data-toggle="tab" href="#expensesRecordsPanel" role="tab" aria-controls="expensesRecordsPanel" aria-selected="false">
+              <i class="la la-credit-card mr-1"></i> Expenses Records
+            </a>
+          </li>
+        </ul>
+
+        <div class="tab-content mt-4" id="salesExpensesTabsContent">
+          <div class="tab-pane fade show active" id="salesListPanel" role="tabpanel" aria-labelledby="salesListTab">
+            <div class="card">
 
           <!-- Header: title + buttons -->
           <div class="card-header d-flex justify-content-between align-items-center">
@@ -190,10 +210,12 @@
               {% include 'includes/pagination.html' %}
             </div>
           </div>
-        </div>
+            </div>
+          </div>
 
-        <!-- Withdrawal Sales Table -->
-        <div class="card mt-4">
+          <!-- Withdrawal Sales Table -->
+          <div class="tab-pane fade" id="withdrawalSalesPanel" role="tabpanel" aria-labelledby="withdrawalSalesTab">
+            <div class="card">
           <div class="card-header">
             <div class="card-title">Sales from Withdrawals</div>
           </div>
@@ -358,10 +380,12 @@
             </div>
             {% endif %}
           </div>
-        </div>
+            </div>
+          </div>
 
-        <!-- Expenses Table -->
-        <div class="card mt-4">
+          <!-- Expenses Table -->
+          <div class="tab-pane fade" id="expensesRecordsPanel" role="tabpanel" aria-labelledby="expensesRecordsTab">
+            <div class="card">
           <div class="card-header">
             <div class="card-title">Expenses Records</div>
           </div>
@@ -463,6 +487,8 @@
 
             <div class="pagination-container">
               {% include 'includes/expenses_pagination.html' %}
+            </div>
+          </div>
             </div>
           </div>
         </div>
@@ -1355,7 +1381,109 @@ function resetWithdrawalFilters() {
 }
 </script>
 
+<script>
+// Lightweight tab controller (Bootstrap JS optional)
+document.addEventListener('DOMContentLoaded', function() {
+  const tabLinks = document.querySelectorAll('#salesExpensesTabs .nav-link');
+  const tabPanes = document.querySelectorAll('#salesExpensesTabsContent .tab-pane');
+
+  if (!tabLinks.length || !tabPanes.length) {
+    return;
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const hashTab = window.location.hash ? window.location.hash.replace('#', '') : null;
+  const initialTab = urlParams.get('tab') || hashTab || tabPanes[0].id;
+
+  const activateTab = (targetId, updateUrl = true) => {
+    tabLinks.forEach(link => {
+      const linkTarget = link.getAttribute('href')?.replace('#', '');
+      const isActive = linkTarget === targetId;
+      link.classList.toggle('active', isActive);
+      link.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    });
+
+    tabPanes.forEach(pane => {
+      const isActive = pane.id === targetId;
+      pane.classList.toggle('active', isActive);
+      pane.classList.toggle('show', isActive);
+    });
+
+    if (updateUrl) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', targetId);
+      const newQuery = params.toString();
+      const newUrl = window.location.pathname + (newQuery ? '?' + newQuery : '');
+      window.history.replaceState({}, '', newUrl + '#' + targetId);
+    }
+  };
+
+  activateTab(initialTab, false);
+
+  tabLinks.forEach(link => {
+    link.addEventListener('click', function(event) {
+      event.preventDefault();
+      const targetId = this.getAttribute('href')?.replace('#', '');
+      if (targetId) {
+        activateTab(targetId);
+      }
+    });
+  });
+});
+</script>
+
 <style>
+#salesExpensesTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  border-bottom: none;
+}
+
+#salesExpensesTabs .nav-item {
+  flex: 1 1 200px;
+}
+
+#salesExpensesTabs .nav-link {
+  border: 1px solid #e0e0e0;
+  border-radius: 999px;
+  background: #f8f9fa;
+  color: #6c757d;
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+#salesExpensesTabs .nav-link i {
+  font-size: 1rem;
+  vertical-align: middle;
+}
+
+#salesExpensesTabs .nav-link:hover,
+#salesExpensesTabs .nav-link:focus {
+  color: #007bff;
+  border-color: #c9d8ff;
+  background: #eef3ff;
+  text-decoration: none;
+}
+
+#salesExpensesTabs .nav-link.active {
+  background: #007bff;
+  color: #fff;
+  border-color: #007bff;
+  box-shadow: 0 4px 14px rgba(0, 123, 255, 0.25);
+}
+
+.tab-pane {
+  display: none;
+}
+
+.tab-pane.show.active {
+  display: block;
+}
+
 .table-responsive {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;

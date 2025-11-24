@@ -827,6 +827,8 @@ class ProductCreateView(CreateView):
         # Check if barcode error exists
         if 'barcode' in form.errors:
             messages.error(self.request, f"❌ {form.errors['barcode'][0]}")
+        elif form.non_field_errors():
+            messages.error(self.request, f"❌ {form.non_field_errors()[0]}")
         else:
             messages.error(self.request, "❌ Please correct the errors below.")
         
@@ -936,6 +938,15 @@ class ProductsUpdateView(UpdateView):
         
         # Use get_success_url() to maintain the page number
         return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if 'barcode' in form.errors:
+            messages.error(self.request, f"❌ {form.errors['barcode'][0]}")
+        elif form.non_field_errors():
+            messages.error(self.request, f"❌ {form.non_field_errors()[0]}")
+        else:
+            messages.error(self.request, "❌ Please correct the errors below.")
+        return super().form_invalid(form)
 
 @receiver(pre_save, sender=Products)
 def delete_old_product_photo_on_change(sender, instance, **kwargs):
@@ -5519,7 +5530,7 @@ Real's Food Products Security Team'''
         send_mail(
             subject=subject,
             message=message,
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,
         )
@@ -5709,7 +5720,7 @@ def login_view(request):
                         send_mail(
                             subject='🔐 Account Confirmation Required - Real\'s Food Products',
                             message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 5 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
-                            from_email=settings.EMAIL_HOST_USER,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
                             recipient_list=[user.email],
                             fail_silently=False,
                         )
@@ -5812,7 +5823,7 @@ You will receive another email once your account has been approved. After approv
 If you have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
@@ -5937,7 +5948,7 @@ Login URL: {request.build_absolute_uri('/login/')}
 Welcome to the team!
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,
             )
@@ -5979,7 +5990,7 @@ If you believe this was a mistake or have any questions, please contact the admi
 Thank you for your interest.
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,
             )
@@ -6002,6 +6013,51 @@ Real's Food Products Team''',
         return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+def send_role_change_email_async(username, email, new_role):
+    """Send role change email in background thread"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    try:
+        if new_role == 'Administrator':
+            subject = '🎉 Congratulations! You\'ve Been Promoted to Administrator'
+            message = f'''Hello {username},
+
+Great news! You have been promoted to Administrator by an administrator.
+
+Your new role: Administrator
+- You now have full access to all system features
+- You can manage users, approve registrations, and configure system settings
+- Please log out and log back in to see the updated interface
+
+If you have any questions, please contact the system administrator.
+
+Real's Food Products Team'''
+        else:  # Demoted to Staff
+            subject = '📋 Role Change: You\'ve Been Demoted to Staff'
+            message = f'''Hello {username},
+
+Your account role has been changed to Staff by an administrator.
+
+Your new role: Staff
+- You have standard user access to the system
+- Please log out and log back in to see the updated interface
+
+If you believe this was a mistake or have any questions, please contact the administrator.
+
+Real's Food Products Team'''
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        print(f"[ROLE CHANGE] Email sent to {email} - New role: {new_role}")
+    except Exception as e:
+        print(f"[ROLE CHANGE ERROR] Failed to send email: {e}")
 
 @login_required
 @require_http_methods(["POST"])
@@ -6026,6 +6082,14 @@ def toggle_user_role(request, user_id):
             new_role = 'Administrator'
         
         user.save()
+        
+        # Send role change email asynchronously (non-blocking)
+        email_thread = threading.Thread(
+            target=send_role_change_email_async,
+            args=(user.username, user.email, new_role)
+        )
+        email_thread.daemon = True
+        email_thread.start()
         
         # Don't force logout here - let the JavaScript polling detect the role change
         # and show the appropriate modal before logging out
@@ -6124,7 +6188,7 @@ You will no longer be able to log in until your account is reactivated.
 If you believe this was a mistake or have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
@@ -6151,7 +6215,7 @@ Username: {username}
 If you have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
@@ -6423,7 +6487,7 @@ For security reasons, we recommend:
 Thank you for keeping your account secure.
 
 Real's Food Products Security Team''',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=False,
                 )
@@ -6486,6 +6550,86 @@ def export_sales(request):
 
     writer.writerow([])
     writer.writerow(['', 'TOTAL SALES', total_sales])
+    return response
+
+
+@login_required
+def export_product_inventory(request):
+    queryset = ProductInventory.objects.select_related(
+        "product",
+        "product__product_type",
+        "product__variant",
+        "product__size",
+        "product__size_unit",
+    ).filter(product__is_archived=False)
+
+    search = request.GET.get("search", "").strip()
+    if search:
+        queryset = queryset.filter(
+            Q(product__product_type__name__icontains=search)
+            | Q(product__variant__name__icontains=search)
+            | Q(product__size__size_label__icontains=search)
+        )
+
+    status = request.GET.get("status", "")
+    if status == "on_stock":
+        queryset = queryset.filter(total_stock__gt=F("restock_threshold"))
+    elif status == "low_stock":
+        queryset = queryset.filter(total_stock__lt=F("restock_threshold"), total_stock__gt=0)
+    elif status == "warning":
+        queryset = queryset.filter(total_stock=F("restock_threshold"))
+    elif status == "out_of_stock":
+        queryset = queryset.filter(total_stock=0)
+
+    timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="product_inventory_{timestamp}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Product Type',
+        'Variant',
+        'Size',
+        'Size Unit',
+        'Current Stock',
+        'Restock Threshold',
+        'Status'
+    ])
+
+    def status_label(item):
+        if item.total_stock == 0:
+            return 'Out of Stock'
+        if item.total_stock < item.restock_threshold:
+            return 'Low Stock'
+        if item.total_stock == item.restock_threshold:
+            return 'Warning'
+        return 'On Stock'
+
+    queryset = queryset.order_by(
+        'product__product_type__name',
+        'product__variant__name',
+        'product__size__size_label'
+    )
+
+    for inventory in queryset:
+        product = inventory.product
+        size_label = product.size.size_label if product.size else 'N/A'
+        size_unit = product.size_unit.unit_name if product.size_unit else 'N/A'
+        writer.writerow([
+            product.product_type.name,
+            product.variant.name,
+            size_label,
+            size_unit,
+            float(inventory.total_stock),
+            float(inventory.restock_threshold),
+            status_label(inventory)
+        ])
+
+    total_stock = queryset.aggregate(total=Sum('total_stock'))['total'] or 0
+    writer.writerow([])
+    writer.writerow(['', '', 'TOTAL STOCK', '', float(total_stock), '', ''])
+
     return response
 
 def export_expenses(request):
@@ -7213,7 +7357,7 @@ If you did not enable this feature, please contact support immediately.
 Thank you for keeping your account secure!
 
 Real's Food Products Security Team''',
-                        from_email=django_settings.EMAIL_HOST_USER,
+                        from_email=django_settings.DEFAULT_FROM_EMAIL,
                         recipient_list=[email_to],
                         fail_silently=True,
                     )
@@ -7258,7 +7402,7 @@ This code will expire in 5 minutes.
 If you did not request this, please ignore this email.
 
 Real's Food Products Security Team''',
-                from_email=django_settings.EMAIL_HOST_USER,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email_to],
                 fail_silently=False,
             )
