@@ -212,7 +212,8 @@ urlpatterns = [
     path('stock-changes/bulk-archive/', a.stock_changes_bulk_archive, name='stock-changes-bulk-archive'),
 
     path("revenue-x-recent_sales", a.HomePageView.as_view(), name="home"),
-    path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),    
+    path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),
+    path("product-inventory/export/", a.export_product_inventory, name="product_inventory_export"),    
 
     path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),

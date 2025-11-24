@@ -4,7 +4,114 @@
 <div class="content">
     <div class="container-fluid">
         <h4 class="page-title">Best Seller Products</h4>
-        
+
+        <!-- Kanga Analytics Overview -->
+        <div class="card kanga-analytics-card mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <div>
+                        <p class="text-uppercase text-muted small mb-1">Kanga Best Seller Analytics</p>
+                        <h5 class="mb-0">
+                            {% if filter_type == 'all' %}
+                                Performance Overview &mdash; All Time
+                            {% elif filter_month_name and filter_year %}
+                                Performance Overview &mdash; {{ filter_month_name }} {{ filter_year }}
+                            {% elif current_month_name and current_year %}
+                                Performance Overview &mdash; {{ current_month_name }} {{ current_year }}
+                            {% else %}
+                                Performance Overview
+                            {% endif %}
+                        </h5>
+                    </div>
+                    <span class="badge badge-kanga">Live KPI Snapshot</span>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="kanga-metric">
+                            <p class="kanga-metric-label">Products Analyzed</p>
+                            <h3 class="kanga-metric-value">{{ total_products|default:0 }}</h3>
+                            <small class="text-muted">Tracked SKUs for this view</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="kanga-metric">
+                            <p class="kanga-metric-label">Units Sold</p>
+                            <h3 class="kanga-metric-value">{{ total_quantity|default:0|floatformat:0 }}</h3>
+                            <small class="text-muted">Aggregate quantity moved</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="kanga-metric">
+                            <p class="kanga-metric-label">Total Revenue</p>
+                            <h3 class="kanga-metric-value">₱{{ total_revenue|default:0|floatformat:2 }}</h3>
+                            <small class="text-muted">Gross earned from sales</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6 mb-3">
+                        <div class="kanga-metric">
+                            <p class="kanga-metric-label">Avg. Revenue / Product</p>
+                            <h3 class="kanga-metric-value">₱{{ average_revenue|default:0|floatformat:2 }}</h3>
+                            <small class="text-muted">Helps spot over &amp; under performers</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-lg-6 mb-3">
+                        <div class="kanga-highlight">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">Top Momentum Driver</h6>
+                                <span class="badge badge-success">Best Seller</span>
+                            </div>
+                            {% with top_product=best_sellers|first %}
+                                {% if top_product %}
+                                    <p class="mb-1"><strong>{{ top_product.product__product_type__name }}</strong></p>
+                                    <p class="text-muted small mb-2">{{ top_product.product__variant__name }} ({{ top_product.product__size__size_label }} {{ top_product.product__size_unit__unit_name }})</p>
+                                    <p class="mb-0">{{ top_product.total_quantity|floatformat:0 }} units • ₱{{ top_product.total_revenue|floatformat:2 }}</p>
+                                {% else %}
+                                    <p class="text-muted mb-0">No sales captured for this period.</p>
+                                {% endif %}
+                            {% endwith %}
+                            {% if best_sellers %}
+                                <ul class="kanga-mini-list mt-3 mb-0">
+                                    {% for product in best_sellers|slice:":3" %}
+                                        <li>
+                                            <span>#{{ forloop.counter }}</span>
+                                            <span>{{ product.product__product_type__name }} — {{ product.total_quantity|floatformat:0 }} units</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-3">
+                        <div class="kanga-highlight">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0">At-Risk / Emerging Items</h6>
+                                <span class="badge badge-warning">Focus Zone</span>
+                            </div>
+                            {% if low_sellers %}
+                                <ul class="kanga-mini-list mb-0">
+                                    {% for product in low_sellers|slice:":4" %}
+                                        <li>
+                                            <span>{{ product.product__product_type__name }}</span>
+                                            <span>{{ product.total_quantity|floatformat:0 }} units</span>
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                                {% if no_sales_products %}
+                                    <p class="text-muted small mt-2 mb-0">{{ no_sales_products|length }} products recorded zero sales.</p>
+                                {% endif %}
+                            {% else %}
+                                <p class="text-muted mb-0">All tracked products showed movement for this view.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Filter Section -->
         <div class="card mb-3">
             <div class="card-body">
@@ -130,4 +237,64 @@
 </div>
 
 <script src="{% static 'js/bestseller_filter.js' %}"></script>
+<style>
+    .kanga-analytics-card {
+        border: 1px solid #f0f4ff;
+        box-shadow: 0 10px 30px rgba(31, 80, 194, 0.08);
+    }
+    .badge-kanga {
+        background: linear-gradient(120deg, #4f46e5, #22d3ee);
+        color: #fff;
+        font-weight: 600;
+    }
+    .kanga-metric {
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        height: 100%;
+        border: 1px solid #edf2ff;
+    }
+    .kanga-metric-label {
+        margin-bottom: 0.35rem;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #64748b;
+        letter-spacing: 0.05em;
+    }
+    .kanga-metric-value {
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .kanga-highlight {
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1rem 1.25rem;
+        background: #fff;
+        height: 100%;
+    }
+    .kanga-mini-list {
+        list-style: none;
+        padding: 0;
+    }
+    .kanga-mini-list li {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.9rem;
+        padding: 0.35rem 0;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+    .kanga-mini-list li:last-child {
+        border-bottom: none;
+    }
+    @media (max-width: 767px) {
+        .kanga-metric {
+            text-align: center;
+        }
+        .kanga-mini-list li {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+        }
+    }
+</style>
 {% endblock %}

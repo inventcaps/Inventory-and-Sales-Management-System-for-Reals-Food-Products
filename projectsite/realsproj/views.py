@@ -827,6 +827,8 @@ class ProductCreateView(CreateView):
         # Check if barcode error exists
         if 'barcode' in form.errors:
             messages.error(self.request, f"❌ {form.errors['barcode'][0]}")
+        elif form.non_field_errors():
+            messages.error(self.request, f"❌ {form.non_field_errors()[0]}")
         else:
             messages.error(self.request, "❌ Please correct the errors below.")
         
@@ -936,6 +938,15 @@ class ProductsUpdateView(UpdateView):
         
         # Use get_success_url() to maintain the page number
         return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if 'barcode' in form.errors:
+            messages.error(self.request, f"❌ {form.errors['barcode'][0]}")
+        elif form.non_field_errors():
+            messages.error(self.request, f"❌ {form.non_field_errors()[0]}")
+        else:
+            messages.error(self.request, "❌ Please correct the errors below.")
+        return super().form_invalid(form)
 
 @receiver(pre_save, sender=Products)
 def delete_old_product_photo_on_change(sender, instance, **kwargs):
@@ -6440,6 +6451,86 @@ def export_sales(request):
 
     writer.writerow([])
     writer.writerow(['', 'TOTAL SALES', total_sales])
+    return response
+
+
+@login_required
+def export_product_inventory(request):
+    queryset = ProductInventory.objects.select_related(
+        "product",
+        "product__product_type",
+        "product__variant",
+        "product__size",
+        "product__size_unit",
+    ).filter(product__is_archived=False)
+
+    search = request.GET.get("search", "").strip()
+    if search:
+        queryset = queryset.filter(
+            Q(product__product_type__name__icontains=search)
+            | Q(product__variant__name__icontains=search)
+            | Q(product__size__size_label__icontains=search)
+        )
+
+    status = request.GET.get("status", "")
+    if status == "on_stock":
+        queryset = queryset.filter(total_stock__gt=F("restock_threshold"))
+    elif status == "low_stock":
+        queryset = queryset.filter(total_stock__lt=F("restock_threshold"), total_stock__gt=0)
+    elif status == "warning":
+        queryset = queryset.filter(total_stock=F("restock_threshold"))
+    elif status == "out_of_stock":
+        queryset = queryset.filter(total_stock=0)
+
+    timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="product_inventory_{timestamp}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Product Type',
+        'Variant',
+        'Size',
+        'Size Unit',
+        'Current Stock',
+        'Restock Threshold',
+        'Status'
+    ])
+
+    def status_label(item):
+        if item.total_stock == 0:
+            return 'Out of Stock'
+        if item.total_stock < item.restock_threshold:
+            return 'Low Stock'
+        if item.total_stock == item.restock_threshold:
+            return 'Warning'
+        return 'On Stock'
+
+    queryset = queryset.order_by(
+        'product__product_type__name',
+        'product__variant__name',
+        'product__size__size_label'
+    )
+
+    for inventory in queryset:
+        product = inventory.product
+        size_label = product.size.size_label if product.size else 'N/A'
+        size_unit = product.size_unit.unit_name if product.size_unit else 'N/A'
+        writer.writerow([
+            product.product_type.name,
+            product.variant.name,
+            size_label,
+            size_unit,
+            float(inventory.total_stock),
+            float(inventory.restock_threshold),
+            status_label(inventory)
+        ])
+
+    total_stock = queryset.aggregate(total=Sum('total_stock'))['total'] or 0
+    writer.writerow([])
+    writer.writerow(['', '', 'TOTAL STOCK', '', float(total_stock), '', ''])
+
     return response
 
 def export_expenses(request):
