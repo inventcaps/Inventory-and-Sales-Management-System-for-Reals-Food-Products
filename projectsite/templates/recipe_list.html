@@ -3,55 +3,44 @@
 {% block content %}
 <div class="content">
     <div class="container-fluid">
-        <h4 class="page-title">Raw Material List</h4>
+        <h4 class="page-title">Recipe Materials</h4>
         
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="card-title">List of Raw Materials</div>
+                            <div class="card-title">List of Recipe Materials</div>
                         </div>
                         <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
-                            <!-- Actions Dropdown -->
                             <div class="dropdown d-inline">
                                 <button class="btn btn-secondary btn-rounded dropdown-toggle" type="button" id="archiveMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                                     Archive Options
                                 </button>
                                 <div class="dropdown-menu" aria-labelledby="archiveMenuButton">
-                                    <a class="dropdown-item" href="{% url 'rawmaterials-archived-list' %}">Show Archived</a>
+                                    <a class="dropdown-item" href="{% url 'recipe-archived-list' %}">Show Archived</a>
                                     <a class="dropdown-item" href="#" data-toggle="modal" data-target="#archiveOldRawMaterialsModal">Archive Old Data</a>
                                 </div>
                             </div>
 
-                            <!-- Add Button -->
-                            <a href="{% url 'rawmaterials-add' %}" class="btn btn-success btn-rounded">Add Raw Material</a>
+                            <a href="{% url 'recipe-materials-add' %}" class="btn btn-success btn-rounded">Add Recipe Material</a>
                         </div>
                     </div>
 
                     <div class="card-body">
                         <form id="filterForm">
-
-                            <!-- Total Raw Materials Card -->
                             <div class="row mb-0">
                                 <div class="col-md-12">
                                     <div class="card">
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
-                                                    <h5 class="card-title mb-1">Total Raw Materials{% if category_filter %} - {{ category_filter|title }}{% endif %}</h5>
-                                                    <p class="text-muted mb-0">
-                                                        {% if category_filter %}
-                                                            Showing active {{ category_filter|title }} materials
-                                                        {% else %}
-                                                            Total number of active raw materials
-                                                        {% endif %}
-                                                    </p>
+                                                    <h5 class="card-title mb-1">Total Recipe Materials</h5>
+                                                    <p class="text-muted mb-0">Total number of active recipe materials</p>
                                                 </div>
                                                 <div class="text-right">
                                                     <h2 class="mb-0 text-primary">{{ total_raw_materials|default:"0" }}</h2>
                                                     <medium class="text-muted">Materials</medium>
-                                                    <!-- Debug: total_raw_materials = "{{ total_raw_materials }}" -->
                                                 </div>
                                             </div>
                                         </div>
@@ -59,14 +48,8 @@
                                 </div>
                             </div>
 
-                            <!-- Search -->
                             <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
-                                <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 250px;">
-                                <select id="categoryFilter" name="category" class="form-control" style="width: 200px;">
-                                    <option value="">All Categories</option>
-                                    <option value="PACKAGING" {% if category_filter == "PACKAGING" %}selected{% endif %}>Packaging</option>
-                                    <option value="RECIPE" {% if category_filter == "RECIPE" %}selected{% endif %}>Recipe</option>
-                                </select>
+                                <input type="text" id="searchInput" name="q" class="form-control" placeholder="Search recipe materials..." value="{{ request.GET.q }}" style="width: 350px;">
                                 <input type="month" name="date_created" id="dateFilter" class="form-control" style="width:180px;"
                                        placeholder="Filter by Month"
                                        value="{{ request.GET.date_created }}">
@@ -76,7 +59,6 @@
                             </div>
                         </form>
                         
-                        <!-- Bulk Action Buttons -->
                         <div class="mb-3">
                             {% if user.is_superuser %}
                             <button type="button" class="btn btn-danger btn-rounded" id="bulkDeleteBtn" style="display:none;" onclick="bulkDeleteRawMaterial()">
@@ -88,7 +70,6 @@
                             </button>
                         </div>
                         
-                        <!-- Table -->
                         <div class="table-responsive">
                             <table class="table table-striped">
                                 <thead>
@@ -96,9 +77,10 @@
                                         <th scope="col" style="width: 40px;">
                                             <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                                         </th>
-                                        <th scope="col">Material</th>
+                                        <th scope="col">Name</th>
+                                        <th scope="col">Size</th>
+                                        <th scope="col">Unit</th>
                                         <th scope="col">Price Per Unit</th>
-                                        <th scope="col">Category</th>
                                         <th scope="col">Date Created</th>
                                         <th scope="col">Actions</th>
                                     </tr>
@@ -109,16 +91,13 @@
                                         <td>
                                             <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
                                         </td>
-                                        <td>
-                                            {{ object.name }} ({{ object.size|floatformat:0 }} {{ object.unit.unit_name|default:object.unit }})
-                                        </td>
+                                        <td>{{ object.name }}</td>
+                                        <td>{{ object.size|floatformat:0 }}</td>
+                                        <td>{{ object.unit }}</td>
                                         <td>{{ object.price_per_unit }}</td>
-                                        <td>
-                                            <span class="badge badge-info">{{ object.category|default:'N/A'|title }}</span>
-                                        </td>
                                         <td>{{ object.date_created|date:"Y-m-d g:i A" }}</td>
                                         <td>
-                                            <a href="{% url 'rawmaterials-edit' object.id %}" class="text-primary" title="Edit">
+                                            <a href="{% url 'recipe-materials-edit' object.id %}" class="text-primary" title="Edit">
                                                 <i class="la la-edit la-lg"></i>
                                             </a>
                                             &nbsp;&nbsp;
@@ -135,7 +114,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="8" class="text-center">No raw materials found.</td>
+                                        <td colspan="6" class="text-center">No recipe materials found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -152,10 +131,8 @@
     </div>
 </div>
 
-<!-- Individual Raw Material Modals -->
 <div id="rawMaterialModalsContainer">
 {% for object in object_list %}
-<!-- Archive Modal for {{ object.name }} -->
 <div class="modal fade" id="archiveRawMaterialModal{{ object.id }}" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -163,7 +140,7 @@
                 <h5 class="modal-title">Confirm Archive</h5>
             </div>
             <div class="modal-body">
-                Are you sure you want to archive raw material:
+                Are you sure you want to archive recipe material:
                 <strong>{{ object.name }}</strong> ({{ object.size }} {{ object.unit }})?
             </div>
             <div class="modal-footer">
@@ -178,7 +155,6 @@
     </div>
 </div>
 
-<!-- Delete Modal for {{ object.name }} -->
 <div class="modal fade" id="deleteRawMaterialModal{{ object.id }}" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
     <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
@@ -186,7 +162,7 @@
                 <h5 class="modal-title">Confirm Delete</h5>
             </div>
             <div class="modal-body">
-                Are you sure you want to delete raw material:
+                Are you sure you want to delete recipe material:
                 <strong>{{ object.name }}</strong> ({{ object.size }} {{ object.unit }})?
             </div>
             <div class="modal-footer">
@@ -203,7 +179,6 @@
 {% endfor %}
 </div>
 
-<!-- Archive Old Raw Materials Modal -->
 <div class="modal fade" id="archiveOldRawMaterialsModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -211,7 +186,7 @@
         <h5 class="modal-title">Confirm Bulk Archive</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to archive all raw materials created more than one year ago?
+        Are you sure you want to archive all recipe materials created more than one year ago?
       </div>
       <div class="modal-footer">
         <form method="post" action="{% url 'rawmaterials-archive-old' %}">
@@ -224,7 +199,6 @@
   </div>
 </div>
 
-<!-- Bulk Delete Confirmation Modal -->
 <div class="modal fade" id="bulkDeleteModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -232,7 +206,7 @@
         <h5 class="modal-title">Confirm Bulk Delete</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to delete <strong id="bulkDeleteCount">0</strong> raw material(s)?
+        Are you sure you want to delete <strong id="bulkDeleteCount">0</strong> recipe material(s)?
         <br><br>
         <small class="text-muted">This action cannot be undone.</small>
       </div>
@@ -244,7 +218,6 @@
   </div>
 </div>
 
-<!-- Bulk Archive Confirmation Modal -->
 <div class="modal fade" id="bulkArchiveModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
@@ -252,9 +225,9 @@
         <h5 class="modal-title">Confirm Bulk Archive</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> raw material(s)?
+        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> recipe material(s)?
         <br><br>
-        <small class="text-muted">These raw materials will be moved to the archived list.</small>
+        <small class="text-muted">These recipe materials will be moved to the archived list.</small>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="$('#bulkArchiveModal').modal('hide')">Cancel</button>
@@ -266,7 +239,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Check for success message after page reload
   const materialSuccess = sessionStorage.getItem('materialSuccess');
   if (materialSuccess) {
     showToast(materialSuccess, 'success');
@@ -275,46 +247,41 @@ document.addEventListener('DOMContentLoaded', function() {
   
   const searchInput = document.getElementById('searchInput');
   const dateFilter = document.getElementById('dateFilter');
-  const categoryFilter = document.getElementById('categoryFilter');
   const tableBody = document.getElementById('rawMaterialsTable');
   const pagination = document.querySelector('.pagination-container');
   const modalsContainer = document.querySelector('#rawMaterialModalsContainer');
+  const baseListUrl = "{{ request.path }}";
   
   let timeout;
   const debounceTime = 600;
   
+  function buildUrl(params) {
+    const paramString = params.toString();
+    return baseListUrl + (paramString ? `?${paramString}` : '');
+  }
+
   function fetchRawMaterials(resetPage = true) {
     clearTimeout(timeout);
     timeout = setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
       
-      // Update or remove search query
       if (searchInput.value) {
         params.set("q", searchInput.value);
       } else {
         params.delete("q");
       }
       
-      // Update or remove category filter
-      if (categoryFilter.value) {
-        params.set("category", categoryFilter.value);
-      } else {
-        params.delete("category");
-      }
-
-      // Update or remove date filter
       if (dateFilter.value) {
         params.set("date_created", dateFilter.value);
       } else {
         params.delete("date_created");
       }
       
-      // Reset to page 1 when filters change
       if (resetPage) {
         params.delete("page");
       }
       
-      const url = "/rawmaterials/?" + params.toString();
+      const url = buildUrl(params);
       
       fetch(url)
         .then(response => response.text())
@@ -322,36 +289,28 @@ document.addEventListener('DOMContentLoaded', function() {
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, "text/html");
           
-          // Replace table body
           const newRows = doc.querySelector("#rawMaterialsTable");
           if (newRows) tableBody.innerHTML = newRows.innerHTML;
           
-          // Replace pagination
           const newPagination = doc.querySelector(".pagination-container");
           if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
           
-          // Replace modals
           const newModals = doc.querySelector('#rawMaterialModalsContainer');
           if (newModals && modalsContainer) modalsContainer.innerHTML = newModals.innerHTML;
           
-          // Update URL without page reload
           window.history.pushState({}, '', url);
           
-          // Clean up any lingering modal backdrops
           $('.modal-backdrop').remove();
           $('body').removeClass('modal-open');
           $('body').css('padding-right', '');
         })
-        .catch(err => console.error("Error fetching raw materials:", err));
+        .catch(err => console.error("Error fetching recipe materials:", err));
     }, debounceTime);
   }
   
-  // Event listeners
   searchInput.addEventListener('keyup', () => fetchRawMaterials(true));
   dateFilter.addEventListener('change', () => fetchRawMaterials(true));
-  categoryFilter.addEventListener('change', () => fetchRawMaterials(true));
   
-  // Handle pagination clicks
   document.addEventListener('click', function(e) {
     if (e.target.closest('.pagination a')) {
       e.preventDefault();
@@ -364,36 +323,29 @@ document.addEventListener('DOMContentLoaded', function() {
           const parser = new DOMParser();
           const doc = parser.parseFromString(html, "text/html");
           
-          // Replace table body
           const newRows = doc.querySelector("#rawMaterialsTable");
           if (newRows) tableBody.innerHTML = newRows.innerHTML;
           
-          // Replace pagination
           const newPagination = doc.querySelector(".pagination-container");
           if (newPagination && pagination) pagination.innerHTML = newPagination.innerHTML;
           
-          // Update URL without page reload
-          window.history.pushState({}, '', url);
-          
-          // Replace modals
           const newModals = doc.querySelector('#rawMaterialModalsContainer');
           const currentModals = document.querySelector('#rawMaterialModalsContainer');
           if (newModals && currentModals) currentModals.innerHTML = newModals.innerHTML;
           
-          // Clean up any lingering modal backdrops
+          window.history.pushState({}, '', url);
+          
           $('.modal-backdrop').remove();
           $('body').removeClass('modal-open');
           $('body').css('padding-right', '');
           
-          // Scroll to top of table
           document.querySelector('.card').scrollIntoView({ behavior: 'smooth' });
         })
-        .catch(err => console.error("Error fetching raw materials:", err));
+        .catch(err => console.error("Error fetching recipe materials:", err));
     }
   });
 });
 
-// Bulk selection functions
 function toggleSelectAll(checkbox) {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => cb.checked = checkbox.checked);
@@ -434,11 +386,10 @@ function getSelectedIds() {
 function bulkDeleteRawMaterial() {
     const selectedIds = getSelectedIds();
     if (selectedIds.length === 0) {
-        showToast('Please select at least one raw material', 'warning');
+        showToast('Please select at least one recipe material', 'warning');
         return;
     }
     
-    // Update modal message and show it
     document.getElementById('bulkDeleteCount').textContent = selectedIds.length;
     $('#bulkDeleteModal').modal('show');
 }
@@ -450,7 +401,6 @@ function confirmBulkDelete() {
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     formData.append('ids', selectedIds.join(','));
     
-    // Hide modal
     $('#bulkDeleteModal').modal('hide');
     
     fetch('{% url "rawmaterial-bulk-delete" %}', {
@@ -466,23 +416,22 @@ function confirmBulkDelete() {
             sessionStorage.setItem('materialSuccess', data.message);
             window.location.reload();
         } else {
-            showToast(data.message || 'Failed to delete raw materials', 'error');
+            showToast(data.message || 'Failed to delete recipe materials', 'error');
         }
     })
     .catch(error => {
         console.error('Bulk delete error:', error);
-        showToast('An error occurred while deleting raw materials', 'error');
+        showToast('An error occurred while deleting recipe materials', 'error');
     });
 }
 
 function bulkArchiveRawMaterial() {
     const selectedIds = getSelectedIds();
     if (selectedIds.length === 0) {
-        showToast('Please select at least one raw material', 'warning');
+        showToast('Please select at least one recipe material', 'warning');
         return;
     }
     
-    // Update modal message and show it
     document.getElementById('bulkArchiveCount').textContent = selectedIds.length;
     $('#bulkArchiveModal').modal('show');
 }
@@ -494,7 +443,6 @@ function confirmBulkArchive() {
     formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
     formData.append('ids', selectedIds.join(','));
     
-    // Hide modal
     $('#bulkArchiveModal').modal('hide');
     
     fetch('{% url "rawmaterial-bulk-archive" %}', {
@@ -510,24 +458,21 @@ function confirmBulkArchive() {
             sessionStorage.setItem('materialSuccess', data.message);
             window.location.reload();
         } else {
-            showToast(data.message || 'Failed to archive raw materials', 'error');
+            showToast(data.message || 'Failed to archive recipe materials', 'error');
         }
     })
     .catch(error => {
         console.error('Bulk archive error:', error);
-        showToast('An error occurred while archiving raw materials', 'error');
+        showToast('An error occurred while archiving recipe materials', 'error');
     });
 }
 
-// Handle archive form submission with toast
 function handleArchiveSubmit(event, materialName) {
     event.preventDefault();
     const form = event.target;
     
-    // Close the modal
     $(form).closest('.modal').modal('hide');
     
-    // Submit form via fetch
     fetch(form.action, {
         method: 'POST',
         body: new FormData(form),
@@ -537,29 +482,24 @@ function handleArchiveSubmit(event, materialName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('materialSuccess', `Raw material "${materialName}" archived successfully!`);
-            // Reload page immediately
+            sessionStorage.setItem('materialSuccess', `Recipe material "${materialName}" archived successfully!`);
             window.location.reload();
         } else {
-            showToast('Failed to archive raw material. Please try again.', 'error');
+            showToast('Failed to archive recipe material. Please try again.', 'error');
         }
     })
     .catch(error => {
         console.error('Archive error:', error);
-        showToast('An error occurred while archiving the raw material.', 'error');
+        showToast('An error occurred while archiving the recipe material.', 'error');
     });
 }
 
-// Handle delete form submission with toast
 function handleDeleteSubmit(event, materialName) {
     event.preventDefault();
     const form = event.target;
     
-    // Close the modal
     $(form).closest('.modal').modal('hide');
     
-    // Submit form via fetch
     fetch(form.action, {
         method: 'POST',
         body: new FormData(form),
@@ -569,20 +509,17 @@ function handleDeleteSubmit(event, materialName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('materialSuccess', `Raw material "${materialName}" deleted successfully!`);
-            // Reload page immediately
+            sessionStorage.setItem('materialSuccess', `Recipe material "${materialName}" deleted successfully!`);
             window.location.reload();
         } else {
-            showToast('Failed to delete raw material. Please try again.', 'error');
+            showToast('Failed to delete recipe material. Please try again.', 'error');
         }
     })
     .catch(error => {
         console.error('Delete error:', error);
-        showToast('An error occurred while deleting the raw material.', 'error');
+        showToast('An error occurred while deleting the recipe material.', 'error');
     });
 }
-
 </script>
 
 <style>

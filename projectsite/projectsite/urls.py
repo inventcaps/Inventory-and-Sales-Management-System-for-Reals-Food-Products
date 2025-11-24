@@ -53,6 +53,16 @@ urlpatterns = [
     path('rawmaterials/bulk-archive/', a.rawmaterial_bulk_archive, name='rawmaterial-bulk-archive'),
     path('rawmaterials/bulk-restore/', a.rawmaterial_bulk_restore, name='rawmaterials-bulk-restore'),
 
+    path('packaging-materials/', a.PackagingMaterialsList.as_view(), name='packaging-materials'),
+    path('packaging-materials/add', a.PackagingMaterialsCreateView.as_view(), name='packaging-materials-add'),
+    path('packaging-materials/<int:pk>', a.PackagingMaterialsUpdateView.as_view(), name='packaging-materials-edit'),
+    path('packaging-materials/archived/', a.ArchivedPackagingMaterialsListView.as_view(), name='packaging-archived-list'),
+
+    path('recipe-materials/', a.RecipeMaterialsList.as_view(), name='recipe-materials'),
+    path('recipe-materials/add', a.RecipeMaterialsCreateView.as_view(), name='recipe-materials-add'),
+    path('recipe-materials/<int:pk>', a.RecipeMaterialsUpdateView.as_view(), name='recipe-materials-edit'),
+    path('recipe-materials/archived/', a.ArchivedRecipeMaterialsListView.as_view(), name='recipe-archived-list'),
+
     path('historylog/', a.HistoryLogList.as_view(), name='historylog'),
     path('history/', a.HistoryLogList.as_view(), name='history_log'),  
 

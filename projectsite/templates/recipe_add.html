@@ -6,16 +6,16 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Raw Materials">
+      <a href="{% url 'recipe-materials' %}" class="btn btn-link p-0 mr-2" title="Back to Recipe Materials">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
-      Raw Materials
+      Recipe Materials
     </h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Add New Raw Material</div>
+            <div class="card-title">Add New Recipe Material</div>
           </div>
 
           <div class="card-body">
@@ -29,19 +29,21 @@
                 {% endif %}
 
                 <div class="form-container">
-                  <!-- Name -->
+                  <div class="form-item">
+                    <label>Category</label>
+                    <input type="text" class="form-control" value="Recipe" readonly>
+                    <input type="hidden" name="category" value="RECIPE">
+                  </div>
                   <div class="form-item">
                     <label>Name</label>
-                    <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" placeholder="Enter Material" required>
+                    <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" placeholder="Enter Recipe Material" required>
                   </div>
 
-                  <!-- Size -->
                   <div class="form-item">
                     <label>Size</label>
                     <input type="number" step="0.01" name="size" class="form-control" value="{{ form.size.value|default:'' }}" placeholder="Enter Size" required>
                   </div>
 
-                  <!-- Unit -->
                   <div class="form-item">
                     <label>Size Unit</label>
                     <input type="text" name="unit" list="unit-options" class="form-control" value="{{ form.unit.value|default:'' }}" placeholder="Enter Size Unit" required>
@@ -52,23 +54,12 @@
                     </datalist>
                   </div>
 
-                  <!-- Price Per Unit -->
                   <div class="form-item">
                     <label>Price Per Unit</label>
                     <input type="number" step="0.01" name="price_per_unit" class="form-control" value="{{ form.price_per_unit.value|default:'' }}" placeholder="Enter Price Per Unit" required>
                   </div>
-
-                  <!-- Category -->
-                  <div class="form-item">
-                    <label>Category</label>
-                    <select name="category" class="form-control" required>
-                      <option value="PACKAGING" {% if form.category.value == "PACKAGING" or not form.category.value %}selected{% endif %}>Packaging Materials</option>
-                      <option value="RECIPE" {% if form.category.value == "RECIPE" %}selected{% endif %}>Recipe Materials</option>
-                    </select>
-                  </div>
                 </div>
 
-                <!-- Buttons -->
                 <div class="form-actions btn-row mt-3">
                   <button type="submit" class="btn btn-primary btn-rounded">Save</button>
                 </div>

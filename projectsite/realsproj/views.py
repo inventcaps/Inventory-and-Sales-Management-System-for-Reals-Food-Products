@@ -1058,6 +1058,7 @@ class RawMaterialsList(ListView):
         
         query = self.request.GET.get("q", "").strip()
         date_created = self.request.GET.get("date_created", "").strip()
+        category = self.request.GET.get("category", "").strip().upper()
 
         if query:
             queryset = queryset.filter(
@@ -1078,13 +1079,22 @@ class RawMaterialsList(ListView):
             except ValueError:
                 pass  # Ignore invalid format
 
+        if category in {"PACKAGING", "RECIPE"}:
+            queryset = queryset.filter(category__iexact=category)
+
         return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Count all non-archived raw materials
-        total_raw_materials = RawMaterials.objects.filter(is_archived=False).count()
-        context['total_raw_materials'] = total_raw_materials
+        category = self.request.GET.get("category", "").strip().upper()
+        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
+        distinct_categories = (
+            RawMaterials.objects.filter(is_archived=False)
+            .values_list('category', flat=True)
+            .distinct()
+        )
+        context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
+        context['total_raw_materials'] = context['paginator'].count if 'paginator' in context else 0
         return context
 
 class RawMaterialArchiveView(View):
@@ -1098,7 +1108,9 @@ class RawMaterialArchiveView(View):
         
         item.is_archived = True
         item.save()  # Trigger will handle logging
-        
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('rawmaterials-list')
 
 class RawMaterialArchiveOldView(View):
@@ -1181,6 +1193,22 @@ class ArchivedRawMaterialsListView(ListView):
     def get_queryset(self):
         return RawMaterials.objects.filter(is_archived=True).order_by('-date_created')
 
+
+class ArchivedPackagingMaterialsListView(ArchivedRawMaterialsListView):
+    template_name = 'archived_packaging.html'
+
+    def get_queryset(self):
+        return (super().get_queryset()
+                .filter(category__iexact='PACKAGING'))
+
+
+class ArchivedRecipeMaterialsListView(ArchivedRawMaterialsListView):
+    template_name = 'archived_recipe.html'
+
+    def get_queryset(self):
+        return (super().get_queryset()
+                .filter(category__iexact='RECIPE'))
+
 class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
@@ -1192,7 +1220,9 @@ class RawMaterialUnarchiveView(View):
         
         item.is_archived = False
         item.save()  # Trigger will handle logging
-        
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('rawmaterials-archived-list')
 
 class RawMaterialsCreateView(CreateView):
@@ -1289,7 +1319,88 @@ class RawMaterialsDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Raw material deleted successfully.")
+        next_url = self.request.POST.get('next')
+        if next_url:
+            return next_url
         return reverse_lazy('rawmaterials')
+
+
+class CategoryFilteredRawMaterialsList(RawMaterialsList):
+    category_value = None
+    template_name = "rawmaterial_list.html"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.category_value:
+            queryset = queryset.filter(category__iexact=self.category_value)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.category_value:
+            context['total_raw_materials'] = RawMaterials.objects.filter(
+                is_archived=False,
+                category__iexact=self.category_value
+            ).count()
+        return context
+
+
+class CategoryRawMaterialsCreateView(RawMaterialsCreateView):
+    category_value = None
+
+    def form_valid(self, form):
+        if self.category_value:
+            form.instance.category = self.category_value
+        return super().form_valid(form)
+
+
+class CategoryRawMaterialsUpdateView(RawMaterialsUpdateView):
+    category_value = None
+
+    def form_valid(self, form):
+        if self.category_value:
+            form.instance.category = self.category_value
+        return super().form_valid(form)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.category_value:
+            queryset = queryset.filter(category__iexact=self.category_value)
+        return queryset
+
+
+class PackagingMaterialsList(CategoryFilteredRawMaterialsList):
+    category_value = 'PACKAGING'
+    template_name = 'packaging_list.html'
+
+
+class PackagingMaterialsCreateView(CategoryRawMaterialsCreateView):
+    template_name = 'packaging_add.html'
+    success_url = reverse_lazy('packaging-materials')
+    category_value = 'PACKAGING'
+
+
+class PackagingMaterialsUpdateView(CategoryRawMaterialsUpdateView):
+    template_name = 'packaging_edit.html'
+    success_url = reverse_lazy('packaging-materials')
+    category_value = 'PACKAGING'
+
+
+class RecipeMaterialsList(CategoryFilteredRawMaterialsList):
+    category_value = 'RECIPE'
+    template_name = 'recipe_list.html'
+
+
+class RecipeMaterialsCreateView(CategoryRawMaterialsCreateView):
+    template_name = 'recipe_add.html'
+    success_url = reverse_lazy('recipe-materials')
+    category_value = 'RECIPE'
+
+
+class RecipeMaterialsUpdateView(CategoryRawMaterialsUpdateView):
+    template_name = 'recipe_edit.html'
+    success_url = reverse_lazy('recipe-materials')
+    category_value = 'RECIPE'
 
 class HistoryLogList(ListView):
     model = HistoryLog
@@ -1298,118 +1409,88 @@ class HistoryLogList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = (
-            super()
-            .get_queryset()
-            .select_related("admin", "log_type")
-            .filter(is_archived=False)
-            .order_by("-log_date")
-        )
+        user = self.request.user
+        qs = HistoryLog.objects.select_related("admin", "log_type").filter(is_archived=False).order_by("-log_date")
 
-        # Get filter parameters
+        if not user.is_superuser:
+            qs = qs.filter(admin=user.id)
         admin_filter = self.request.GET.get("admin", "").strip()
         log_filter = self.request.GET.get("log", "").strip()
         date_str = self.request.GET.get("date", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
 
-        # Apply admin filter
-        if admin_filter:
-            # Need to handle both active and deactivated users
-            # First try to match active users
-            active_match = queryset.filter(admin__username=admin_filter)
-            
-            # Also check for deactivated users with this original username
-            deactivated_users = AuthUser.objects.filter(
-                username__startswith='inactive_user_',
-                first_name__contains=f'ORIGINAL_USERNAME:{admin_filter}|'
-            ).values_list('id', flat=True)
-            
-            deactivated_match = queryset.filter(admin_id__in=deactivated_users)
-            
-            # Combine both querysets
-            queryset = (active_match | deactivated_match).distinct()
+        if user.is_superuser and admin_filter:
+            try:
+                admin_id = int(admin_filter)
+                qs = qs.filter(admin_id=admin_id)
+            except ValueError:
+                pass 
 
-        # Apply log type filter
         if log_filter:
-            queryset = queryset.filter(log_type__category=log_filter)
+            qs = qs.filter(log_type__category=log_filter)
 
-        # Apply date filter (month-based)
-        show_all = self.request.GET.get('show_all', '').strip()
-        
         if date_str:
             try:
-                # Convert YYYY-MM to start and end dates of the month
                 year, month = map(int, date_str.split('-'))
                 import calendar
                 last_day = calendar.monthrange(year, month)[1]
-                
+
                 start_date = timezone.make_aware(datetime(year, month, 1))
                 end_date = timezone.make_aware(datetime(year, month, last_day, 23, 59, 59))
-                
-                queryset = queryset.filter(
-                    log_date__gte=start_date,
-                    log_date__lte=end_date
-                )
-            except (ValueError, IndexError):
-                # If date format is invalid, skip the date filter
+
+                qs = qs.filter(log_date__gte=start_date, log_date__lte=end_date)
+            except Exception:
                 pass
+
         elif not show_all:
             today = timezone.now()
             import calendar
             last_day = calendar.monthrange(today.year, today.month)[1]
-            
+
             start_date = timezone.make_aware(datetime(today.year, today.month, 1))
             end_date = timezone.make_aware(datetime(today.year, today.month, last_day, 23, 59, 59))
-            
-            queryset = queryset.filter(
-                log_date__gte=start_date,
-                log_date__lte=end_date
-            )
 
-        return queryset
+            qs = qs.filter(log_date__gte=start_date, log_date__lte=end_date)
+
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         today = timezone.now()
         context['current_month_value'] = today.strftime("%Y-%m")
-        
-        # Get unique admins for the filter dropdowns
-        # We need to handle deactivated users properly
-        admin_usernames = set()
-        history_logs = HistoryLog.objects.filter(is_archived=False).select_related('admin')
-        
-        for log in history_logs:
-            try:
-                if log.admin:
-                    # Check if user is deactivated
-                    if log.admin.username.startswith('inactive_user_'):
-                        # Extract original username
-                        if log.admin.first_name and log.admin.first_name.startswith('ORIGINAL_USERNAME:'):
-                            parts = log.admin.first_name.split('|')
-                            original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
-                            admin_usernames.add(original_username)
-                    else:
-                        admin_usernames.add(log.admin.username)
-            except Exception:
-                pass
-        
-        context['admins'] = sorted(admin_usernames)
-        
-        context['logs'] = HistoryLog.objects.filter(
-            is_archived=False
-        ).order_by('log_type__category').values_list('log_type__category', flat=True).distinct()
-        
-        # Preserve filter parameters in pagination
-        filter_params = self.request.GET.copy()
-        if 'page' in filter_params:
-            del filter_params['page']
-        context['filter_params'] = filter_params.urlencode()
-        
-        # Add current filter values to context
-        context['current_admin'] = self.request.GET.get('admin', '')
-        context['current_log'] = self.request.GET.get('log', '')
-        context['current_date'] = self.request.GET.get('date', '')
-        
+
+        if self.request.user.is_superuser:
+
+            admin_ids = (
+                HistoryLog.objects.filter(is_archived=False)
+                .values_list("admin_id", flat=True)
+                .distinct()
+            )
+
+            admins = AuthUser.objects.filter(id__in=admin_ids)
+
+            context['admins'] = [{"id": a.id, "name": a.username} for a in admins]
+        else:
+            context['admins'] = []
+
+        context['logs'] = (
+            HistoryLog.objects.filter(is_archived=False)
+            .values_list('log_type__category', flat=True)
+            .distinct()
+            .order_by('log_type__category')
+        )
+
+        context['can_view_all_history'] = self.request.user.is_superuser
+
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        context["filter_params"] = params.urlencode()
+
+        context["current_admin"] = self.request.GET.get("admin", "")
+        context["current_log"] = self.request.GET.get("log", "")
+        context["current_date"] = self.request.GET.get("date", "")
+
         return context
     
 class SaleArchiveView(View):
@@ -3080,6 +3161,7 @@ class RawMaterialInventoryList(ListView):
 
         q = self.request.GET.get("q", "").strip()
         status = self.request.GET.get("status", "").strip()
+        category = self.request.GET.get("category", "").strip().upper()
 
         if q:
             queryset = queryset.filter(
@@ -3087,6 +3169,9 @@ class RawMaterialInventoryList(ListView):
                 Q(total_stock__icontains=q) |
                 Q(reorder_threshold__icontains=q)
             )
+
+        if category in {"PACKAGING", "RECIPE"}:
+            queryset = queryset.filter(material__category__iexact=category)
 
         if status == "on_stock":
             queryset = queryset.filter(total_stock__gt=F("reorder_threshold"))
@@ -3107,6 +3192,14 @@ class RawMaterialInventoryList(ListView):
             material__is_archived=False
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
+        category = self.request.GET.get("category", "").strip().upper()
+        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
+        distinct_categories = (
+            RawMaterials.objects.filter(is_archived=False)
+            .values_list('category', flat=True)
+            .distinct()
+        )
+        context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
         return context
 
 class ProductTypeCreateView(CreateView):
@@ -4860,7 +4953,6 @@ class BulkProductBatchCreateView(View):
 
         batch_date = timezone.localdate()
         manufactured_date = form.cleaned_data['manufactured_date']
-        deduct_raw_material = form.cleaned_data['deduct_raw_material']
         auth_user = get_or_create_auth_user(request.user)
 
         try:
@@ -4874,13 +4966,19 @@ class BulkProductBatchCreateView(View):
                     if not qty or float(qty) <= 0:
                         continue
 
+                    product_code = (product.product_code or '').strip().upper()
+                    if not product_code:
+                        raise ValueError(f"❌ Product '{product}' is missing a product code. Please set one before creating batches.")
+
+                    batch_code = f"{manufactured_date.strftime('%m%d%y')}{product_code}"
+
                     ProductBatches.objects.create(
                         product=product,
                         quantity=qty,
                         batch_date=batch_date,
                         manufactured_date=manufactured_date,
+                        batch_code=batch_code,
                         created_by_admin=auth_user,
-                        deduct_raw_material=deduct_raw_material,
                     )
                     added_any = True
 
@@ -4914,7 +5012,8 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
     template_name = "rawmatbatch_add.html"
 
     def get(self, request):
-        form = BulkRawMaterialBatchForm()
+        category = request.GET.get('category', 'PACKAGING')
+        form = BulkRawMaterialBatchForm(initial={'category': category})
         return render(request, self.template_name, {'form': form, 'raw_materials': form.rawmaterials})
 
     def get_queryset(self):

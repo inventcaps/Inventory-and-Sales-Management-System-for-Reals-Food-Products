@@ -58,23 +58,12 @@
                     {% endfor %}
                   </div>
 
-                  <!-- Deduct Raw Materials -->
+                  <!-- Batch Code (auto) -->
                   <div class="form-item">
-                    <label class="d-block">Options</label>
-                    <div class="d-flex align-items-center" style="height: calc(1.5em + 0.75rem + 2px);">
-                      <div class="form-check mb-0">
-                        {% render_field form.deduct_raw_material class="form-check-input green-checkbox" style="margin-top: 0;" %}
-                        <label class="form-check-label" for="{{ form.deduct_raw_material.id_for_label }}" style="margin-left: 0.5rem; cursor: pointer;">
-                          {{ form.deduct_raw_material.label }}
-                        </label>
-                      </div>
-                    </div>
-                    {% for error in form.deduct_raw_material.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
+                    <label for="{{ form.batch_code.id_for_label }}">Batch Code</label>
+                    {% render_field form.batch_code class="form-control" %}
+                    <small class="form-text text-muted">Auto-generated as <strong>MMDDYY + Product Code</strong>.</small>
                   </div>
-                </div>
-
                 <div class="form-actions btn-row mt-3">
                   <button type="submit" class="btn btn-primary btn-rounded">Update</button>
                 </div>

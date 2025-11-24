@@ -66,6 +66,7 @@
                                         <th scope="col" style="width: 40px;">
                                             <input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)">
                                         </th>
+                                        <th scope="col">LOT Code</th>
                                         <th scope="col">Date</th>
                                         <th scope="col">Product</th>
                                         <th scope="col">Quantity</th>
@@ -80,6 +81,7 @@
                                         <td>
                                             <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
                                         </td>
+                                        <td>{{ object.batch_code|default:"—" }}</td>
                                         <td>{{ object.batch_date|date:"Y-m-d" }}</td>
                                         <td>{{ object.product }}</td>
                                         <td>{{ object.quantity }}</td>
