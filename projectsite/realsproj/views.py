@@ -1983,12 +1983,17 @@ class SalesExpensesList(ListView):
         withdrawal_date_filter = self.request.GET.get("withdrawal_date_filter", "").strip()
         withdrawal_payment_status = self.request.GET.get("withdrawal_payment_status", "").strip()
         withdrawal_show_all = self.request.GET.get("withdrawal_show_all", "").strip()
+        receipt_number = self.request.GET.get("receipt_number", "").strip()
         
         withdrawal_sales_qs = Withdrawals.objects.filter(
             reason='SOLD',
             is_archived=False,
             sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
         ).select_related("created_by_admin").order_by("-date")
+        
+        # Apply receipt number filter
+        if receipt_number:
+            withdrawal_sales_qs = withdrawal_sales_qs.filter(receipt_number__icontains=receipt_number)
         
         # Apply channel filter
         if withdrawal_channel:
@@ -2044,6 +2049,7 @@ class SalesExpensesList(ListView):
                 'group_id': group_id,
                 'actual_group_id': actual_group_id,
                 'is_single': is_single,
+                'receipt_number': first_withdrawal.receipt_number,
                 'customer_name': first_withdrawal.customer_name,
                 'sales_channel': sales_channel_display,
                 'payment_status': first_withdrawal.payment_status,
@@ -2936,8 +2942,28 @@ class ProductInventoryList(ListView):
         elif status == "out_of_stock":
             queryset = queryset.filter(total_stock=0)
 
+        # Date filter based on batch_date from ProductBatches
+        batch_date_filter = self.request.GET.get("batch_date_filter", "").strip()
+        if batch_date_filter:
+            try:
+                # Parse the date filter (can be YYYY, YYYY-MM, or YYYY-MM-DD)
+                parts = batch_date_filter.split("-")
+                filters = {}
+                
+                if len(parts) >= 1 and parts[0].isdigit():
+                    filters["product__productbatches__batch_date__year"] = int(parts[0])
+                if len(parts) >= 2 and parts[1].isdigit():
+                    filters["product__productbatches__batch_date__month"] = int(parts[1])
+                if len(parts) >= 3 and parts[2].isdigit():
+                    filters["product__productbatches__batch_date__day"] = int(parts[2])
+                
+                if filters:
+                    queryset = queryset.filter(**filters).distinct()
+            except (ValueError, IndexError):
+                pass
+
         return queryset.order_by("product_id")
-    
+
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
@@ -2947,7 +2973,6 @@ class ProductInventoryList(ListView):
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_product_stock'] = total_stock
         return context
-
 
 class RawMaterialBatchList(ListView):
     model = RawMaterialBatches
@@ -2964,25 +2989,24 @@ class RawMaterialBatchList(ListView):
             .order_by('-batch_date')
         )
 
-        query = self.request.GET.get("q", "").strip()
+        search = self.request.GET.get("search", "").strip()
         date_filter = self.request.GET.get("date_filter", "").strip()
         show_all = self.request.GET.get("show_all", "").strip()
 
-        if query:
+        if search:
             queryset = queryset.filter(
-                Q(material__name__icontains=query) |
-                Q(batch_date__icontains=query) |
-                Q(received_date__icontains=query) |
-                Q(quantity__icontains=query) |
-                Q(expiration_date__icontains=query) |
-                Q(created_by_admin__username__icontains=query)
+                Q(material__name__icontains=search) |
+                Q(batch_number__icontains=search) |
+                Q(batch_date__icontains=search)
             )
 
         if date_filter:
             try:
-                # Parse only year and month (from YYYY-MM)
                 parsed_date = datetime.strptime(date_filter, "%Y-%m")
-                queryset = queryset.filter(batch_date__year=parsed_date.year, batch_date__month=parsed_date.month)
+                queryset = queryset.filter(
+                    batch_date__year=parsed_date.year,
+                    batch_date__month=parsed_date.month
+                )
             except ValueError:
                 pass
         elif not show_all:
@@ -2999,7 +3023,6 @@ class RawMaterialBatchList(ListView):
         context['current_month_display'] = f"{month_names[today.month - 1]} {today.year}"
         context['current_month_value'] = today.strftime("%Y-%m")
         return context
-
 
 class RawMaterialBatchCreateView(CreateView):
     model = RawMaterialBatches
@@ -6580,6 +6603,42 @@ def export_product_inventory(request):
         queryset = queryset.filter(total_stock=F("restock_threshold"))
     elif status == "out_of_stock":
         queryset = queryset.filter(total_stock=0)
+
+    # Date filter based on batch_date from ProductBatches
+    batch_date_filter = request.GET.get("batch_date_filter", "").strip()
+    batch_date_filter_year = request.GET.get("batch_date_filter_year", "").strip()
+    batch_date_filter_month = request.GET.get("batch_date_filter_month", "").strip()
+    batch_date_filter_day = request.GET.get("batch_date_filter_day", "").strip()
+    
+    # Use individual year/month/day parameters if provided, otherwise use combined filter
+    if batch_date_filter_year or batch_date_filter_month or batch_date_filter_day:
+        filters = {}
+        if batch_date_filter_year and batch_date_filter_year.isdigit():
+            filters["product__productbatches__batch_date__year"] = int(batch_date_filter_year)
+        if batch_date_filter_month and batch_date_filter_month.isdigit():
+            filters["product__productbatches__batch_date__month"] = int(batch_date_filter_month)
+        if batch_date_filter_day and batch_date_filter_day.isdigit():
+            filters["product__productbatches__batch_date__day"] = int(batch_date_filter_day)
+        
+        if filters:
+            queryset = queryset.filter(**filters).distinct()
+    elif batch_date_filter:
+        try:
+            # Parse the date filter (can be YYYY, YYYY-MM, or YYYY-MM-DD)
+            parts = batch_date_filter.split("-")
+            filters = {}
+            
+            if len(parts) >= 1 and parts[0].isdigit():
+                filters["product__productbatches__batch_date__year"] = int(parts[0])
+            if len(parts) >= 2 and parts[1].isdigit():
+                filters["product__productbatches__batch_date__month"] = int(parts[1])
+            if len(parts) >= 3 and parts[2].isdigit():
+                filters["product__productbatches__batch_date__day"] = int(parts[2])
+            
+            if filters:
+                queryset = queryset.filter(**filters).distinct()
+        except (ValueError, IndexError):
+            pass
 
     timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
 

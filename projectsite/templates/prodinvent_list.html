@@ -12,13 +12,9 @@
             <div>
               <div class="card-title">List of Product Stock</div>
             </div>
-            <form method="get" action="{% url 'product_inventory_export' %}" class="mb-0">
-              <input type="hidden" name="search" value="{{ request.GET.search|default:'' }}">
-              <input type="hidden" name="status" value="{{ request.GET.status|default:'' }}">
-              <button type="submit" class="btn btn-outline-primary btn-sm">
-                <i class="la la-download mr-1"></i> Generate Inventory Report
-              </button>
-            </form>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#exportInventoryModal">
+              <i class="la la-download mr-1"></i> Generate Inventory Report
+            </button>
           </div>
 
           <div class="card-body">
@@ -44,12 +40,41 @@
                 </div>
               </div>
 
-              <!-- Search -->
-              <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
+              <!-- Search and Date Filters -->
+              <div class="d-flex align-items-center mb-3 flex-wrap" style="gap:0.5rem;">
                 <input type="text" id="searchInput" name="search"
                   class="form-control" style="width: 350px;"
                   value="{{ request.GET.search }}"
                   placeholder="Search Product Type, Variant, or Size...">
+                
+                <!-- Date Filter Inputs -->
+                <div class="d-flex align-items-center" style="gap:0.3rem;">
+                  <label for="yearFilter" style="margin-bottom: 0; font-weight: 500;">Year:</label>
+                  <input type="number" id="yearFilter" name="batch_date_filter_year" 
+                    class="form-control" style="width: 100px;" 
+                    placeholder="YYYY"
+                    value="{{ request.GET.batch_date_filter_year }}"
+                    min="2000" max="2099">
+                </div>
+                
+                <div class="d-flex align-items-center" style="gap:0.3rem;">
+                  <label for="monthFilter" style="margin-bottom: 0; font-weight: 500;">Month:</label>
+                  <input type="number" id="monthFilter" name="batch_date_filter_month" 
+                    class="form-control" style="width: 80px;" 
+                    placeholder="MM"
+                    value="{{ request.GET.batch_date_filter_month }}"
+                    min="1" max="12">
+                </div>
+                
+                <div class="d-flex align-items-center" style="gap:0.3rem;">
+                  <label for="dayFilter" style="margin-bottom: 0; font-weight: 500;">Day:</label>
+                  <input type="number" id="dayFilter" name="batch_date_filter_day" 
+                    class="form-control" style="width: 80px;" 
+                    placeholder="DD"
+                    value="{{ request.GET.batch_date_filter_day }}"
+                    min="1" max="31">
+                </div>
+                
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
@@ -123,10 +148,30 @@
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
   const statusFilter = document.getElementById('statusFilter');
+  const yearFilter = document.getElementById('yearFilter');
+  const monthFilter = document.getElementById('monthFilter');
+  const dayFilter = document.getElementById('dayFilter');
   const tableBody = document.getElementById('inventoryTableBody');
   const pagination = document.querySelector('.pagination-container');
   
   let timeout;
+  
+  function buildBatchDateFilter() {
+    const year = yearFilter.value.trim();
+    const month = monthFilter.value.trim();
+    const day = dayFilter.value.trim();
+    
+    if (!year && !month && !day) return '';
+    
+    let filter = year || '';
+    if (month) {
+      filter += '-' + month.padStart(2, '0');
+      if (day) {
+        filter += '-' + day.padStart(2, '0');
+      }
+    }
+    return filter;
+  }
   
   function fetchInventory(resetPage = true) {
     clearTimeout(timeout);
@@ -145,6 +190,14 @@ document.addEventListener('DOMContentLoaded', function() {
         params.set("status", statusFilter.value);
       } else {
         params.delete("status");
+      }
+      
+      // Update or remove batch date filter
+      const batchDateFilter = buildBatchDateFilter();
+      if (batchDateFilter) {
+        params.set("batch_date_filter", batchDateFilter);
+      } else {
+        params.delete("batch_date_filter");
       }
       
       // Reset to page 1 when filters change
@@ -178,6 +231,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Event listeners
   searchInput.addEventListener('keyup', () => fetchInventory(true));
   statusFilter.addEventListener('change', () => fetchInventory(true));
+  yearFilter.addEventListener('change', () => fetchInventory(true));
+  monthFilter.addEventListener('change', () => fetchInventory(true));
+  dayFilter.addEventListener('change', () => fetchInventory(true));
   
   // Handle pagination clicks
   document.addEventListener('click', function(e) {
@@ -229,4 +285,88 @@ document.addEventListener('DOMContentLoaded', function() {
   padding: 12px;
 }
 </style>
+
+<!-- Export Inventory Modal -->
+<div class="modal fade" id="exportInventoryModal" tabindex="-1" role="dialog" aria-labelledby="exportInventoryModalLabel" aria-hidden="true">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="exportInventoryModalLabel">Export Inventory Data</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <form method="get" action="{% url 'product_inventory_export' %}" id="exportInventoryForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="exportFilterType">Filter Type</label>
+            <select class="form-control" id="exportFilterType" name="filter_type">
+              <option value="all">All Records</option>
+              <option value="by_date">By Date</option>
+            </select>
+          </div>
+
+          <div id="dateFilterOptions" style="display: none;">
+            <div class="form-group">
+              <label>Year</label>
+              <input type="number" class="form-control" id="exportYear" name="batch_date_filter_year" 
+                placeholder="YYYY" min="2000" max="2099" value="{{ request.GET.batch_date_filter_year }}">
+            </div>
+            <div class="form-group">
+              <label>Month</label>
+              <input type="number" class="form-control" id="exportMonth" name="batch_date_filter_month" 
+                placeholder="MM" min="1" max="12" value="{{ request.GET.batch_date_filter_month }}">
+            </div>
+            <div class="form-group">
+              <label>Day</label>
+              <input type="number" class="form-control" id="exportDay" name="batch_date_filter_day" 
+                placeholder="DD" min="1" max="31" value="{{ request.GET.batch_date_filter_day }}">
+            </div>
+          </div>
+
+          <!-- Hidden inputs to preserve current filters -->
+          <input type="hidden" name="search" value="{{ request.GET.search|default:'' }}">
+          <input type="hidden" name="status" value="{{ request.GET.status|default:'' }}">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="la la-download mr-1"></i> Export CSV
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const filterTypeSelect = document.getElementById('exportFilterType');
+  const dateFilterOptions = document.getElementById('dateFilterOptions');
+
+  // Show/hide date filter options based on selection
+  filterTypeSelect.addEventListener('change', function() {
+    if (this.value === 'by_date') {
+      dateFilterOptions.style.display = 'block';
+    } else {
+      dateFilterOptions.style.display = 'none';
+      // Clear date inputs when switching to "All Records"
+      document.getElementById('exportYear').value = '';
+      document.getElementById('exportMonth').value = '';
+      document.getElementById('exportDay').value = '';
+    }
+  });
+
+  // Check if date filters are already set and show the date options
+  const year = document.getElementById('exportYear').value;
+  const month = document.getElementById('exportMonth').value;
+  const day = document.getElementById('exportDay').value;
+  
+  if (year || month || day) {
+    filterTypeSelect.value = 'by_date';
+    dateFilterOptions.style.display = 'block';
+  }
+});
+</script>
+
 {% endblock %}

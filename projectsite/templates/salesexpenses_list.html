@@ -241,6 +241,8 @@
             
             <!-- Filters -->
             <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
+              <input type="text" id="receiptNumberFilter" class="form-control" style="width:150px;" 
+                     placeholder="Search Receipt #" value="{{ request.GET.receipt_number|default:'' }}">
               <select id="withdrawalChannelFilter" class="form-control" style="width:180px;">
                 <option value="">All Channels</option>
                 {% for channel in channels %}
@@ -264,6 +266,7 @@
               <table class="table table-striped">
                 <thead>
                   <tr>
+                    <th>Receipt #</th>
                     <th>Customer/Store</th>
                     <th>Sales Channel</th>
                     <th>Item/s</th>
@@ -284,6 +287,7 @@
                 <tbody>
                   {% for order in withdrawal_orders %}
                   <tr>
+                    <td><strong>{{ order.receipt_number|default:"N/A" }}</strong></td>
                     <td>{{ order.customer_name|default:"N/A" }}</td>
                     <td>{{ order.sales_channel }}</td>
                     <td>{{ order.item_count }} Item/s</td>
@@ -1377,8 +1381,34 @@ function resetWithdrawalFilters() {
     params.delete('withdrawal_date_filter');
     params.delete('withdrawal_payment_status');
     params.delete('withdrawal_show_all');
+    params.delete('receipt_number');
+    
+    // Clear filter inputs
+    const receiptInput = document.getElementById('receiptNumberFilter');
+    if (receiptInput) {
+        receiptInput.value = '';
+    }
+    
     window.location.href = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
 }
+
+// Handle receipt number filter
+document.addEventListener('DOMContentLoaded', function() {
+    const receiptInput = document.getElementById('receiptNumberFilter');
+    if (receiptInput) {
+        receiptInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const params = new URLSearchParams(window.location.search);
+                if (this.value.trim()) {
+                    params.set('receipt_number', this.value.trim());
+                } else {
+                    params.delete('receipt_number');
+                }
+                window.location.href = window.location.pathname + '?' + params.toString();
+            }
+        });
+    }
+});
 </script>
 
 <script>
