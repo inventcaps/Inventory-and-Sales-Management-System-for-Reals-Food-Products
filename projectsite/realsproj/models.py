@@ -1276,6 +1276,7 @@ class Withdrawals(models.Model):
     )
     paid_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     order_group_id = models.BigIntegerField(null=True, blank=True)
+    receipt_number = models.CharField(max_length=50, null=True, blank=True, unique=True, db_index=True, help_text="Unique receipt/reference number for this sale")
     
     actual_unit_price = models.DecimalField(
         max_digits=10, 
@@ -1366,6 +1367,26 @@ class Withdrawals(models.Model):
                 return Decimal(0)
         return Decimal(0)
 
+    def generate_receipt_number(self):
+        """Generate a unique receipt number in format: REC-YYYYMMDD-XXXXX"""
+        from django.utils import timezone
+        date_str = timezone.localtime(self.date).strftime("%Y%m%d")
+        
+        # Get the count of receipts created on this date
+        today_count = Withdrawals.objects.filter(
+            date__date=timezone.localtime(self.date).date(),
+            receipt_number__isnull=False
+        ).count() + 1
+        
+        receipt_num = f"REC-{date_str}-{today_count:05d}"
+        return receipt_num
+
+    def save(self, *args, **kwargs):
+        """Auto-generate receipt number if not already set"""
+        if not self.receipt_number:
+            self.receipt_number = self.generate_receipt_number()
+        super().save(*args, **kwargs)
+
     @staticmethod
     def get_queryset(request):
         query = request.GET.get("q")
@@ -1373,7 +1394,8 @@ class Withdrawals(models.Model):
         if query:
             qs = qs.filter(
                 Q(reason__icontains=query) |
-                Q(item_type__icontains=query)
+                Q(item_type__icontains=query) |
+                Q(receipt_number__icontains=query)
             )
         return qs
 
