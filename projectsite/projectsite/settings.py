@@ -87,16 +87,16 @@ WSGI_APPLICATION = 'projectsite.wsgi.application'
 
 # Database configuration with fallback
 import os
-DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.ynmwkydtjzqppyecqhux:Reals_DB_123@aws-1-us-east-1.pooler.supabase.com:6543/postgres')
+# DATABASE_URL = os.environ.get('DATABASE_URL', 'postgresql://postgres.ynmwkydtjzqppyecqhux:Reals_DB_123@aws-1-us-east-1.pooler.supabase.com:6543/postgres')
 
-DATABASES = {
-    'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
-}
+# DATABASES = {
+#     'default': dj_database_url.parse(DATABASE_URL, conn_max_age=600, ssl_require=True)
+# }
 
-# Add SSL requirement for Supabase
-DATABASES['default']['OPTIONS'] = {
-    'sslmode': 'require',
-}
+# # Add SSL requirement for Supabase
+# DATABASES['default']['OPTIONS'] = {
+#     'sslmode': 'require',
+# }
 
 # Alternative local database configuration (commented out)
 # DATABASES = {
@@ -115,16 +115,16 @@ DATABASES['default']['OPTIONS'] = {
 #     }
 # }
 
-# DATABASES = {
-#    'default': {
-#        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'reals_local',
-#        'USER': 'postgres',
-#        'PASSWORD': 'root',
-#        'HOST': 'localhost',
-#        'PORT': '5432',
-#    }
-# }
+DATABASES = {
+   'default': {
+       'ENGINE': 'django.db.backends.postgresql',
+       'NAME': 'r_local',
+       'USER': 'postgres',
+       'PASSWORD': 'root',
+       'HOST': 'localhost',
+       'PORT': '5432',
+   }
+}
 
 # DATABASES = {
 #    'default': {
