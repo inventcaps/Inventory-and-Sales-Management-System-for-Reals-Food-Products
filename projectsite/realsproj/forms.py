@@ -1,6 +1,7 @@
 from django.forms import ModelForm
 from django import forms
 from datetime import timedelta
+
 from django.utils import timezone
 from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, ProductRecipes, Withdrawals
 from django.contrib.auth.models import User
@@ -660,30 +661,124 @@ class UnifiedWithdrawForm(forms.Form):
 
         return cleaned_data
 
-class NotificationsForm(forms.Form):
+class NotificationsForm(forms.ModelForm):
     class Meta:
         model = Notifications
         fields = "__all__"
 
 class BulkProductBatchForm(forms.Form):
     manufactured_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    expiration_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.products = []
+
         # Filter out archived products
         for product in Products.objects.filter(is_archived=False).order_by('id'):
-            field_name = f'product_{product.id}_qty'
-            self.fields[field_name] = forms.DecimalField(
+            qty_field_name = f'product_{product.id}_qty'
+            manufactured_field_name = f'product_{product.id}_manufactured'
+            expiration_field_name = f'product_{product.id}_expiration'
+            is_yema = self._is_yema_product(product)
+
+            self.fields[qty_field_name] = forms.DecimalField(
                 required=False,
                 min_value=0,
                 label=str(product),
-                widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Enter Quantity'})
+                widget=forms.NumberInput(attrs={
+                    'class': 'form-control',
+                    'step': '0.01',
+                    'placeholder': 'Enter Quantity',
+                    'data-product-id': str(product.id),
+                    'data-field-type': 'quantity'
+                })
             )
+
+            self.fields[manufactured_field_name] = forms.DateField(
+                required=False,
+                widget=forms.DateInput(attrs={
+                    'type': 'date',
+                    'class': 'form-control product-manufactured',
+                    'data-product-id': str(product.id),
+                    'data-field-type': 'manufactured',
+                    'data-is-yema': 'true' if is_yema else 'false'
+                })
+            )
+
+            expiration_attrs = {
+                'type': 'date',
+                'class': 'form-control product-expiration',
+                'data-product-id': str(product.id),
+                'data-field-type': 'expiration',
+                'data-is-yema': 'true' if is_yema else 'false'
+            }
+            if is_yema:
+                expiration_attrs['readonly'] = 'readonly'
+
+            self.fields[expiration_field_name] = forms.DateField(
+                required=False,
+                widget=forms.DateInput(attrs=expiration_attrs)
+            )
+
             self.products.append({
                 "product": product,
-                "qty_field": self[field_name],
+                "qty_field": self[qty_field_name],
+                "manufactured_field": self[manufactured_field_name],
+                "expiration_field": self[expiration_field_name],
+                "is_yema": is_yema,
             })
+
+    def _is_yema_product(self, product):
+        product_text = " ".join(filter(None, [
+            product.product_type.name if product.product_type else "",
+            product.variant.name if product.variant else "",
+            product.description or ""
+        ])).lower()
+        return 'yema' in product_text
+
+    def clean(self):
+        cleaned_data = super().clean()
+        default_manufactured = cleaned_data.get('manufactured_date')
+        default_expiration = cleaned_data.get('expiration_date')
+
+        if default_manufactured:
+            if default_expiration and default_expiration < default_manufactured:
+                self.add_error('expiration_date', 'Expiration date cannot be before the manufactured date.')
+        elif default_expiration:
+            self.add_error('manufactured_date', 'Please provide a manufactured date to use as default for all products.')
+
+        for product_info in self.products:
+            product = product_info["product"]
+            manufactured_field_name = f'product_{product.id}_manufactured'
+            expiration_field_name = f'product_{product.id}_expiration'
+            is_yema = product_info['is_yema']
+
+            manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured
+
+            if not manufactured_value:
+                self.add_error(manufactured_field_name, 'Please set a manufactured date for this product or fill in the default above.')
+                continue
+
+            expiration_value = cleaned_data.get(expiration_field_name)
+            if is_yema:
+                expiration_value = manufactured_value + timedelta(days=182)
+            elif not expiration_value:
+                if default_expiration:
+                    expiration_value = default_expiration
+                else:
+                    expiration_value = manufactured_value + timedelta(days=365)
+
+            if expiration_value < manufactured_value:
+                self.add_error(expiration_field_name, 'Expiration date cannot be before the manufactured date.')
+                continue
+
+            cleaned_data[manufactured_field_name] = manufactured_value
+            cleaned_data[expiration_field_name] = expiration_value
+
+        return cleaned_data
 
 class BulkRawMaterialBatchForm(forms.Form):
     CATEGORY_CHOICES = (

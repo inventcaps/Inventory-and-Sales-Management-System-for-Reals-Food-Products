@@ -4965,28 +4965,125 @@ class NotificationsList(ListView):
 # NotificationsDeleteView removed - notifications should not be deleted
 
 
+def add_months_safe(orig_date, months):
+    """
+    Add months to a date safely (handles month overflow).
+    """
+    year = orig_date.year + (orig_date.month - 1 + months) // 12
+    month = (orig_date.month - 1 + months) % 12 + 1
+    day = orig_date.day
+    # get last day of target month
+    try:
+        return date(year, month, day)
+    except ValueError:
+        # day overflow (e.g., Feb 30) -> use last day of month
+        # day=0 on next month gives last day of previous month; here we build safe:
+        # find last day by iterating backward
+        d = 28
+        while True:
+            try:
+                candidate = date(year, month, d)
+                d += 1
+            except ValueError:
+                return date(year, month, d - 1)
+
+def add_years_safe(orig_date, years):
+    """
+    Add years safely (handles Feb 29 -> Feb 28/29),
+    returns a date object.
+    """
+    try:
+        return orig_date.replace(year=orig_date.year + years)
+    except ValueError:
+        # Feb 29 on non-leap -> fallback to Feb 28
+        return orig_date.replace(year=orig_date.year + years, day=28)
+
+def compute_expiration_date(manufactured_date, is_yema=False):
+    """
+    manufactured_date: date object
+    is_yema: True => +6 months + 1 day
+             False => +1 year + 1 day
+    """
+    if not manufactured_date:
+        manufactured_date = timezone.localdate()
+
+    if is_yema:
+        # +6 months then +1 day
+        dt = add_months_safe(manufactured_date, 6)
+        dt = dt + timedelta(days=1)
+    else:
+        # +1 year then +1 day
+        dt = add_years_safe(manufactured_date, 1)
+        dt = dt + timedelta(days=1)
+    return dt
+def add_months_safe(orig_date, months):
+    # orig_date is a date object
+    year = orig_date.year + (orig_date.month - 1 + months) // 12
+    month = (orig_date.month - 1 + months) % 12 + 1
+    day = orig_date.day
+    try:
+        return date(year, month, day)
+    except ValueError:
+        # day overflow - return last day of target month
+        # find last day of month by iterating down
+        d = 28
+        while True:
+            try:
+                candidate = date(year, month, d)
+                d += 1
+            except ValueError:
+                return date(year, month, d - 1)
+
+def add_years_safe(orig_date, years):
+    try:
+        return orig_date.replace(year=orig_date.year + years)
+    except ValueError:
+        # Feb 29 -> fallback to Feb 28
+        return orig_date.replace(year=orig_date.year + years, day=28)
+
+def compute_expiration(manufactured_date, is_yema=False):
+    """
+    manufactured_date: date object
+    is_yema: True => +6 months + 1 day
+             False => +1 year + 1 day
+    """
+    if not manufactured_date:
+        manufactured_date = timezone.localdate()
+
+    if is_yema:
+        dt = add_months_safe(manufactured_date, 6)
+        dt = dt + timedelta(days=1)
+    else:
+        dt = add_years_safe(manufactured_date, 1)
+        dt = dt + timedelta(days=1)
+    return dt
+
+
 class BulkProductBatchCreateView(View):
     template_name = "prodbatch_add.html"
 
     def get(self, request):
         form = BulkProductBatchForm()
+        today = timezone.localdate().isoformat()  # "YYYY-MM-DD" for input[type=date] value
         return render(request, self.template_name, {
             'form': form,
-            'products': form.products
+            'products': form.products,
+            'today_date': today,
         })
 
     def post(self, request):
         form = BulkProductBatchForm(request.POST)
+        today = timezone.localdate().isoformat()
 
         if not form.is_valid():
             messages.error(request, "❌ Please fix the errors below before submitting.")
             return render(request, self.template_name, {
                 'form': form,
-                'products': form.products
+                'products': form.products,
+                'today_date': today,
             })
 
         batch_date = timezone.localdate()
-        manufactured_date = form.cleaned_data['manufactured_date']
         auth_user = get_or_create_auth_user(request.user)
 
         try:
@@ -5000,7 +5097,31 @@ class BulkProductBatchCreateView(View):
                     if not qty or float(qty) <= 0:
                         continue
 
-                    product_code = (product.product_code or '').strip().upper()
+                    manufactured_field = f'product_{product.id}_manufactured'
+                    expiration_field = f'product_{product.id}_expiration'
+
+                    manufactured_date = form.cleaned_data.get(manufactured_field)
+                    expiration_date = form.cleaned_data.get(expiration_field)
+
+                    # manufactured_date should be a date object (if your form parsed it).
+                    # If it's a string, convert:
+                    if isinstance(manufactured_date, str):
+                        manufactured_date = timezone.datetime.strptime(manufactured_date, "%Y-%m-%d").date()
+
+                    if isinstance(expiration_date, str):
+                        expiration_date = timezone.datetime.strptime(expiration_date, "%Y-%m-%d").date()
+
+                    # Auto compute expiration if blank
+                    is_yema = getattr(product, "product_type_id", None) == 7
+
+                    if not expiration_date:
+                        expiration_date = compute_expiration(manufactured_date, is_yema=is_yema)
+
+                    # Ensure expiration >= manufactured
+                    if expiration_date < manufactured_date:
+                        expiration_date = manufactured_date
+
+                    product_code = (getattr(product, 'product_code', '') or '').strip().upper()
                     if not product_code:
                         raise ValueError(f"❌ Product '{product}' is missing a product code. Please set one before creating batches.")
 
@@ -5011,6 +5132,7 @@ class BulkProductBatchCreateView(View):
                         quantity=qty,
                         batch_date=batch_date,
                         manufactured_date=manufactured_date,
+                        expiration_date=expiration_date,
                         batch_code=batch_code,
                         created_by_admin=auth_user,
                     )
@@ -5021,21 +5143,12 @@ class BulkProductBatchCreateView(View):
 
         except Exception as e:
             error_message = str(e)
-
-            if "Not enough stock" in error_message:
-                error_message = error_message.split("CONTEXT:")[0].strip()
-            elif "insufficient" in error_message.lower():
-                error_message = "❌ Insufficient raw materials to create this batch."
-            elif "No product quantities" in error_message:
-                error_message = "⚠️ No product quantities were entered."
-            else:
-                error_message = f"❌ {error_message}"
-
-            messages.error(request, error_message)
-
+            # keep your existing error handling logic if needed
+            messages.error(request, f"❌ {error_message}")
             return render(request, self.template_name, {
                 'form': form,
-                'products': form.products
+                'products': form.products,
+                'today_date': today,
             })
 
         messages.success(request, "✅ Product Batch added successfully.")
