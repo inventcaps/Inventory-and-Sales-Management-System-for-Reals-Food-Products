@@ -316,12 +316,14 @@ class ProductBatchForm(ModelForm):
             'quantity',
             'batch_date',
             'manufactured_date',
+            'expiration_date',
             'batch_code',
         ]
         widgets = {
             'product': forms.Select(attrs={'class': 'form-control'}),
             'batch_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'manufactured_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'batch_code': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Auto-generated (MMDDYY + Product Code)'}),
         }
@@ -332,6 +334,7 @@ class ProductBatchForm(ModelForm):
         self.fields['product'].queryset = Products.objects.filter(is_archived=False)
         self.fields['batch_code'].required = False
         self.fields['batch_code'].disabled = True
+        self.fields['expiration_date'].required = False
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -667,7 +670,10 @@ class NotificationsForm(forms.ModelForm):
         fields = "__all__"
 
 class BulkProductBatchForm(forms.Form):
-    manufactured_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    manufactured_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
     expiration_date = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={'type': 'date'})
@@ -715,8 +721,6 @@ class BulkProductBatchForm(forms.Form):
                 'data-field-type': 'expiration',
                 'data-is-yema': 'true' if is_yema else 'false'
             }
-            if is_yema:
-                expiration_attrs['readonly'] = 'readonly'
 
             self.fields[expiration_field_name] = forms.DateField(
                 required=False,
@@ -752,9 +756,15 @@ class BulkProductBatchForm(forms.Form):
 
         for product_info in self.products:
             product = product_info["product"]
+            qty_field_name = f'product_{product.id}_qty'
             manufactured_field_name = f'product_{product.id}_manufactured'
             expiration_field_name = f'product_{product.id}_expiration'
             is_yema = product_info['is_yema']
+
+            # Only validate if quantity is entered
+            qty = cleaned_data.get(qty_field_name)
+            if not qty or float(qty) <= 0:
+                continue
 
             manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured
 

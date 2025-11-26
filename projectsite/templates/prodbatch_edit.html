@@ -49,13 +49,20 @@
                     {% endfor %}
                   </div>
 
-                  <!-- Manufactured Date -->
-                  <div class="form-item">
-                    <label for="{{ form.manufactured_date.id_for_label }}">{{ form.manufactured_date.label }}</label>
-                    {% render_field form.manufactured_date class="form-control" %}
-                    {% for error in form.manufactured_date.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
+                  <!-- Manufactured & Expiration Dates -->
+                  <div class="form-row">
+                    <div class="form-item" style="flex:1; margin-right:15px;">
+                      <label for="{{ form.manufactured_date.id_for_label }}">{{ form.manufactured_date.label }}</label>
+                      {% render_field form.manufactured_date class="form-control" %}
+                      {% for error in form.manufactured_date.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                      {% endfor %}
+                    </div>
+                    <div class="form-item" style="flex:1;">
+                      <label>Expiration Date</label>
+                      <input type="date" class="form-control" value="{{ form.instance.expiration_date|date:'Y-m-d' }}" disabled>
+                      <small class="form-text text-muted">Auto-calculated from manufactured date.</small>
+                    </div>
                   </div>
 
                   <!-- Batch Code (auto) -->

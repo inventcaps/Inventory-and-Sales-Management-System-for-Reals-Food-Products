@@ -885,11 +885,6 @@ class ProductBatches(models.Model):
     is_expired = models.BooleanField(blank=True, null=True)
     expiration_date = models.DateField(blank=True, null=True)
 
-    expiration_date = models.GeneratedField( 
-        expression="manufactured_date + interval '1 year'",
-        output_field=models.DateField(),
-        db_persist=True,
-    )
     batch_code = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:
