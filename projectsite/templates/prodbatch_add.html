@@ -6,7 +6,7 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'product-batch-list' %}" class="btn btn-link p-0 mr-2" title="Back to Product Batches">
+      <a href="{% url 'product-batch-list' %}" class="btn btn-link p-0 mr-2" title="Back">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
       Bulk Add Product Batches
@@ -21,61 +21,28 @@
         <form method="post">
           {% csrf_token %}
 
-          <!-- Scanner Status (keeps UI from your screenshot) -->
-          <div class="text-dark mb-3">
-            <span id="scanner-status" class="badge badge-danger">Disconnected</span>
-          </div>
-
-          <!-- Products Table -->
-          <div class="mt-3">
-            <h5>Products</h5>
-
-            <table class="table table-bordered">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Current Stock</th>
-                  <th>Quantity</th>
-                  <th>Manufactured Date</th>
-                  <th>Expiration Date</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {% for p in products %}
-                <tr data-product-id="{{ p.product.id }}" data-barcode="{{ p.product.barcode }}">
-                  <td>
-                    <div class="d-flex flex-column">
-                      <span>{{ p.product }}</span>
-                    </div>
-                  </td>
-
-                  <td>{{ p.product.productinventory.total_stock|floatformat:0 }}</td>
-
-                  <td>
-                    {{ p.qty_field }}
-                  </td>
-
-                  <td>
-                    <input type="date"
-                           name="product_{{ p.product.id }}_manufactured"
-                           class="form-control manufactured-input"
-                           data-product-id="{{ p.product.id }}"
-                           value="{{ today_date }}">
-                  </td>
-
-                  <td>
-                    <input type="date"
-                           name="product_{{ p.product.id }}_expiration"
-                           class="form-control expiration-input"
-                           data-product-id="{{ p.product.id }}"
-                           data-is-yema="{% if p.product.product_type_id == 7 %}true{% else %}false{% endif %}">
-                  </td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
+          <table class="table table-bordered">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Current Stock</th>
+                <th>Quantity</th>
+                <th>Manufactured Date</th>
+                <th>Expiration Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in products %}
+              <tr data-product-id="{{ p.product.id }}">
+                <td>{{ p.product }}</td>
+                <td>{{ p.product.productinventory.total_stock|floatformat:0 }}</td>
+                <td>{{ p.qty_field }}</td>
+                <td>{{ p.manufactured_field }}</td>
+                <td>{{ p.expiration_field }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
 
           <div class="form-group mt-3">
             <button type="submit" class="btn btn-success btn-rounded">Save</button>
@@ -88,25 +55,16 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  // ISO YYYY-MM-DD
   const today = new Date().toISOString().split("T")[0];
 
-  // Safely add months handling month overflow
   function addMonthsSafe(dateObj, months) {
     const d = new Date(dateObj.getTime());
     const day = d.getDate();
     d.setMonth(d.getMonth() + months);
-
-    // If month overflowed, set to last day of previous month
-    if (d.getDate() < day) {
-      d.setDate(0);
-    }
+    if (d.getDate() < day) d.setDate(0);
     return d;
   }
 
-  // Compute expiration:
-  // Yema -> +6 months +1 day
-  // Normal -> +1 year +1 day (handle Feb 29 safely)
   function computeExpiration(mdateStr, isYema) {
     if (!mdateStr) return "";
     const base = new Date(mdateStr);
@@ -117,72 +75,38 @@ document.addEventListener("DOMContentLoaded", function() {
       result = addMonthsSafe(base, 6);
       result.setDate(result.getDate() + 1);
     } else {
-      // attempt to add one year safely
       const y = base.getFullYear() + 1;
       const m = base.getMonth();
       const d = base.getDate();
       result = new Date(base.getTime());
       result.setFullYear(y);
-      // if month shifted (e.g., Feb 29 -> Mar 1), move to last day of target month then add 1 day
-      if (result.getMonth() !== m) {
-        // last day of original month in target year:
-        result = new Date(y, m + 1, 0);
-      }
+      if (result.getMonth() !== m) result = new Date(y, m + 1, 0);
       result.setDate(result.getDate() + 1);
     }
 
     return result.toISOString().split("T")[0];
   }
 
-  // Initialize: manufactured default to today, expiration default computed
   document.querySelectorAll(".manufactured-input").forEach(m => {
-    if (!m.value) m.value = today;
-
     const pid = m.dataset.productId;
     const exp = document.querySelector(`.expiration-input[data-product-id="${pid}"]`);
-    if (!exp) return;
-    const isYema = exp.dataset.isYema === "true";
-    if (!exp.value) {
-      exp.value = computeExpiration(m.value, isYema);
-    } else {
-      // ensure expiration >= manufactured
-      if (exp.value < m.value) exp.value = m.value;
-    }
-  });
+    const isYema = exp?.dataset.isYema === "true";
 
-  // When manufactured changes: recompute expiration if the user hasn't manually edited it
-  document.querySelectorAll(".manufactured-input").forEach(m => {
+    if (!m.value) m.value = today;
+    if (exp && !exp.value) exp.value = computeExpiration(m.value, isYema);
+
     m.addEventListener("change", () => {
-      const pid = m.dataset.productId;
-      const exp = document.querySelector(`.expiration-input[data-product-id="${pid}"]`);
-      if (!exp) return;
-      const isYema = exp.dataset.isYema === "true";
-
-      // if user hasn't edited expiration (or it's blank), auto update
-      if (!exp.dataset.userEdited) {
-        exp.value = computeExpiration(m.value, isYema);
-      }
-
-      if (exp.value < m.value) exp.value = m.value;
-    });
-
-    m.addEventListener("input", () => {
-      // mark manufactured input as edited (not strictly required but safe)
-      m.dataset.userEdited = m.value ? "true" : "";
+      if (exp && !exp.dataset.userEdited) exp.value = computeExpiration(m.value, isYema);
+      if (exp && exp.value < m.value) exp.value = m.value;
     });
   });
 
-  // Expiration is editable for all products. Prevent expiration < manufactured
   document.querySelectorAll(".expiration-input").forEach(e => {
     e.addEventListener("change", () => {
       const pid = e.dataset.productId;
       const m = document.querySelector(`.manufactured-input[data-product-id="${pid}"]`);
       e.dataset.userEdited = e.value ? "true" : "";
       if (m && e.value < m.value) e.value = m.value;
-    });
-
-    e.addEventListener("input", () => {
-      e.dataset.userEdited = e.value ? "true" : "";
     });
   });
 });

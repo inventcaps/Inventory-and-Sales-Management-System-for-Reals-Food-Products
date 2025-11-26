@@ -667,7 +667,16 @@ class NotificationsForm(forms.ModelForm):
         fields = "__all__"
 
 class BulkProductBatchForm(forms.Form):
-    manufactured_date = forms.DateField(widget=forms.DateInput(attrs={'type': 'date'}))
+    """
+    Bulk product batch form.
+    Handles multiple products with quantity, manufactured date, and expiration date.
+    Auto-generates expiration based on product type and defaults.
+    """
+
+    manufactured_date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={'type': 'date'})
+    )
     expiration_date = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={'type': 'date'})
@@ -677,13 +686,15 @@ class BulkProductBatchForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.products = []
 
-        # Filter out archived products
+        today = timezone.localdate()
+
         for product in Products.objects.filter(is_archived=False).order_by('id'):
             qty_field_name = f'product_{product.id}_qty'
             manufactured_field_name = f'product_{product.id}_manufactured'
             expiration_field_name = f'product_{product.id}_expiration'
             is_yema = self._is_yema_product(product)
 
+            # Quantity field
             self.fields[qty_field_name] = forms.DecimalField(
                 required=False,
                 min_value=0,
@@ -697,8 +708,10 @@ class BulkProductBatchForm(forms.Form):
                 })
             )
 
+            # Manufactured field with default = today
             self.fields[manufactured_field_name] = forms.DateField(
                 required=False,
+                initial=today,
                 widget=forms.DateInput(attrs={
                     'type': 'date',
                     'class': 'form-control product-manufactured',
@@ -707,6 +720,12 @@ class BulkProductBatchForm(forms.Form):
                     'data-is-yema': 'true' if is_yema else 'false'
                 })
             )
+
+            # Compute default expiration
+            if is_yema:
+                expiration_initial = today + timedelta(days=182)  # ~6 months
+            else:
+                expiration_initial = today + timedelta(days=365)  # 1 year
 
             expiration_attrs = {
                 'type': 'date',
@@ -720,6 +739,7 @@ class BulkProductBatchForm(forms.Form):
 
             self.fields[expiration_field_name] = forms.DateField(
                 required=False,
+                initial=expiration_initial,
                 widget=forms.DateInput(attrs=expiration_attrs)
             )
 
@@ -732,23 +752,27 @@ class BulkProductBatchForm(forms.Form):
             })
 
     def _is_yema_product(self, product):
+        """
+        Determine if product is Yema type.
+        """
         product_text = " ".join(filter(None, [
-            product.product_type.name if product.product_type else "",
-            product.variant.name if product.variant else "",
-            product.description or ""
+            getattr(product.product_type, 'name', '') if hasattr(product, 'product_type') else '',
+            getattr(product.variant, 'name', '') if hasattr(product, 'variant') else '',
+            product.description or ''
         ])).lower()
         return 'yema' in product_text
 
     def clean(self):
+        """
+        Validate and compute manufactured/expiration for each product.
+        """
         cleaned_data = super().clean()
-        default_manufactured = cleaned_data.get('manufactured_date')
+        default_manufactured = cleaned_data.get('manufactured_date') or timezone.localdate()
         default_expiration = cleaned_data.get('expiration_date')
 
-        if default_manufactured:
-            if default_expiration and default_expiration < default_manufactured:
-                self.add_error('expiration_date', 'Expiration date cannot be before the manufactured date.')
-        elif default_expiration:
-            self.add_error('manufactured_date', 'Please provide a manufactured date to use as default for all products.')
+        # Ensure default expiration >= default manufactured
+        if default_expiration and default_expiration < default_manufactured:
+            self.add_error('expiration_date', 'Default expiration cannot be before default manufactured date.')
 
         for product_info in self.products:
             product = product_info["product"]
@@ -756,27 +780,29 @@ class BulkProductBatchForm(forms.Form):
             expiration_field_name = f'product_{product.id}_expiration'
             is_yema = product_info['is_yema']
 
+            # Use per-product value or default
             manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured
-
             if not manufactured_value:
-                self.add_error(manufactured_field_name, 'Please set a manufactured date for this product or fill in the default above.')
+                self.add_error(manufactured_field_name, 'Please set a manufactured date for this product or use the default above.')
                 continue
 
             expiration_value = cleaned_data.get(expiration_field_name)
             if is_yema:
                 expiration_value = manufactured_value + timedelta(days=182)
             elif not expiration_value:
-                if default_expiration:
-                    expiration_value = default_expiration
-                else:
-                    expiration_value = manufactured_value + timedelta(days=365)
+                expiration_value = default_expiration or (manufactured_value + timedelta(days=365))
 
             if expiration_value < manufactured_value:
-                self.add_error(expiration_field_name, 'Expiration date cannot be before the manufactured date.')
+                self.add_error(expiration_field_name, 'Expiration date cannot be before manufactured date.')
                 continue
 
+            # Save computed values back to cleaned_data
             cleaned_data[manufactured_field_name] = manufactured_value
             cleaned_data[expiration_field_name] = expiration_value
+
+        # Also ensure top-level defaults exist
+        cleaned_data['manufactured_date'] = default_manufactured
+        cleaned_data['expiration_date'] = default_expiration or (default_manufactured + timedelta(days=365))
 
         return cleaned_data
 

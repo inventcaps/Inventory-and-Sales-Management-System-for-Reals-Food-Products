@@ -63,7 +63,9 @@
                       <th>Material</th>
                       <th>Price Per Unit</th>
                       <th>Category</th>
-                      <th>Current Stock</th>
+                      <th>Total Stock</th>
+                      <th>Available Stock</th>
+                      <th>Expiring Soon</th>
                       <th>Restock Threshold</th>
                       <th class="col-status">
                         <span class="fw-bold me-2">Status</span>
@@ -87,13 +89,25 @@
                       <td>₱{{ item.material.price_per_unit|floatformat:2 }}</td>
                       <td><span class="badge badge-info">{{ item.material.category|default:'N/A'|title }}</span></td>
                       <td>{{ item.total_stock|floatformat:0 }}</td>
+                      <td>
+                        <span class="badge bg-info">{{ item.reorder_status.available_stock|floatformat:0 }}</span>
+                      </td>
+                      <td>
+                        {% if item.reorder_status.expiring_stock > 0 %}
+                          <span class="badge bg-warning text-dark">{{ item.reorder_status.expiring_stock|floatformat:0 }}</span>
+                        {% else %}
+                          <span class="badge bg-light text-dark">0</span>
+                        {% endif %}
+                      </td>
                       <td>{{ item.reorder_threshold|floatformat:0 }}</td>
                       <td class="col-status">
-                        {% if item.total_stock == 0 %}
-                          <span class="badge bg-danger">Out of Stock</span>
-                        {% elif item.total_stock < item.reorder_threshold %}
-                          <span class="badge bg-warning text-dark">Low Stock</span>
-                        {% elif item.total_stock == item.reorder_threshold %}
+                        {% if item.reorder_status.needs_reorder %}
+                          {% if item.reorder_status.available_stock == 0 %}
+                            <span class="badge bg-danger">Out of Stock</span>
+                          {% else %}
+                            <span class="badge bg-warning text-dark">Low Stock</span>
+                          {% endif %}
+                        {% elif item.reorder_status.available_stock == item.reorder_threshold %}
                           <span class="badge bg-info text-dark">Warning</span>
                         {% else %}
                           <span class="badge bg-success">On Stock</span>
@@ -102,7 +116,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                      <td colspan="4" class="text-center">No inventory found.</td>
+                      <td colspan="8" class="text-center">No inventory found.</td>
                     </tr>
                     {% endfor %}
                   </tbody>

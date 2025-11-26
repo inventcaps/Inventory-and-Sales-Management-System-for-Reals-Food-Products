@@ -909,6 +909,86 @@ class ProductInventory(models.Model):
         managed = False
         db_table = 'product_inventory'
 
+    def get_available_stock(self, days_ahead=7):
+        """
+        Calculate available stock by excluding items expiring within the specified days.
+        
+        Args:
+            days_ahead: Number of days to look ahead for expiration (default: 7 days)
+        
+        Returns:
+            Decimal: Available stock quantity
+        """
+        from django.utils import timezone
+        today = timezone.localdate()
+        expiration_cutoff = today + timezone.timedelta(days=days_ahead)
+        
+        # Get batches that are NOT expiring soon
+        available_batches = ProductBatches.objects.filter(
+            product=self.product,
+            is_archived=False,
+            is_expired=False,
+            expiration_date__gt=expiration_cutoff
+        ).aggregate(total=Sum('quantity'))
+        
+        available = available_batches['total'] or Decimal(0)
+        return Decimal(available)
+    
+    def get_expiring_stock(self, days_ahead=7):
+        """
+        Calculate stock expiring within the specified days.
+        
+        Args:
+            days_ahead: Number of days to look ahead for expiration (default: 7 days)
+        
+        Returns:
+            Decimal: Quantity expiring soon
+        """
+        from django.utils import timezone
+        today = timezone.localdate()
+        expiration_cutoff = today + timezone.timedelta(days=days_ahead)
+        
+        # Get batches expiring within the timeframe
+        expiring_batches = ProductBatches.objects.filter(
+            product=self.product,
+            is_archived=False,
+            is_expired=False,
+            expiration_date__lte=expiration_cutoff,
+            expiration_date__gt=today
+        ).aggregate(total=Sum('quantity'))
+        
+        expiring = expiring_batches['total'] or Decimal(0)
+        return Decimal(expiring)
+    
+    def should_reorder(self, days_ahead=7):
+        """
+        Determine if reorder is needed based on available stock and threshold.
+        
+        Returns:
+            bool: True if reorder is needed
+        """
+        available = self.get_available_stock(days_ahead)
+        return available < self.restock_threshold
+    
+    def get_reorder_status(self, days_ahead=7):
+        """
+        Get detailed reorder status considering expiration dates.
+        
+        Returns:
+            dict: Status information
+        """
+        available = self.get_available_stock(days_ahead)
+        expiring = self.get_expiring_stock(days_ahead)
+        
+        return {
+            'total_stock': self.total_stock,
+            'available_stock': available,
+            'expiring_stock': expiring,
+            'restock_threshold': self.restock_threshold,
+            'needs_reorder': available < self.restock_threshold,
+            'expiration_impact': self.total_stock - available
+        }
+
 
 class ProductRecipes(models.Model):
     id = models.BigAutoField(primary_key=True)
@@ -1004,6 +1084,86 @@ class RawMaterialInventory(models.Model):
     class Meta:
         managed = False
         db_table = 'raw_material_inventory'
+
+    def get_available_stock(self, days_ahead=7):
+        """
+        Calculate available stock by excluding items expiring within the specified days.
+        
+        Args:
+            days_ahead: Number of days to look ahead for expiration (default: 7 days)
+        
+        Returns:
+            Decimal: Available stock quantity
+        """
+        from django.utils import timezone
+        today = timezone.localdate()
+        expiration_cutoff = today + timezone.timedelta(days=days_ahead)
+        
+        # Get batches that are NOT expiring soon
+        available_batches = RawMaterialBatches.objects.filter(
+            material=self.material,
+            is_archived=False,
+            is_expired=False,
+            expiration_date__gt=expiration_cutoff
+        ).aggregate(total=Sum('quantity'))
+        
+        available = available_batches['total'] or Decimal(0)
+        return Decimal(available)
+    
+    def get_expiring_stock(self, days_ahead=7):
+        """
+        Calculate stock expiring within the specified days.
+        
+        Args:
+            days_ahead: Number of days to look ahead for expiration (default: 7 days)
+        
+        Returns:
+            Decimal: Quantity expiring soon
+        """
+        from django.utils import timezone
+        today = timezone.localdate()
+        expiration_cutoff = today + timezone.timedelta(days=days_ahead)
+        
+        # Get batches expiring within the timeframe
+        expiring_batches = RawMaterialBatches.objects.filter(
+            material=self.material,
+            is_archived=False,
+            is_expired=False,
+            expiration_date__lte=expiration_cutoff,
+            expiration_date__gt=today
+        ).aggregate(total=Sum('quantity'))
+        
+        expiring = expiring_batches['total'] or Decimal(0)
+        return Decimal(expiring)
+    
+    def should_reorder(self, days_ahead=7):
+        """
+        Determine if reorder is needed based on available stock and threshold.
+        
+        Returns:
+            bool: True if reorder is needed
+        """
+        available = self.get_available_stock(days_ahead)
+        return available < self.reorder_threshold
+    
+    def get_reorder_status(self, days_ahead=7):
+        """
+        Get detailed reorder status considering expiration dates.
+        
+        Returns:
+            dict: Status information
+        """
+        available = self.get_available_stock(days_ahead)
+        expiring = self.get_expiring_stock(days_ahead)
+        
+        return {
+            'total_stock': self.total_stock,
+            'available_stock': available,
+            'expiring_stock': expiring,
+            'reorder_threshold': self.reorder_threshold,
+            'needs_reorder': available < self.reorder_threshold,
+            'expiration_impact': self.total_stock - available
+        }
 
 
 class RawMaterials(models.Model):

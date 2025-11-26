@@ -1983,17 +1983,12 @@ class SalesExpensesList(ListView):
         withdrawal_date_filter = self.request.GET.get("withdrawal_date_filter", "").strip()
         withdrawal_payment_status = self.request.GET.get("withdrawal_payment_status", "").strip()
         withdrawal_show_all = self.request.GET.get("withdrawal_show_all", "").strip()
-        receipt_number = self.request.GET.get("receipt_number", "").strip()
         
         withdrawal_sales_qs = Withdrawals.objects.filter(
             reason='SOLD',
             is_archived=False,
             sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
         ).select_related("created_by_admin").order_by("-date")
-        
-        # Apply receipt number filter
-        if receipt_number:
-            withdrawal_sales_qs = withdrawal_sales_qs.filter(receipt_number__icontains=receipt_number)
         
         # Apply channel filter
         if withdrawal_channel:
@@ -2049,7 +2044,6 @@ class SalesExpensesList(ListView):
                 'group_id': group_id,
                 'actual_group_id': actual_group_id,
                 'is_single': is_single,
-                'receipt_number': first_withdrawal.receipt_number,
                 'customer_name': first_withdrawal.customer_name,
                 'sales_channel': sales_channel_display,
                 'payment_status': first_withdrawal.payment_status,
@@ -2932,47 +2926,62 @@ class ProductInventoryList(ListView):
                 Q(product__size__size_label__icontains=search)
             )
 
-        status = self.request.GET.get("status", "")
-        if status == "on_stock":
-            queryset = queryset.filter(total_stock__gt=F("restock_threshold"))
-        elif status == "low_stock":
-            queryset = queryset.filter(total_stock__lt=F("restock_threshold"), total_stock__gt=0)
-        elif status == "warning":
-            queryset = queryset.filter(total_stock=F("restock_threshold"))
-        elif status == "out_of_stock":
-            queryset = queryset.filter(total_stock=0)
-
-        # Date filter based on batch_date from ProductBatches
-        batch_date_filter = self.request.GET.get("batch_date_filter", "").strip()
-        if batch_date_filter:
-            try:
-                # Parse the date filter (can be YYYY, YYYY-MM, or YYYY-MM-DD)
-                parts = batch_date_filter.split("-")
-                filters = {}
-                
-                if len(parts) >= 1 and parts[0].isdigit():
-                    filters["product__productbatches__batch_date__year"] = int(parts[0])
-                if len(parts) >= 2 and parts[1].isdigit():
-                    filters["product__productbatches__batch_date__month"] = int(parts[1])
-                if len(parts) >= 3 and parts[2].isdigit():
-                    filters["product__productbatches__batch_date__day"] = int(parts[2])
-                
-                if filters:
-                    queryset = queryset.filter(**filters).distinct()
-            except (ValueError, IndexError):
-                pass
-
         return queryset.order_by("product_id")
-
+    
+    def filter_by_reorder_status(self, queryset, status):
+        """Filter inventory based on reorder status considering expiration dates."""
+        if not status:
+            return queryset
+        
+        filtered_items = []
+        for inv in queryset:
+            reorder_status = inv.get_reorder_status()
+            available_stock = reorder_status['available_stock']
+            threshold = inv.restock_threshold
+            
+            if status == "on_stock" and available_stock > threshold:
+                filtered_items.append(inv.product_id)
+            elif status == "low_stock" and available_stock < threshold and available_stock > 0:
+                filtered_items.append(inv.product_id)
+            elif status == "warning" and available_stock == threshold:
+                filtered_items.append(inv.product_id)
+            elif status == "out_of_stock" and available_stock == 0:
+                filtered_items.append(inv.product_id)
+        
+        return queryset.filter(product_id__in=filtered_items) if filtered_items else queryset.none()
+    
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
+        from django.core.paginator import Paginator
         context = super().get_context_data(**kwargs)
+        
+        # Apply status filter if provided
+        status = self.request.GET.get("status", "")
+        if status:
+            filtered_queryset = self.filter_by_reorder_status(self.get_queryset(), status)
+            paginator = Paginator(filtered_queryset, self.paginate_by)
+            page_number = self.request.GET.get('page', 1)
+            page_obj = paginator.get_page(page_number)
+            context['product_inventory'] = page_obj
+            context['paginator'] = paginator
+            context['is_paginated'] = paginator.num_pages > 1
+            context['page_obj'] = page_obj
+        
+        # Add reorder status data for each inventory item
+        inventory_list = context.get('product_inventory', [])
+        if hasattr(inventory_list, 'object_list'):
+            inventory_list = inventory_list.object_list
+        
+        for inv in inventory_list:
+            inv.reorder_status = inv.get_reorder_status()
+        
         # Calculate total stock across all non-archived products
         total_stock = ProductInventory.objects.filter(
             product__is_archived=False
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_product_stock'] = total_stock
         return context
+
 
 class RawMaterialBatchList(ListView):
     model = RawMaterialBatches
@@ -2989,24 +2998,25 @@ class RawMaterialBatchList(ListView):
             .order_by('-batch_date')
         )
 
-        search = self.request.GET.get("search", "").strip()
+        query = self.request.GET.get("q", "").strip()
         date_filter = self.request.GET.get("date_filter", "").strip()
         show_all = self.request.GET.get("show_all", "").strip()
 
-        if search:
+        if query:
             queryset = queryset.filter(
-                Q(material__name__icontains=search) |
-                Q(batch_number__icontains=search) |
-                Q(batch_date__icontains=search)
+                Q(material__name__icontains=query) |
+                Q(batch_date__icontains=query) |
+                Q(received_date__icontains=query) |
+                Q(quantity__icontains=query) |
+                Q(expiration_date__icontains=query) |
+                Q(created_by_admin__username__icontains=query)
             )
 
         if date_filter:
             try:
+                # Parse only year and month (from YYYY-MM)
                 parsed_date = datetime.strptime(date_filter, "%Y-%m")
-                queryset = queryset.filter(
-                    batch_date__year=parsed_date.year,
-                    batch_date__month=parsed_date.month
-                )
+                queryset = queryset.filter(batch_date__year=parsed_date.year, batch_date__month=parsed_date.month)
             except ValueError:
                 pass
         elif not show_all:
@@ -3023,6 +3033,7 @@ class RawMaterialBatchList(ListView):
         context['current_month_display'] = f"{month_names[today.month - 1]} {today.year}"
         context['current_month_value'] = today.strftime("%Y-%m")
         return context
+
 
 class RawMaterialBatchCreateView(CreateView):
     model = RawMaterialBatches
@@ -3194,7 +3205,6 @@ class RawMaterialInventoryList(ListView):
         ).order_by('material_id')
 
         q = self.request.GET.get("q", "").strip()
-        status = self.request.GET.get("status", "").strip()
         category = self.request.GET.get("category", "").strip().upper()
 
         if q:
@@ -3207,20 +3217,55 @@ class RawMaterialInventoryList(ListView):
         if category in {"PACKAGING", "RECIPE"}:
             queryset = queryset.filter(material__category__iexact=category)
 
-        if status == "on_stock":
-            queryset = queryset.filter(total_stock__gt=F("reorder_threshold"))
-        elif status == "low_stock":
-            queryset = queryset.filter(total_stock__lt=F("reorder_threshold"), total_stock__gt=0)
-        elif status == "warning":
-            queryset = queryset.filter(total_stock=F("reorder_threshold"))
-        elif status == "out_of_stock":
-            queryset = queryset.filter(total_stock=0)
-
         return queryset
+    
+    def filter_by_reorder_status(self, queryset, status):
+        """Filter inventory based on reorder status considering expiration dates."""
+        if not status:
+            return queryset
+        
+        filtered_items = []
+        for inv in queryset:
+            reorder_status = inv.get_reorder_status()
+            available_stock = reorder_status['available_stock']
+            threshold = inv.reorder_threshold
+            
+            if status == "on_stock" and available_stock > threshold:
+                filtered_items.append(inv.material_id)
+            elif status == "low_stock" and available_stock < threshold and available_stock > 0:
+                filtered_items.append(inv.material_id)
+            elif status == "warning" and available_stock == threshold:
+                filtered_items.append(inv.material_id)
+            elif status == "out_of_stock" and available_stock == 0:
+                filtered_items.append(inv.material_id)
+        
+        return queryset.filter(material_id__in=filtered_items) if filtered_items else queryset.none()
     
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
+        from django.core.paginator import Paginator
         context = super().get_context_data(**kwargs)
+        
+        # Apply status filter if provided
+        status = self.request.GET.get("status", "").strip()
+        if status:
+            filtered_queryset = self.filter_by_reorder_status(self.get_queryset(), status)
+            paginator = Paginator(filtered_queryset, self.paginate_by)
+            page_number = self.request.GET.get('page', 1)
+            page_obj = paginator.get_page(page_number)
+            context['rawmatinvent'] = page_obj
+            context['paginator'] = paginator
+            context['is_paginated'] = paginator.num_pages > 1
+            context['page_obj'] = page_obj
+        
+        # Add reorder status data for each inventory item
+        inventory_list = context.get('rawmatinvent', [])
+        if hasattr(inventory_list, 'object_list'):
+            inventory_list = inventory_list.object_list
+        
+        for inv in inventory_list:
+            inv.reorder_status = inv.get_reorder_status()
+        
         # Calculate total stock across all non-archived raw materials
         total_stock = RawMaterialInventory.objects.filter(
             material__is_archived=False
@@ -4965,125 +5010,28 @@ class NotificationsList(ListView):
 # NotificationsDeleteView removed - notifications should not be deleted
 
 
-def add_months_safe(orig_date, months):
-    """
-    Add months to a date safely (handles month overflow).
-    """
-    year = orig_date.year + (orig_date.month - 1 + months) // 12
-    month = (orig_date.month - 1 + months) % 12 + 1
-    day = orig_date.day
-    # get last day of target month
-    try:
-        return date(year, month, day)
-    except ValueError:
-        # day overflow (e.g., Feb 30) -> use last day of month
-        # day=0 on next month gives last day of previous month; here we build safe:
-        # find last day by iterating backward
-        d = 28
-        while True:
-            try:
-                candidate = date(year, month, d)
-                d += 1
-            except ValueError:
-                return date(year, month, d - 1)
-
-def add_years_safe(orig_date, years):
-    """
-    Add years safely (handles Feb 29 -> Feb 28/29),
-    returns a date object.
-    """
-    try:
-        return orig_date.replace(year=orig_date.year + years)
-    except ValueError:
-        # Feb 29 on non-leap -> fallback to Feb 28
-        return orig_date.replace(year=orig_date.year + years, day=28)
-
-def compute_expiration_date(manufactured_date, is_yema=False):
-    """
-    manufactured_date: date object
-    is_yema: True => +6 months + 1 day
-             False => +1 year + 1 day
-    """
-    if not manufactured_date:
-        manufactured_date = timezone.localdate()
-
-    if is_yema:
-        # +6 months then +1 day
-        dt = add_months_safe(manufactured_date, 6)
-        dt = dt + timedelta(days=1)
-    else:
-        # +1 year then +1 day
-        dt = add_years_safe(manufactured_date, 1)
-        dt = dt + timedelta(days=1)
-    return dt
-def add_months_safe(orig_date, months):
-    # orig_date is a date object
-    year = orig_date.year + (orig_date.month - 1 + months) // 12
-    month = (orig_date.month - 1 + months) % 12 + 1
-    day = orig_date.day
-    try:
-        return date(year, month, day)
-    except ValueError:
-        # day overflow - return last day of target month
-        # find last day of month by iterating down
-        d = 28
-        while True:
-            try:
-                candidate = date(year, month, d)
-                d += 1
-            except ValueError:
-                return date(year, month, d - 1)
-
-def add_years_safe(orig_date, years):
-    try:
-        return orig_date.replace(year=orig_date.year + years)
-    except ValueError:
-        # Feb 29 -> fallback to Feb 28
-        return orig_date.replace(year=orig_date.year + years, day=28)
-
-def compute_expiration(manufactured_date, is_yema=False):
-    """
-    manufactured_date: date object
-    is_yema: True => +6 months + 1 day
-             False => +1 year + 1 day
-    """
-    if not manufactured_date:
-        manufactured_date = timezone.localdate()
-
-    if is_yema:
-        dt = add_months_safe(manufactured_date, 6)
-        dt = dt + timedelta(days=1)
-    else:
-        dt = add_years_safe(manufactured_date, 1)
-        dt = dt + timedelta(days=1)
-    return dt
-
-
 class BulkProductBatchCreateView(View):
     template_name = "prodbatch_add.html"
 
     def get(self, request):
         form = BulkProductBatchForm()
-        today = timezone.localdate().isoformat()  # "YYYY-MM-DD" for input[type=date] value
         return render(request, self.template_name, {
             'form': form,
-            'products': form.products,
-            'today_date': today,
+            'products': form.products
         })
 
     def post(self, request):
         form = BulkProductBatchForm(request.POST)
-        today = timezone.localdate().isoformat()
 
         if not form.is_valid():
             messages.error(request, "❌ Please fix the errors below before submitting.")
             return render(request, self.template_name, {
                 'form': form,
-                'products': form.products,
-                'today_date': today,
+                'products': form.products
             })
 
         batch_date = timezone.localdate()
+        manufactured_date = form.cleaned_data['manufactured_date']
         auth_user = get_or_create_auth_user(request.user)
 
         try:
@@ -5097,31 +5045,7 @@ class BulkProductBatchCreateView(View):
                     if not qty or float(qty) <= 0:
                         continue
 
-                    manufactured_field = f'product_{product.id}_manufactured'
-                    expiration_field = f'product_{product.id}_expiration'
-
-                    manufactured_date = form.cleaned_data.get(manufactured_field)
-                    expiration_date = form.cleaned_data.get(expiration_field)
-
-                    # manufactured_date should be a date object (if your form parsed it).
-                    # If it's a string, convert:
-                    if isinstance(manufactured_date, str):
-                        manufactured_date = timezone.datetime.strptime(manufactured_date, "%Y-%m-%d").date()
-
-                    if isinstance(expiration_date, str):
-                        expiration_date = timezone.datetime.strptime(expiration_date, "%Y-%m-%d").date()
-
-                    # Auto compute expiration if blank
-                    is_yema = getattr(product, "product_type_id", None) == 7
-
-                    if not expiration_date:
-                        expiration_date = compute_expiration(manufactured_date, is_yema=is_yema)
-
-                    # Ensure expiration >= manufactured
-                    if expiration_date < manufactured_date:
-                        expiration_date = manufactured_date
-
-                    product_code = (getattr(product, 'product_code', '') or '').strip().upper()
+                    product_code = (product.product_code or '').strip().upper()
                     if not product_code:
                         raise ValueError(f"❌ Product '{product}' is missing a product code. Please set one before creating batches.")
 
@@ -5132,7 +5056,6 @@ class BulkProductBatchCreateView(View):
                         quantity=qty,
                         batch_date=batch_date,
                         manufactured_date=manufactured_date,
-                        expiration_date=expiration_date,
                         batch_code=batch_code,
                         created_by_admin=auth_user,
                     )
@@ -5143,12 +5066,21 @@ class BulkProductBatchCreateView(View):
 
         except Exception as e:
             error_message = str(e)
-            # keep your existing error handling logic if needed
-            messages.error(request, f"❌ {error_message}")
+
+            if "Not enough stock" in error_message:
+                error_message = error_message.split("CONTEXT:")[0].strip()
+            elif "insufficient" in error_message.lower():
+                error_message = "❌ Insufficient raw materials to create this batch."
+            elif "No product quantities" in error_message:
+                error_message = "⚠️ No product quantities were entered."
+            else:
+                error_message = f"❌ {error_message}"
+
+            messages.error(request, error_message)
+
             return render(request, self.template_name, {
                 'form': form,
-                'products': form.products,
-                'today_date': today,
+                'products': form.products
             })
 
         messages.success(request, "✅ Product Batch added successfully.")
@@ -6716,42 +6648,6 @@ def export_product_inventory(request):
         queryset = queryset.filter(total_stock=F("restock_threshold"))
     elif status == "out_of_stock":
         queryset = queryset.filter(total_stock=0)
-
-    # Date filter based on batch_date from ProductBatches
-    batch_date_filter = request.GET.get("batch_date_filter", "").strip()
-    batch_date_filter_year = request.GET.get("batch_date_filter_year", "").strip()
-    batch_date_filter_month = request.GET.get("batch_date_filter_month", "").strip()
-    batch_date_filter_day = request.GET.get("batch_date_filter_day", "").strip()
-    
-    # Use individual year/month/day parameters if provided, otherwise use combined filter
-    if batch_date_filter_year or batch_date_filter_month or batch_date_filter_day:
-        filters = {}
-        if batch_date_filter_year and batch_date_filter_year.isdigit():
-            filters["product__productbatches__batch_date__year"] = int(batch_date_filter_year)
-        if batch_date_filter_month and batch_date_filter_month.isdigit():
-            filters["product__productbatches__batch_date__month"] = int(batch_date_filter_month)
-        if batch_date_filter_day and batch_date_filter_day.isdigit():
-            filters["product__productbatches__batch_date__day"] = int(batch_date_filter_day)
-        
-        if filters:
-            queryset = queryset.filter(**filters).distinct()
-    elif batch_date_filter:
-        try:
-            # Parse the date filter (can be YYYY, YYYY-MM, or YYYY-MM-DD)
-            parts = batch_date_filter.split("-")
-            filters = {}
-            
-            if len(parts) >= 1 and parts[0].isdigit():
-                filters["product__productbatches__batch_date__year"] = int(parts[0])
-            if len(parts) >= 2 and parts[1].isdigit():
-                filters["product__productbatches__batch_date__month"] = int(parts[1])
-            if len(parts) >= 3 and parts[2].isdigit():
-                filters["product__productbatches__batch_date__day"] = int(parts[2])
-            
-            if filters:
-                queryset = queryset.filter(**filters).distinct()
-        except (ValueError, IndexError):
-            pass
 
     timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
 
