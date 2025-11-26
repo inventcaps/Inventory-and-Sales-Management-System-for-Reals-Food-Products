@@ -3236,16 +3236,74 @@ class RawMaterialInventoryList(ListView):
         context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
         return context
 
-class ProductTypeCreateView(CreateView):
-    model = ProductTypes
-    form_class = ProductTypesForm
-    template_name = "prodtype_add.html"
-    success_url = reverse_lazy("product-add")
+@require_GET
+@login_required
+def export_rawmaterial_inventory(request):
+    qs = RawMaterialInventory.objects.select_related('material').filter(
+        material__is_archived=False
+    ).order_by('material_id')
 
-    def form_valid(self, form):
-        auth_user = AuthUser.objects.get(id=self.request.user.id)
-        form.instance.created_by_admin = auth_user
-        return super().form_valid(form)
+    q = request.GET.get("q", "").strip()
+    status = request.GET.get("status", "").strip()
+    category = request.GET.get("category", "").strip().upper()
+
+    if q:
+        qs = qs.filter(
+            Q(material__name__icontains=q) |
+            Q(total_stock__icontains=q) |
+            Q(reorder_threshold__icontains=q)
+        )
+
+    if category in {"PACKAGING", "RECIPE"}:
+        qs = qs.filter(material__category__iexact=category)
+
+    if status == "on_stock":
+        qs = qs.filter(total_stock__gt=F("reorder_threshold"))
+    elif status == "low_stock":
+        qs = qs.filter(total_stock__lt=F("reorder_threshold"), total_stock__gt=0)
+    elif status == "warning":
+        qs = qs.filter(total_stock=F("reorder_threshold"))
+    elif status == "out_of_stock":
+        qs = qs.filter(total_stock=0)
+
+    response = HttpResponse(content_type='text/csv')
+    any_filter = bool(q or category or status)
+    suffix = 'filtered' if any_filter else 'all'
+    response['Content-Disposition'] = f'attachment; filename="raw_material_inventory_{suffix}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Filters', f"q={q}", f"category={category}", f"status={status}"])
+    total_stock_sum = qs.aggregate(total=Sum('total_stock'))['total'] or 0
+    writer.writerow(['Total Materials', qs.count()])
+    writer.writerow(['Total Stock (Units)', f"{total_stock_sum:.0f}"])
+    writer.writerow([])
+
+    writer.writerow(['Material', 'Unit Size', 'Unit', 'Price Per Unit', 'Category', 'Current Stock', 'Reorder Threshold', 'Status'])
+    for item in qs:
+        mat = item.material
+        unit_obj = getattr(mat, 'unit', None)
+        unit_name = getattr(unit_obj, 'unit_name', str(unit_obj)) if unit_obj is not None else ''
+        unit_size = f"{mat.size:.0f}" if mat.size is not None else ''
+        price = f"{mat.price_per_unit:.2f}" if mat.price_per_unit is not None else ''
+        status_label = (
+            'Out of Stock' if item.total_stock == 0 else
+            'Low Stock' if item.total_stock < item.reorder_threshold else
+            'Warning' if item.total_stock == item.reorder_threshold else
+            'On Stock'
+        )
+        writer.writerow([
+            mat.name,
+            unit_size,
+            unit_name,
+            price,
+            (mat.category or '').title() if getattr(mat, 'category', None) else '',
+            f"{item.total_stock:.0f}",
+            f"{item.reorder_threshold:.0f}",
+            status_label,
+        ])
+
+    return response
 
 class ProductVariantCreateView(CreateView):
     model = ProductVariants
@@ -3852,6 +3910,59 @@ class WithdrawSuccessView(ListView):
         context['page_obj'] = page_obj
         
         return context
+
+@require_GET
+@login_required
+def export_withdrawals(request):
+    qs = Withdrawals.objects.filter(is_archived=False).select_related('created_by_admin').order_by('-date')
+    
+    show_all = request.GET.get('show_all', '').strip()
+    date_filter = request.GET.get('date_filter', '').strip()
+    item_type = request.GET.get('item_type', '').strip()
+    reason = request.GET.get('reason', '').strip()
+    
+    if not show_all:
+        if date_filter:
+            try:
+                parsed_date = datetime.strptime(date_filter, "%Y-%m")
+                qs = qs.filter(date__year=parsed_date.year, date__month=parsed_date.month)
+            except ValueError:
+                today = timezone.now()
+                qs = qs.filter(date__year=today.year, date__month=today.month)
+        else:
+            today = timezone.now()
+            qs = qs.filter(date__year=today.year, date__month=today.month)
+    
+    if item_type:
+        qs = qs.filter(item_type=item_type)
+    
+    if reason:
+        qs = qs.filter(reason=reason)
+    
+    response = HttpResponse(content_type='text/csv')
+    suffix = 'all' if show_all else 'current_month'
+    if date_filter and not show_all:
+        suffix = 'filtered'
+    response['Content-Disposition'] = f'attachment; filename="withdrawals_{suffix}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Filters', f"show_all={show_all}", f"date_filter={date_filter if not show_all else ''}", f"item_type={item_type}", f"reason={reason}"])
+    writer.writerow(['Total Records', qs.count()])
+    writer.writerow([])
+    
+    writer.writerow(['Date & Time', 'Item Type', 'Reason', 'Item Display', 'Quantity', 'Created By'])
+    for withdrawal in qs:
+        writer.writerow([
+            withdrawal.date.strftime('%Y-%m-%d %H:%M:%S'),
+            withdrawal.get_item_type_display(),
+            withdrawal.get_reason_display(),
+            withdrawal.get_item_display(),
+            f"{withdrawal.quantity:.2f}",
+            withdrawal.created_by_admin.username,
+        ])
+    
+    return response
     
 class WithdrawItemView(View):
     template_name = "withdraw_item.html"
@@ -5367,6 +5478,50 @@ class StockChangesList(ListView):
         context['current_month_value'] = today.strftime("%Y-%m")
         return context
 
+
+@require_GET
+@login_required
+def export_stock_changes(request):
+    qs = StockChanges.objects.filter(is_archived=False).order_by('-date')
+    
+    show_all = request.GET.get('show_all', '').strip()
+    date_filter = request.GET.get('date_filter', '').strip()
+    
+    if not show_all:
+        if date_filter:
+            try:
+                parsed_date = datetime.strptime(date_filter, "%Y-%m")
+                qs = qs.filter(date__year=parsed_date.year, date__month=parsed_date.month)
+            except ValueError:
+                today = timezone.now()
+                qs = qs.filter(date__year=today.year, date__month=today.month)
+        else:
+            today = timezone.now()
+            qs = qs.filter(date__year=today.year, date__month=today.month)
+    
+    response = HttpResponse(content_type='text/csv')
+    any_filter = bool(date_filter if not show_all else False)
+    suffix = 'filtered' if any_filter else ('all' if show_all else 'current_month')
+    response['Content-Disposition'] = f'attachment; filename="stock_changes_{suffix}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Filters', f"show_all={show_all}", f"date_filter={date_filter if not show_all else ''}"])
+    writer.writerow(['Total Records', qs.count()])
+    writer.writerow([])
+    
+    writer.writerow(['Item Type', 'Item ID', 'Item Display', 'Quantity Change', 'Category', 'Date & Time'])
+    for item in qs:
+        writer.writerow([
+            item.item_type,
+            item.item_id,
+            item.item_display,
+            f"{item.quantity_change:.2f}",
+            item.category,
+            item.date.strftime('%Y-%m-%d %H:%M:%S'),
+        ])
+    
+    return response
 
 class StockChangesArchiveView(View):
     def post(self, request, pk):

@@ -125,8 +125,9 @@ urlpatterns = [
     path('rawmatbatch/bulk-delete-archived/', a.RawMaterialBatchBulkDeleteView.as_view(), name='rawmaterial-batch-bulk-delete-archived'),
 
     path('rawmaterial-inventory/', a.RawMaterialInventoryList.as_view(), name='rawmaterial-inventory'),
+    path('rawmaterial-inventory/export/', a.export_rawmaterial_inventory, name='rawmaterial-inventory-export'),
 
-    path('producttypes/add', a.ProductTypeCreateView.as_view(), name='product-types-add'),
+    path('producttypes/add', a.ProductTypeAddView.as_view(), name='product-types-add'),
     path('productvariants/add', a.ProductVariantCreateView.as_view(), name='product-variants-add'),
     path('sizes/add', a.SizesCreateView.as_view(), name='sizes-add'),
     path('sizeunits/add', a.SizeUnitsCreateView.as_view(), name='size-units-add'),
@@ -167,6 +168,7 @@ urlpatterns = [
     path('product-attributes/srp-price/<int:pk>/delete/', a.SrpPriceDeleteView.as_view(), name='srp-price-delete'),
 
     path('withdrawals/', a.WithdrawSuccessView.as_view(), name='withdrawals'),
+    path('withdrawals/export/', a.export_withdrawals, name='withdrawals-export'),
     path('withdraw/<int:pk>/edit/', a.WithdrawUpdateView.as_view(), name='withdraw-edit'),
     path("withdraw-item/<pk>/delete", a.WithdrawDeleteView.as_view(), name="withdraw-delete"),
     path("withdraw-item/", a.WithdrawItemView.as_view(), name="withdraw-item"),
@@ -216,6 +218,7 @@ urlpatterns = [
     path('notifications/<int:pk>/read/', a.mark_notification_read, name='notification_read'),
 
     path('stock-changes/', a.StockChangesList.as_view(), name='stock-changes'),
+    path('stock-changes/export/', a.export_stock_changes, name='stock-changes-export'),
     path('stock-changes/<int:pk>/archive/', a.StockChangesArchiveView.as_view(), name='stock-changes-archive'),
     path('stock-changes/archived/', a.ArchivedStockChangesListView.as_view(), name='stock-changes-archived-list'),
     path('stock-changes/<int:pk>/unarchive/', a.StockChangesUnarchiveView.as_view(), name='stock-changes-unarchive'),
