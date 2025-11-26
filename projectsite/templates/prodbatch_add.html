@@ -65,6 +65,9 @@ document.addEventListener("DOMContentLoaded", function() {
     return d;
   }
 
+  // Compute expiration:
+  // Yema -> +6 months (27/05/2026 for 26/11/2025)
+  // Normal -> +1 year +1 day (27/11/2026 for 26/11/2025)
   function computeExpiration(mdateStr, isYema) {
     if (!mdateStr) return "";
     const base = new Date(mdateStr);
@@ -72,9 +75,11 @@ document.addEventListener("DOMContentLoaded", function() {
 
     let result;
     if (isYema) {
+      // For yema: add exactly 6 months, then add 1 day
       result = addMonthsSafe(base, 6);
       result.setDate(result.getDate() + 1);
     } else {
+      // For normal: add 1 year, then add 1 day
       const y = base.getFullYear() + 1;
       const m = base.getMonth();
       const d = base.getDate();
