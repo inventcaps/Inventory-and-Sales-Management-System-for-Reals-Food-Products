@@ -7008,6 +7008,167 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
         
         return context
 
+def export_bestseller_report(request):
+    """Export Best Seller analytics as CSV using the same month/show_all filters."""
+    now = timezone.now()
+
+    filter_month_param = request.GET.get('month')
+    show_all = request.GET.get('show_all')
+    include_no_sales = request.GET.get('include_no_sales', '').strip()
+
+    # Determine current_year/current_month and filter scope following the view logic
+    current_year = None
+    current_month = None
+    filter_type = None
+    if filter_month_param:
+        try:
+            year_str, month_str = filter_month_param.split('-')
+            current_year = int(year_str)
+            current_month = int(month_str)
+            filter_type = 'month'
+        except (ValueError, AttributeError):
+            current_year = now.year
+            current_month = now.month
+            filter_type = 'month'
+    elif show_all:
+        filter_type = 'all'
+    else:
+        current_year = now.year
+        current_month = now.month
+        filter_type = 'month'
+
+    filters = {
+        'item_type': 'PRODUCT',
+        'reason': 'SOLD',
+        'is_archived': False,
+    }
+
+    if filter_type != 'all':
+        if current_year:
+            filters['date__year'] = current_year
+        if current_month:
+            filters['date__month'] = current_month
+
+    withdrawals = Withdrawals.objects.filter(**filters).values('item_id', 'quantity', 'custom_price')
+
+    # Aggregate by product
+    product_sales = {}
+    for w in withdrawals:
+        pid = w['item_id']
+        qty = w['quantity'] or 0
+        price = w['custom_price'] or 0
+        if pid not in product_sales:
+            product_sales[pid] = {'total_quantity': 0, 'total_revenue': 0}
+        product_sales[pid]['total_quantity'] += qty
+        product_sales[pid]['total_revenue'] += qty * price
+
+    # Build detailed list with product fields
+    sold_products_list = []
+    for pid, data in product_sales.items():
+        try:
+            product = Products.objects.select_related('product_type', 'variant', 'size', 'size_unit').get(id=pid)
+            sold_products_list.append({
+                'item_id': pid,
+                'product__product_type__name': product.product_type.name,
+                'product__variant__name': product.variant.name,
+                'product__size__size_label': product.size.size_label if product.size else '',
+                'product__size_unit__unit_name': product.size_unit.unit_name,
+                'total_quantity': data['total_quantity'],
+                'total_revenue': data['total_revenue'],
+            })
+        except Products.DoesNotExist:
+            continue
+
+    sold_products_list.sort(key=lambda x: x['total_quantity'], reverse=True)
+    best_sellers = sold_products_list[:10]
+    best_ids = [p['item_id'] for p in best_sellers]
+
+    sold_ids = [p['item_id'] for p in sold_products_list]
+    no_sales_products_qs = Products.objects.filter(is_archived=False).exclude(id__in=sold_ids).select_related('product_type', 'variant', 'size', 'size_unit')
+
+    low_sellers_list = []
+    if len(sold_products_list) > 10:
+        non_best = [p for p in sold_products_list if p['item_id'] not in best_ids]
+        low_sellers_list.extend(sorted(non_best, key=lambda x: x['total_quantity'])[:10])
+    else:
+        non_best = [p for p in sold_products_list if p['item_id'] not in best_ids]
+        low_sellers_list.extend(sorted(non_best, key=lambda x: x['total_quantity']))
+
+    remaining = 10 - len(low_sellers_list)
+    if remaining > 0 and include_no_sales:
+        for prod in no_sales_products_qs[:remaining]:
+            low_sellers_list.append({
+                'item_id': prod.id,
+                'product__product_type__name': prod.product_type.name,
+                'product__variant__name': prod.variant.name,
+                'product__size__size_label': prod.size.size_label if prod.size else '',
+                'product__size_unit__unit_name': prod.size_unit.unit_name,
+                'total_quantity': 0,
+                'total_revenue': 0,
+            })
+
+    low_sellers = low_sellers_list[:10]
+
+    total_quantity = sum(p['total_quantity'] for p in sold_products_list)
+    total_revenue = sum(p['total_revenue'] for p in sold_products_list)
+    total_products = len(sold_products_list)
+    average_revenue = (total_revenue / total_products) if total_products > 0 else 0
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    period_suffix = 'all' if filter_type == 'all' else f"{current_year}-{current_month:02d}"
+    response['Content-Disposition'] = f'attachment; filename="best_seller_analytics_{period_suffix}.csv"'
+    # Add BOM for Excel compatibility
+    response.write('\ufeff'.encode('utf8'))
+
+    writer = csv.writer(response)
+    # Header / Summary
+    writer.writerow(['Best Seller Analytics Report'])
+    period_label = 'All Time' if filter_type == 'all' else datetime(current_year, current_month, 1).strftime('%B %Y')
+    writer.writerow(['Period', period_label])
+    writer.writerow([])
+    writer.writerow(['Summary'])
+    writer.writerow(['Products Analyzed', total_products])
+    writer.writerow(['Units Sold', f"{total_quantity:.0f}"])
+    writer.writerow(['Total Revenue', f"{total_revenue:.2f}"])
+    writer.writerow(['Avg Revenue / Product', f"{average_revenue:.2f}"])
+    writer.writerow([])
+
+    # Top Sellers section
+    writer.writerow(['Top Selling Products'])
+    writer.writerow(['Rank', 'Product', 'Variant', 'Size', 'Unit', 'Total Sold', 'Total Revenue'])
+    for idx, p in enumerate(best_sellers, start=1):
+        writer.writerow([
+            f"#{idx}",
+            p['product__product_type__name'],
+            p['product__variant__name'],
+            p['product__size__size_label'],
+            p['product__size_unit__unit_name'],
+            f"{p['total_quantity']:.0f}",
+            f"{p['total_revenue']:.2f}",
+        ])
+    writer.writerow([])
+
+    # Low Sellers section
+    writer.writerow(['Low Selling / At-Risk Products'])
+    writer.writerow(['Rank', 'Product', 'Variant', 'Size', 'Unit', 'Total Sold', 'Total Revenue'])
+    for idx, p in enumerate(low_sellers, start=1):
+        writer.writerow([
+            f"#{idx}",
+            p['product__product_type__name'],
+            p['product__variant__name'],
+            p['product__size__size_label'],
+            p['product__size_unit__unit_name'],
+            f"{p['total_quantity']:.0f}",
+            f"{p['total_revenue']:.2f}",
+        ])
+    writer.writerow([])
+
+    # No-sales summary only (count)
+    writer.writerow(['Products with Zero Sales', no_sales_products_qs.count()])
+
+    return response
+
 @login_required
 def database_backup(request):
     """
@@ -7706,3 +7867,94 @@ class PriceHistoryList(ListView):
         context['query_params'] = query_params.urlencode()
         
         return context
+
+def export_price_history(request):
+    """Export Price History to CSV using the same month/show_all filters as the list view."""
+    # Base queryset
+    qs = PriceHistory.objects.all().select_related('product', 'changed_by_admin')
+
+    # Optional additional filters (keep behavior close to list view)
+    price_type = request.GET.get('price_type', '').strip()
+    if price_type:
+        qs = qs.filter(price_type=price_type)
+
+    # Month filter logic (reuse list behavior)
+    show_all = request.GET.get('show_all', '').strip()
+    date_created = request.GET.get('date_created', '').strip()
+
+    from datetime import datetime
+    if not show_all:
+        if date_created:
+            try:
+                parsed_date = datetime.strptime(date_created, "%Y-%m")
+                qs = qs.filter(
+                    changed_at__year=parsed_date.year,
+                    changed_at__month=parsed_date.month,
+                )
+            except ValueError:
+                pass
+        else:
+            now = datetime.now()
+            qs = qs.filter(changed_at__year=now.year, changed_at__month=now.month)
+
+    # Order by latest changes first
+    qs = qs.order_by('-changed_at')
+
+    # Prepare CSV response
+    response = HttpResponse(content_type='text/csv')
+    filename_suffix = date_created if date_created else ('all' if show_all else datetime.now().strftime('%Y-%m'))
+    response['Content-Disposition'] = f'attachment; filename="price_history_{filename_suffix}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Date & Time',
+        'Product',
+        'Price Type',
+        'Old Price',
+        'New Price',
+        'Change Amount',
+        'Change Percent',
+        'By',
+    ])
+
+    for ph in qs:
+        # Product string
+        product_str = str(ph.product) if getattr(ph, 'product', None) else ''
+
+        # Price type display
+        try:
+            price_type_display = ph.get_price_type_display()
+        except Exception:
+            price_type_display = ph.price_type
+
+        # Old/New price
+        old_price = ph.old_price if ph.old_price is not None else ''
+        new_price = ph.new_price
+
+        # Compute change
+        change_amount = ''
+        change_percent = ''
+        try:
+            if ph.old_price is not None and ph.old_price != 0:
+                change_amount_val = ph.new_price - ph.old_price
+                change_amount = f"{change_amount_val:.2f}"
+                change_percent_val = ((ph.new_price - ph.old_price) / ph.old_price) * 100
+                change_percent = f"{change_percent_val:.2f}%"
+        except Exception:
+            pass
+
+        # Changed by
+        changed_by = ph.changed_by_admin.username if getattr(ph, 'changed_by_admin', None) else 'System'
+
+        writer.writerow([
+            ph.changed_at.strftime('%Y-%m-%d %H:%M:%S'),
+            product_str,
+            price_type_display,
+            old_price,
+            f"{new_price:.2f}",
+            change_amount,
+            change_percent,
+            changed_by,
+        ])
+
+    return response

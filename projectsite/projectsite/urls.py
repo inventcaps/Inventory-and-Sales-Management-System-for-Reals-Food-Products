@@ -39,6 +39,7 @@ urlpatterns = [
     path("products/scan-phone/", a.product_scan_phone, name="product-scan-phone"),
     path("api/check-barcode/", a.check_barcode_availability, name="check-barcode"),
     path('price-history/', a.PriceHistoryList.as_view(), name='price-history'),
+    path('price-history/export/', a.export_price_history, name='price-history-export'),
 
     path('rawmaterials/', a.RawMaterialsList.as_view(), name='rawmaterials-list'),
     path('rawmaterials/', a.RawMaterialsList.as_view(), name='rawmaterials'),
@@ -108,6 +109,7 @@ urlpatterns = [
 
     path('product-inventory/', a.ProductInventoryList.as_view(), name='product-inventory'),
     path('best-seller-products/', a.BestSellerProductsView.as_view(), name='best-seller-products'),
+    path('best-seller-products/export/', a.export_bestseller_report, name='best-seller-products-export'),
 
     path('rawmatbatch/', a.RawMaterialBatchList.as_view(), name='rawmaterial-batch'),
     path('rawmatbatch/add', a.BulkRawMaterialBatchCreateView.as_view(), name='rawmaterial-batch-add'),

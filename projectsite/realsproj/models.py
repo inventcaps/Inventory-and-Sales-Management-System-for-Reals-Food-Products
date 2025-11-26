@@ -1368,17 +1368,13 @@ class Withdrawals(models.Model):
         return Decimal(0)
 
     def generate_receipt_number(self):
-        """Generate a unique receipt number in format: REC-YYYYMMDD-XXXXX"""
-        from django.utils import timezone
-        date_str = timezone.localtime(self.date).strftime("%Y%m%d")
-        
-        # Get the count of receipts created on this date
-        today_count = Withdrawals.objects.filter(
-            date__date=timezone.localtime(self.date).date(),
+        """Generate a unique continuous receipt number in format: REC-XXXXX"""
+        # Get the total count of all receipts with receipt_number set
+        total_count = Withdrawals.objects.filter(
             receipt_number__isnull=False
         ).count() + 1
         
-        receipt_num = f"REC-{date_str}-{today_count:05d}"
+        receipt_num = f"REC-{total_count:06d}"
         return receipt_num
 
     def save(self, *args, **kwargs):

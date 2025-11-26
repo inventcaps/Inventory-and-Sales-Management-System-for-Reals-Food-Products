@@ -27,8 +27,40 @@
                                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                                     <i class="la la-times"></i>
                                 </button>
+                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#priceHistoryReportModal">
+                                    <i class="la la-download"></i> Generate Report
+                                </button>
                             </div>
                         </form>
+
+                        <!-- Generate Report Modal -->
+                        <div class="modal fade" id="priceHistoryReportModal" tabindex="-1" aria-labelledby="priceHistoryReportModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="priceHistoryReportModalLabel">Generate Price History Report</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="form-group">
+                                            <label for="reportMonthInput">Month</label>
+                                            <input type="month" id="reportMonthInput" class="form-control" value="{% if request.GET.date_created %}{{ request.GET.date_created }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}">
+                                            <small class="form-text text-muted">Leave empty to use current month, or check 'Show all data'.</small>
+                                        </div>
+                                        <div class="form-check mt-2">
+                                            <input type="checkbox" id="reportShowAll" class="form-check-input" {% if request.GET.show_all %}checked{% endif %}>
+                                            <label class="form-check-label" for="reportShowAll">Show all data</label>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                        <button type="button" class="btn btn-primary" onclick="exportPriceHistoryReport()">
+                                            <i class="la la-file-excel-o"></i> Export CSV
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
                         <!-- Table -->
                         <div class="table-responsive">
@@ -240,11 +272,37 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-.table-responsive {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+<script>
+function exportPriceHistoryReport() {
+    const params = new URLSearchParams();
+    const month = document.getElementById('reportMonthInput') ? document.getElementById('reportMonthInput').value : '';
+    const showAll = document.getElementById('reportShowAll') ? document.getElementById('reportShowAll').checked : false;
+    const priceTypeEl = document.getElementById('priceTypeColumnFilter');
+    const priceType = priceTypeEl ? priceTypeEl.value : '';
+
+    if (showAll) {
+        params.set('show_all', 'true');
+    } else if (month) {
+        params.set('date_created', month);
+    }
+
+    if (priceType) {
+        params.set('price_type', priceType);
+    }
+
+    const url = '/price-history/export/' + (params.toString() ? ('?' + params.toString()) : '');
+    window.location.href = url;
 }
+</script>
+
+<style>
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+}
+.modal { z-index: 11000 !important; pointer-events: auto !important; }
+.modal-backdrop, .modal-backdrop.show { z-index: 10990 !important; }
+.modal * { pointer-events: auto !important; }
 .table {
   table-layout: auto;
   width: 100%;
@@ -257,4 +315,24 @@ document.addEventListener('DOMContentLoaded', function() {
   padding: 12px;
 }
 </style>
+<script>
+// Ensure modal is appended to <body> to avoid stacking-context issues; also init fallback
+document.addEventListener('DOMContentLoaded', function () {
+  var modalEl = document.getElementById('priceHistoryReportModal');
+  if (modalEl && modalEl.parentElement !== document.body) {
+    document.body.appendChild(modalEl);
+  }
+  // Bootstrap 5 programmatic init fallback
+  if (window.bootstrap && window.bootstrap.Modal && modalEl) {
+    var phModal = new bootstrap.Modal(modalEl);
+    var trigger = document.querySelector('[data-bs-target="#priceHistoryReportModal"]');
+    if (trigger) {
+      trigger.addEventListener('click', function (e) {
+        e.preventDefault();
+        phModal.show();
+      });
+    }
+  }
+});
+</script>
 {% endblock %}
