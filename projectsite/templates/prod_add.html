@@ -27,11 +27,20 @@
 
                 {% if form.errors %}
                   <div class="alert alert-danger">
-                    {{ form.errors }}
+                    {% if form.non_field_errors %}
+                      {% for error in form.non_field_errors %}
+                        <div>{{ error }}</div>
+                      {% endfor %}
+                    {% endif %}
+                    {% for field in form %}
+                      {% for error in field.errors %}
+                        <div><strong>{{ field.label }}:</strong> {{ error }}</div>
+                      {% endfor %}
+                    {% endfor %}
                   </div>
                 {% endif %}
 
-                <!-- Barcode Field (NEW) -->
+                <!-- Barcode / Product Code Fields -->
                 <div class="form-container">
                   <div class="form-item" style="width:100%;">
                     <label>Barcode <small class="text-muted">(Auto-filled by scanner)</small></label>
@@ -41,6 +50,11 @@
                           placeholder="Scan or enter barcode manually">
                     <small id="barcode-status" class="form-text text-muted">Ready to scan...</small>
                     <small id="barcode-validation" class="form-text" style="display:none;"></small>
+                  </div>
+                  <div class="form-item" style="width:100%;">
+                    <label>Product Code <small class="text-muted">(Required)</small></label>
+                    <input type="text" name="product_code" maxlength="10" class="form-control"
+                           value="{{ form.product_code.value|default:'' }}" placeholder="Enter product code">
                   </div>
                 </div>
 

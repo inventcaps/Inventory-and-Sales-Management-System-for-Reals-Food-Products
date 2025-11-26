@@ -53,6 +53,16 @@ urlpatterns = [
     path('rawmaterials/bulk-archive/', a.rawmaterial_bulk_archive, name='rawmaterial-bulk-archive'),
     path('rawmaterials/bulk-restore/', a.rawmaterial_bulk_restore, name='rawmaterials-bulk-restore'),
 
+    path('packaging-materials/', a.PackagingMaterialsList.as_view(), name='packaging-materials'),
+    path('packaging-materials/add', a.PackagingMaterialsCreateView.as_view(), name='packaging-materials-add'),
+    path('packaging-materials/<int:pk>', a.PackagingMaterialsUpdateView.as_view(), name='packaging-materials-edit'),
+    path('packaging-materials/archived/', a.ArchivedPackagingMaterialsListView.as_view(), name='packaging-archived-list'),
+
+    path('recipe-materials/', a.RecipeMaterialsList.as_view(), name='recipe-materials'),
+    path('recipe-materials/add', a.RecipeMaterialsCreateView.as_view(), name='recipe-materials-add'),
+    path('recipe-materials/<int:pk>', a.RecipeMaterialsUpdateView.as_view(), name='recipe-materials-edit'),
+    path('recipe-materials/archived/', a.ArchivedRecipeMaterialsListView.as_view(), name='recipe-archived-list'),
+
     path('historylog/', a.HistoryLogList.as_view(), name='historylog'),
     path('history/', a.HistoryLogList.as_view(), name='history_log'),  
 
@@ -217,7 +227,8 @@ urlpatterns = [
     path('stock-changes/bulk-archive/', a.stock_changes_bulk_archive, name='stock-changes-bulk-archive'),
 
     path("revenue-x-recent_sales", a.HomePageView.as_view(), name="home"),
-    path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),    
+    path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),
+    path("product-inventory/export/", a.export_product_inventory, name="product_inventory_export"),    
 
     path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),

@@ -836,6 +836,8 @@ class ProductCreateView(CreateView):
         # Check if barcode error exists
         if 'barcode' in form.errors:
             messages.error(self.request, f"❌ {form.errors['barcode'][0]}")
+        elif form.non_field_errors():
+            messages.error(self.request, f"❌ {form.non_field_errors()[0]}")
         else:
             messages.error(self.request, "❌ Please correct the errors below.")
         
@@ -945,6 +947,15 @@ class ProductsUpdateView(UpdateView):
         
         # Use get_success_url() to maintain the page number
         return redirect(self.get_success_url())
+
+    def form_invalid(self, form):
+        if 'barcode' in form.errors:
+            messages.error(self.request, f"❌ {form.errors['barcode'][0]}")
+        elif form.non_field_errors():
+            messages.error(self.request, f"❌ {form.non_field_errors()[0]}")
+        else:
+            messages.error(self.request, "❌ Please correct the errors below.")
+        return super().form_invalid(form)
 
 @receiver(pre_save, sender=Products)
 def delete_old_product_photo_on_change(sender, instance, **kwargs):
@@ -1067,6 +1078,7 @@ class RawMaterialsList(ListView):
         
         query = self.request.GET.get("q", "").strip()
         date_created = self.request.GET.get("date_created", "").strip()
+        category = self.request.GET.get("category", "").strip().upper()
 
         if query:
             queryset = queryset.filter(
@@ -1087,13 +1099,22 @@ class RawMaterialsList(ListView):
             except ValueError:
                 pass  # Ignore invalid format
 
+        if category in {"PACKAGING", "RECIPE"}:
+            queryset = queryset.filter(category__iexact=category)
+
         return queryset
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # Count all non-archived raw materials
-        total_raw_materials = RawMaterials.objects.filter(is_archived=False).count()
-        context['total_raw_materials'] = total_raw_materials
+        category = self.request.GET.get("category", "").strip().upper()
+        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
+        distinct_categories = (
+            RawMaterials.objects.filter(is_archived=False)
+            .values_list('category', flat=True)
+            .distinct()
+        )
+        context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
+        context['total_raw_materials'] = context['paginator'].count if 'paginator' in context else 0
         return context
 
 class RawMaterialArchiveView(View):
@@ -1107,7 +1128,9 @@ class RawMaterialArchiveView(View):
         
         item.is_archived = True
         item.save()  # Trigger will handle logging
-        
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('rawmaterials-list')
 
 class RawMaterialArchiveOldView(View):
@@ -1190,6 +1213,22 @@ class ArchivedRawMaterialsListView(ListView):
     def get_queryset(self):
         return RawMaterials.objects.filter(is_archived=True).order_by('-date_created')
 
+
+class ArchivedPackagingMaterialsListView(ArchivedRawMaterialsListView):
+    template_name = 'archived_packaging.html'
+
+    def get_queryset(self):
+        return (super().get_queryset()
+                .filter(category__iexact='PACKAGING'))
+
+
+class ArchivedRecipeMaterialsListView(ArchivedRawMaterialsListView):
+    template_name = 'archived_recipe.html'
+
+    def get_queryset(self):
+        return (super().get_queryset()
+                .filter(category__iexact='RECIPE'))
+
 class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
         item = get_object_or_404(RawMaterials, pk=pk)
@@ -1201,7 +1240,9 @@ class RawMaterialUnarchiveView(View):
         
         item.is_archived = False
         item.save()  # Trigger will handle logging
-        
+        next_url = request.POST.get('next')
+        if next_url:
+            return redirect(next_url)
         return redirect('rawmaterials-archived-list')
 
 class RawMaterialsCreateView(CreateView):
@@ -1298,7 +1339,88 @@ class RawMaterialsDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         messages.success(self.request, "🗑️ Raw material deleted successfully.")
+        next_url = self.request.POST.get('next')
+        if next_url:
+            return next_url
         return reverse_lazy('rawmaterials')
+
+
+class CategoryFilteredRawMaterialsList(RawMaterialsList):
+    category_value = None
+    template_name = "rawmaterial_list.html"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.category_value:
+            queryset = queryset.filter(category__iexact=self.category_value)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        if self.category_value:
+            context['total_raw_materials'] = RawMaterials.objects.filter(
+                is_archived=False,
+                category__iexact=self.category_value
+            ).count()
+        return context
+
+
+class CategoryRawMaterialsCreateView(RawMaterialsCreateView):
+    category_value = None
+
+    def form_valid(self, form):
+        if self.category_value:
+            form.instance.category = self.category_value
+        return super().form_valid(form)
+
+
+class CategoryRawMaterialsUpdateView(RawMaterialsUpdateView):
+    category_value = None
+
+    def form_valid(self, form):
+        if self.category_value:
+            form.instance.category = self.category_value
+        return super().form_valid(form)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        if self.category_value:
+            queryset = queryset.filter(category__iexact=self.category_value)
+        return queryset
+
+
+class PackagingMaterialsList(CategoryFilteredRawMaterialsList):
+    category_value = 'PACKAGING'
+    template_name = 'packaging_list.html'
+
+
+class PackagingMaterialsCreateView(CategoryRawMaterialsCreateView):
+    template_name = 'packaging_add.html'
+    success_url = reverse_lazy('packaging-materials')
+    category_value = 'PACKAGING'
+
+
+class PackagingMaterialsUpdateView(CategoryRawMaterialsUpdateView):
+    template_name = 'packaging_edit.html'
+    success_url = reverse_lazy('packaging-materials')
+    category_value = 'PACKAGING'
+
+
+class RecipeMaterialsList(CategoryFilteredRawMaterialsList):
+    category_value = 'RECIPE'
+    template_name = 'recipe_list.html'
+
+
+class RecipeMaterialsCreateView(CategoryRawMaterialsCreateView):
+    template_name = 'recipe_add.html'
+    success_url = reverse_lazy('recipe-materials')
+    category_value = 'RECIPE'
+
+
+class RecipeMaterialsUpdateView(CategoryRawMaterialsUpdateView):
+    template_name = 'recipe_edit.html'
+    success_url = reverse_lazy('recipe-materials')
+    category_value = 'RECIPE'
 
 class HistoryLogList(ListView):
     model = HistoryLog
@@ -1307,118 +1429,88 @@ class HistoryLogList(ListView):
     paginate_by = 10
 
     def get_queryset(self):
-        queryset = (
-            super()
-            .get_queryset()
-            .select_related("admin", "log_type")
-            .filter(is_archived=False)
-            .order_by("-log_date")
-        )
+        user = self.request.user
+        qs = HistoryLog.objects.select_related("admin", "log_type").filter(is_archived=False).order_by("-log_date")
 
-        # Get filter parameters
+        if not user.is_superuser:
+            qs = qs.filter(admin=user.id)
         admin_filter = self.request.GET.get("admin", "").strip()
         log_filter = self.request.GET.get("log", "").strip()
         date_str = self.request.GET.get("date", "").strip()
+        show_all = self.request.GET.get("show_all", "").strip()
 
-        # Apply admin filter
-        if admin_filter:
-            # Need to handle both active and deactivated users
-            # First try to match active users
-            active_match = queryset.filter(admin__username=admin_filter)
-            
-            # Also check for deactivated users with this original username
-            deactivated_users = AuthUser.objects.filter(
-                username__startswith='inactive_user_',
-                first_name__contains=f'ORIGINAL_USERNAME:{admin_filter}|'
-            ).values_list('id', flat=True)
-            
-            deactivated_match = queryset.filter(admin_id__in=deactivated_users)
-            
-            # Combine both querysets
-            queryset = (active_match | deactivated_match).distinct()
+        if user.is_superuser and admin_filter:
+            try:
+                admin_id = int(admin_filter)
+                qs = qs.filter(admin_id=admin_id)
+            except ValueError:
+                pass 
 
-        # Apply log type filter
         if log_filter:
-            queryset = queryset.filter(log_type__category=log_filter)
+            qs = qs.filter(log_type__category=log_filter)
 
-        # Apply date filter (month-based)
-        show_all = self.request.GET.get('show_all', '').strip()
-        
         if date_str:
             try:
-                # Convert YYYY-MM to start and end dates of the month
                 year, month = map(int, date_str.split('-'))
                 import calendar
                 last_day = calendar.monthrange(year, month)[1]
-                
+
                 start_date = timezone.make_aware(datetime(year, month, 1))
                 end_date = timezone.make_aware(datetime(year, month, last_day, 23, 59, 59))
-                
-                queryset = queryset.filter(
-                    log_date__gte=start_date,
-                    log_date__lte=end_date
-                )
-            except (ValueError, IndexError):
-                # If date format is invalid, skip the date filter
+
+                qs = qs.filter(log_date__gte=start_date, log_date__lte=end_date)
+            except Exception:
                 pass
+
         elif not show_all:
             today = timezone.now()
             import calendar
             last_day = calendar.monthrange(today.year, today.month)[1]
-            
+
             start_date = timezone.make_aware(datetime(today.year, today.month, 1))
             end_date = timezone.make_aware(datetime(today.year, today.month, last_day, 23, 59, 59))
-            
-            queryset = queryset.filter(
-                log_date__gte=start_date,
-                log_date__lte=end_date
-            )
 
-        return queryset
+            qs = qs.filter(log_date__gte=start_date, log_date__lte=end_date)
+
+        return qs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
         today = timezone.now()
         context['current_month_value'] = today.strftime("%Y-%m")
-        
-        # Get unique admins for the filter dropdowns
-        # We need to handle deactivated users properly
-        admin_usernames = set()
-        history_logs = HistoryLog.objects.filter(is_archived=False).select_related('admin')
-        
-        for log in history_logs:
-            try:
-                if log.admin:
-                    # Check if user is deactivated
-                    if log.admin.username.startswith('inactive_user_'):
-                        # Extract original username
-                        if log.admin.first_name and log.admin.first_name.startswith('ORIGINAL_USERNAME:'):
-                            parts = log.admin.first_name.split('|')
-                            original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
-                            admin_usernames.add(original_username)
-                    else:
-                        admin_usernames.add(log.admin.username)
-            except Exception:
-                pass
-        
-        context['admins'] = sorted(admin_usernames)
-        
-        context['logs'] = HistoryLog.objects.filter(
-            is_archived=False
-        ).order_by('log_type__category').values_list('log_type__category', flat=True).distinct()
-        
-        # Preserve filter parameters in pagination
-        filter_params = self.request.GET.copy()
-        if 'page' in filter_params:
-            del filter_params['page']
-        context['filter_params'] = filter_params.urlencode()
-        
-        # Add current filter values to context
-        context['current_admin'] = self.request.GET.get('admin', '')
-        context['current_log'] = self.request.GET.get('log', '')
-        context['current_date'] = self.request.GET.get('date', '')
-        
+
+        if self.request.user.is_superuser:
+
+            admin_ids = (
+                HistoryLog.objects.filter(is_archived=False)
+                .values_list("admin_id", flat=True)
+                .distinct()
+            )
+
+            admins = AuthUser.objects.filter(id__in=admin_ids)
+
+            context['admins'] = [{"id": a.id, "name": a.username} for a in admins]
+        else:
+            context['admins'] = []
+
+        context['logs'] = (
+            HistoryLog.objects.filter(is_archived=False)
+            .values_list('log_type__category', flat=True)
+            .distinct()
+            .order_by('log_type__category')
+        )
+
+        context['can_view_all_history'] = self.request.user.is_superuser
+
+        params = self.request.GET.copy()
+        params.pop("page", None)
+        context["filter_params"] = params.urlencode()
+
+        context["current_admin"] = self.request.GET.get("admin", "")
+        context["current_log"] = self.request.GET.get("log", "")
+        context["current_date"] = self.request.GET.get("date", "")
+
         return context
     
 class SaleArchiveView(View):
@@ -1900,12 +1992,17 @@ class SalesExpensesList(ListView):
         withdrawal_date_filter = self.request.GET.get("withdrawal_date_filter", "").strip()
         withdrawal_payment_status = self.request.GET.get("withdrawal_payment_status", "").strip()
         withdrawal_show_all = self.request.GET.get("withdrawal_show_all", "").strip()
+        receipt_number = self.request.GET.get("receipt_number", "").strip()
         
         withdrawal_sales_qs = Withdrawals.objects.filter(
             reason='SOLD',
             is_archived=False,
             sales_channel__in=['ORDER', 'CONSIGNMENT', 'RESELLER']
         ).select_related("created_by_admin").order_by("-date")
+        
+        # Apply receipt number filter
+        if receipt_number:
+            withdrawal_sales_qs = withdrawal_sales_qs.filter(receipt_number__icontains=receipt_number)
         
         # Apply channel filter
         if withdrawal_channel:
@@ -1961,6 +2058,7 @@ class SalesExpensesList(ListView):
                 'group_id': group_id,
                 'actual_group_id': actual_group_id,
                 'is_single': is_single,
+                'receipt_number': first_withdrawal.receipt_number,
                 'customer_name': first_withdrawal.customer_name,
                 'sales_channel': sales_channel_display,
                 'payment_status': first_withdrawal.payment_status,
@@ -2853,8 +2951,28 @@ class ProductInventoryList(ListView):
         elif status == "out_of_stock":
             queryset = queryset.filter(total_stock=0)
 
+        # Date filter based on batch_date from ProductBatches
+        batch_date_filter = self.request.GET.get("batch_date_filter", "").strip()
+        if batch_date_filter:
+            try:
+                # Parse the date filter (can be YYYY, YYYY-MM, or YYYY-MM-DD)
+                parts = batch_date_filter.split("-")
+                filters = {}
+                
+                if len(parts) >= 1 and parts[0].isdigit():
+                    filters["product__productbatches__batch_date__year"] = int(parts[0])
+                if len(parts) >= 2 and parts[1].isdigit():
+                    filters["product__productbatches__batch_date__month"] = int(parts[1])
+                if len(parts) >= 3 and parts[2].isdigit():
+                    filters["product__productbatches__batch_date__day"] = int(parts[2])
+                
+                if filters:
+                    queryset = queryset.filter(**filters).distinct()
+            except (ValueError, IndexError):
+                pass
+
         return queryset.order_by("product_id")
-    
+
     def get_context_data(self, **kwargs):
         from django.db.models import Sum
         context = super().get_context_data(**kwargs)
@@ -2864,7 +2982,6 @@ class ProductInventoryList(ListView):
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_product_stock'] = total_stock
         return context
-
 
 class RawMaterialBatchList(ListView):
     model = RawMaterialBatches
@@ -2881,25 +2998,24 @@ class RawMaterialBatchList(ListView):
             .order_by('-batch_date')
         )
 
-        query = self.request.GET.get("q", "").strip()
+        search = self.request.GET.get("search", "").strip()
         date_filter = self.request.GET.get("date_filter", "").strip()
         show_all = self.request.GET.get("show_all", "").strip()
 
-        if query:
+        if search:
             queryset = queryset.filter(
-                Q(material__name__icontains=query) |
-                Q(batch_date__icontains=query) |
-                Q(received_date__icontains=query) |
-                Q(quantity__icontains=query) |
-                Q(expiration_date__icontains=query) |
-                Q(created_by_admin__username__icontains=query)
+                Q(material__name__icontains=search) |
+                Q(batch_number__icontains=search) |
+                Q(batch_date__icontains=search)
             )
 
         if date_filter:
             try:
-                # Parse only year and month (from YYYY-MM)
                 parsed_date = datetime.strptime(date_filter, "%Y-%m")
-                queryset = queryset.filter(batch_date__year=parsed_date.year, batch_date__month=parsed_date.month)
+                queryset = queryset.filter(
+                    batch_date__year=parsed_date.year,
+                    batch_date__month=parsed_date.month
+                )
             except ValueError:
                 pass
         elif not show_all:
@@ -2916,7 +3032,6 @@ class RawMaterialBatchList(ListView):
         context['current_month_display'] = f"{month_names[today.month - 1]} {today.year}"
         context['current_month_value'] = today.strftime("%Y-%m")
         return context
-
 
 class RawMaterialBatchCreateView(CreateView):
     model = RawMaterialBatches
@@ -3089,6 +3204,7 @@ class RawMaterialInventoryList(ListView):
 
         q = self.request.GET.get("q", "").strip()
         status = self.request.GET.get("status", "").strip()
+        category = self.request.GET.get("category", "").strip().upper()
 
         if q:
             queryset = queryset.filter(
@@ -3096,6 +3212,9 @@ class RawMaterialInventoryList(ListView):
                 Q(total_stock__icontains=q) |
                 Q(reorder_threshold__icontains=q)
             )
+
+        if category in {"PACKAGING", "RECIPE"}:
+            queryset = queryset.filter(material__category__iexact=category)
 
         if status == "on_stock":
             queryset = queryset.filter(total_stock__gt=F("reorder_threshold"))
@@ -3116,6 +3235,14 @@ class RawMaterialInventoryList(ListView):
             material__is_archived=False
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
+        category = self.request.GET.get("category", "").strip().upper()
+        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
+        distinct_categories = (
+            RawMaterials.objects.filter(is_archived=False)
+            .values_list('category', flat=True)
+            .distinct()
+        )
+        context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
         return context
 
 class ProductTypeCreateView(CreateView):
@@ -4847,29 +4974,125 @@ class NotificationsList(ListView):
 # NotificationsDeleteView removed - notifications should not be deleted
 
 
+def add_months_safe(orig_date, months):
+    """
+    Add months to a date safely (handles month overflow).
+    """
+    year = orig_date.year + (orig_date.month - 1 + months) // 12
+    month = (orig_date.month - 1 + months) % 12 + 1
+    day = orig_date.day
+    # get last day of target month
+    try:
+        return date(year, month, day)
+    except ValueError:
+        # day overflow (e.g., Feb 30) -> use last day of month
+        # day=0 on next month gives last day of previous month; here we build safe:
+        # find last day by iterating backward
+        d = 28
+        while True:
+            try:
+                candidate = date(year, month, d)
+                d += 1
+            except ValueError:
+                return date(year, month, d - 1)
+
+def add_years_safe(orig_date, years):
+    """
+    Add years safely (handles Feb 29 -> Feb 28/29),
+    returns a date object.
+    """
+    try:
+        return orig_date.replace(year=orig_date.year + years)
+    except ValueError:
+        # Feb 29 on non-leap -> fallback to Feb 28
+        return orig_date.replace(year=orig_date.year + years, day=28)
+
+def compute_expiration_date(manufactured_date, is_yema=False):
+    """
+    manufactured_date: date object
+    is_yema: True => +6 months + 1 day
+             False => +1 year + 1 day
+    """
+    if not manufactured_date:
+        manufactured_date = timezone.localdate()
+
+    if is_yema:
+        # +6 months then +1 day
+        dt = add_months_safe(manufactured_date, 6)
+        dt = dt + timedelta(days=1)
+    else:
+        # +1 year then +1 day
+        dt = add_years_safe(manufactured_date, 1)
+        dt = dt + timedelta(days=1)
+    return dt
+def add_months_safe(orig_date, months):
+    # orig_date is a date object
+    year = orig_date.year + (orig_date.month - 1 + months) // 12
+    month = (orig_date.month - 1 + months) % 12 + 1
+    day = orig_date.day
+    try:
+        return date(year, month, day)
+    except ValueError:
+        # day overflow - return last day of target month
+        # find last day of month by iterating down
+        d = 28
+        while True:
+            try:
+                candidate = date(year, month, d)
+                d += 1
+            except ValueError:
+                return date(year, month, d - 1)
+
+def add_years_safe(orig_date, years):
+    try:
+        return orig_date.replace(year=orig_date.year + years)
+    except ValueError:
+        # Feb 29 -> fallback to Feb 28
+        return orig_date.replace(year=orig_date.year + years, day=28)
+
+def compute_expiration(manufactured_date, is_yema=False):
+    """
+    manufactured_date: date object
+    is_yema: True => +6 months + 1 day
+             False => +1 year + 1 day
+    """
+    if not manufactured_date:
+        manufactured_date = timezone.localdate()
+
+    if is_yema:
+        dt = add_months_safe(manufactured_date, 6)
+        dt = dt + timedelta(days=1)
+    else:
+        dt = add_years_safe(manufactured_date, 1)
+        dt = dt + timedelta(days=1)
+    return dt
+
+
 class BulkProductBatchCreateView(View):
     template_name = "prodbatch_add.html"
 
     def get(self, request):
         form = BulkProductBatchForm()
+        today = timezone.localdate().isoformat()  # "YYYY-MM-DD" for input[type=date] value
         return render(request, self.template_name, {
             'form': form,
-            'products': form.products
+            'products': form.products,
+            'today_date': today,
         })
 
     def post(self, request):
         form = BulkProductBatchForm(request.POST)
+        today = timezone.localdate().isoformat()
 
         if not form.is_valid():
             messages.error(request, "❌ Please fix the errors below before submitting.")
             return render(request, self.template_name, {
                 'form': form,
-                'products': form.products
+                'products': form.products,
+                'today_date': today,
             })
 
         batch_date = timezone.localdate()
-        manufactured_date = form.cleaned_data['manufactured_date']
-        deduct_raw_material = form.cleaned_data['deduct_raw_material']
         auth_user = get_or_create_auth_user(request.user)
 
         try:
@@ -4883,13 +5106,44 @@ class BulkProductBatchCreateView(View):
                     if not qty or float(qty) <= 0:
                         continue
 
+                    manufactured_field = f'product_{product.id}_manufactured'
+                    expiration_field = f'product_{product.id}_expiration'
+
+                    manufactured_date = form.cleaned_data.get(manufactured_field)
+                    expiration_date = form.cleaned_data.get(expiration_field)
+
+                    # manufactured_date should be a date object (if your form parsed it).
+                    # If it's a string, convert:
+                    if isinstance(manufactured_date, str):
+                        manufactured_date = timezone.datetime.strptime(manufactured_date, "%Y-%m-%d").date()
+
+                    if isinstance(expiration_date, str):
+                        expiration_date = timezone.datetime.strptime(expiration_date, "%Y-%m-%d").date()
+
+                    # Auto compute expiration if blank
+                    is_yema = getattr(product, "product_type_id", None) == 7
+
+                    if not expiration_date:
+                        expiration_date = compute_expiration(manufactured_date, is_yema=is_yema)
+
+                    # Ensure expiration >= manufactured
+                    if expiration_date < manufactured_date:
+                        expiration_date = manufactured_date
+
+                    product_code = (getattr(product, 'product_code', '') or '').strip().upper()
+                    if not product_code:
+                        raise ValueError(f"❌ Product '{product}' is missing a product code. Please set one before creating batches.")
+
+                    batch_code = f"{manufactured_date.strftime('%m%d%y')}{product_code}"
+
                     ProductBatches.objects.create(
                         product=product,
                         quantity=qty,
                         batch_date=batch_date,
                         manufactured_date=manufactured_date,
+                        expiration_date=expiration_date,
+                        batch_code=batch_code,
                         created_by_admin=auth_user,
-                        deduct_raw_material=deduct_raw_material,
                     )
                     added_any = True
 
@@ -4898,21 +5152,12 @@ class BulkProductBatchCreateView(View):
 
         except Exception as e:
             error_message = str(e)
-
-            if "Not enough stock" in error_message:
-                error_message = error_message.split("CONTEXT:")[0].strip()
-            elif "insufficient" in error_message.lower():
-                error_message = "❌ Insufficient raw materials to create this batch."
-            elif "No product quantities" in error_message:
-                error_message = "⚠️ No product quantities were entered."
-            else:
-                error_message = f"❌ {error_message}"
-
-            messages.error(request, error_message)
-
+            # keep your existing error handling logic if needed
+            messages.error(request, f"❌ {error_message}")
             return render(request, self.template_name, {
                 'form': form,
-                'products': form.products
+                'products': form.products,
+                'today_date': today,
             })
 
         messages.success(request, "✅ Product Batch added successfully.")
@@ -4923,7 +5168,8 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
     template_name = "rawmatbatch_add.html"
 
     def get(self, request):
-        form = BulkRawMaterialBatchForm()
+        category = request.GET.get('category', 'PACKAGING')
+        form = BulkRawMaterialBatchForm(initial={'category': category})
         return render(request, self.template_name, {'form': form, 'raw_materials': form.rawmaterials})
 
     def get_queryset(self):
@@ -5429,7 +5675,7 @@ Real's Food Products Security Team'''
         send_mail(
             subject=subject,
             message=message,
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[user.email],
             fail_silently=True,
         )
@@ -5633,7 +5879,7 @@ def login_view(request):
                             send_mail(
                                 subject='🔐 Account Confirmation Required - Real\'s Food Products',
                                 message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 10 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
-                                from_email=settings.EMAIL_HOST_USER,
+                                from_email=settings.DEFAULT_FROM_EMAIL,
                                 recipient_list=[user.email],
                                 fail_silently=False,
                             )
@@ -5745,7 +5991,7 @@ You will receive another email once your account has been approved. After approv
 If you have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=True,
                 )
@@ -5870,7 +6116,7 @@ Login URL: {request.build_absolute_uri('/login/')}
 Welcome to the team!
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,
             )
@@ -5912,7 +6158,7 @@ If you believe this was a mistake or have any questions, please contact the admi
 Thank you for your interest.
 
 Real's Food Products Team''',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[user_email],
                 fail_silently=True,
             )
@@ -5935,6 +6181,51 @@ Real's Food Products Team''',
         return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+def send_role_change_email_async(username, email, new_role):
+    """Send role change email in background thread"""
+    from django.core.mail import send_mail
+    from django.conf import settings
+    
+    try:
+        if new_role == 'Administrator':
+            subject = '🎉 Congratulations! You\'ve Been Promoted to Administrator'
+            message = f'''Hello {username},
+
+Great news! You have been promoted to Administrator by an administrator.
+
+Your new role: Administrator
+- You now have full access to all system features
+- You can manage users, approve registrations, and configure system settings
+- Please log out and log back in to see the updated interface
+
+If you have any questions, please contact the system administrator.
+
+Real's Food Products Team'''
+        else:  # Demoted to Staff
+            subject = '📋 Role Change: You\'ve Been Demoted to Staff'
+            message = f'''Hello {username},
+
+Your account role has been changed to Staff by an administrator.
+
+Your new role: Staff
+- You have standard user access to the system
+- Please log out and log back in to see the updated interface
+
+If you believe this was a mistake or have any questions, please contact the administrator.
+
+Real's Food Products Team'''
+        
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+        print(f"[ROLE CHANGE] Email sent to {email} - New role: {new_role}")
+    except Exception as e:
+        print(f"[ROLE CHANGE ERROR] Failed to send email: {e}")
 
 @login_required
 @require_http_methods(["POST"])
@@ -5959,6 +6250,14 @@ def toggle_user_role(request, user_id):
             new_role = 'Administrator'
         
         user.save()
+        
+        # Send role change email asynchronously (non-blocking)
+        email_thread = threading.Thread(
+            target=send_role_change_email_async,
+            args=(user.username, user.email, new_role)
+        )
+        email_thread.daemon = True
+        email_thread.start()
         
         # Don't force logout here - let the JavaScript polling detect the role change
         # and show the appropriate modal before logging out
@@ -6057,7 +6356,7 @@ You will no longer be able to log in until your account is reactivated.
 If you believe this was a mistake or have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
@@ -6084,7 +6383,7 @@ Username: {username}
 If you have any questions, please contact the administrator.
 
 Real's Food Products Team''',
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[email],
             fail_silently=True,
         )
@@ -6356,7 +6655,7 @@ For security reasons, we recommend:
 Thank you for keeping your account secure.
 
 Real's Food Products Security Team''',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
                     fail_silently=False,
                 )
@@ -6426,7 +6725,122 @@ def export_sales(request):
     writer.writerow(['', 'TOTAL SALES', total_sales])
     return response
 
+
 @login_required
+def export_product_inventory(request):
+    queryset = ProductInventory.objects.select_related(
+        "product",
+        "product__product_type",
+        "product__variant",
+        "product__size",
+        "product__size_unit",
+    ).filter(product__is_archived=False)
+
+    search = request.GET.get("search", "").strip()
+    if search:
+        queryset = queryset.filter(
+            Q(product__product_type__name__icontains=search)
+            | Q(product__variant__name__icontains=search)
+            | Q(product__size__size_label__icontains=search)
+        )
+
+    status = request.GET.get("status", "")
+    if status == "on_stock":
+        queryset = queryset.filter(total_stock__gt=F("restock_threshold"))
+    elif status == "low_stock":
+        queryset = queryset.filter(total_stock__lt=F("restock_threshold"), total_stock__gt=0)
+    elif status == "warning":
+        queryset = queryset.filter(total_stock=F("restock_threshold"))
+    elif status == "out_of_stock":
+        queryset = queryset.filter(total_stock=0)
+
+    # Date filter based on batch_date from ProductBatches
+    batch_date_filter = request.GET.get("batch_date_filter", "").strip()
+    batch_date_filter_year = request.GET.get("batch_date_filter_year", "").strip()
+    batch_date_filter_month = request.GET.get("batch_date_filter_month", "").strip()
+    batch_date_filter_day = request.GET.get("batch_date_filter_day", "").strip()
+    
+    # Use individual year/month/day parameters if provided, otherwise use combined filter
+    if batch_date_filter_year or batch_date_filter_month or batch_date_filter_day:
+        filters = {}
+        if batch_date_filter_year and batch_date_filter_year.isdigit():
+            filters["product__productbatches__batch_date__year"] = int(batch_date_filter_year)
+        if batch_date_filter_month and batch_date_filter_month.isdigit():
+            filters["product__productbatches__batch_date__month"] = int(batch_date_filter_month)
+        if batch_date_filter_day and batch_date_filter_day.isdigit():
+            filters["product__productbatches__batch_date__day"] = int(batch_date_filter_day)
+        
+        if filters:
+            queryset = queryset.filter(**filters).distinct()
+    elif batch_date_filter:
+        try:
+            # Parse the date filter (can be YYYY, YYYY-MM, or YYYY-MM-DD)
+            parts = batch_date_filter.split("-")
+            filters = {}
+            
+            if len(parts) >= 1 and parts[0].isdigit():
+                filters["product__productbatches__batch_date__year"] = int(parts[0])
+            if len(parts) >= 2 and parts[1].isdigit():
+                filters["product__productbatches__batch_date__month"] = int(parts[1])
+            if len(parts) >= 3 and parts[2].isdigit():
+                filters["product__productbatches__batch_date__day"] = int(parts[2])
+            
+            if filters:
+                queryset = queryset.filter(**filters).distinct()
+        except (ValueError, IndexError):
+            pass
+
+    timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
+
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="product_inventory_{timestamp}.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        'Product Type',
+        'Variant',
+        'Size',
+        'Size Unit',
+        'Current Stock',
+        'Restock Threshold',
+        'Status'
+    ])
+
+    def status_label(item):
+        if item.total_stock == 0:
+            return 'Out of Stock'
+        if item.total_stock < item.restock_threshold:
+            return 'Low Stock'
+        if item.total_stock == item.restock_threshold:
+            return 'Warning'
+        return 'On Stock'
+
+    queryset = queryset.order_by(
+        'product__product_type__name',
+        'product__variant__name',
+        'product__size__size_label'
+    )
+
+    for inventory in queryset:
+        product = inventory.product
+        size_label = product.size.size_label if product.size else 'N/A'
+        size_unit = product.size_unit.unit_name if product.size_unit else 'N/A'
+        writer.writerow([
+            product.product_type.name,
+            product.variant.name,
+            size_label,
+            size_unit,
+            float(inventory.total_stock),
+            float(inventory.restock_threshold),
+            status_label(inventory)
+        ])
+
+    total_stock = queryset.aggregate(total=Sum('total_stock'))['total'] or 0
+    writer.writerow([])
+    writer.writerow(['', '', 'TOTAL STOCK', '', float(total_stock), '', ''])
+
+    return response
+
 def export_expenses(request):
     # Restrict to superusers only
     if not request.user.is_superuser:
@@ -7156,7 +7570,7 @@ If you did not enable this feature, please contact support immediately.
 Thank you for keeping your account secure!
 
 Real's Food Products Security Team''',
-                        from_email=django_settings.EMAIL_HOST_USER,
+                        from_email=django_settings.DEFAULT_FROM_EMAIL,
                         recipient_list=[email_to],
                         fail_silently=True,
                     )
@@ -7201,7 +7615,7 @@ This code will expire in 5 minutes.
 If you did not request this, please ignore this email.
 
 Real's Food Products Security Team''',
-                from_email=django_settings.EMAIL_HOST_USER,
+                from_email=django_settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[email_to],
                 fail_silently=False,
             )

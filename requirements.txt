@@ -16,29 +16,11 @@ django-widget-tweaks==1.5.0
 
 # Utilities
 python-decouple==3.8
+dj-database-url==2.1.0
+Pillow==10.4.0
+# Email - HTTP API (bypasses SMTP blocks)
+requests==2.31.0
+sendgrid==6.11.0
 
 # ASGI/WSGI Server for Production
 gunicorn==23.0.0
-
-# Additional Dependencies
-asgiref==3.8.1
-attrs==24.2.0
-autobahn==24.4.2
-Automat==24.8.1
-cffi==1.17.1
-constantly==23.10.4
-cryptography==44.0.0
-hyperlink==21.0.0
-idna==3.10
-incremental==24.7.2
-pyasn1==0.6.1
-pyasn1_modules==0.4.1
-pycparser==2.22
-service-identity==24.2.0
-six==1.17.0
-sqlparse==0.5.2
-Twisted==24.11.0
-txaio==23.1.1
-typing_extensions==4.12.2
-tzdata==2024.2
-zope.interface==7.1.1

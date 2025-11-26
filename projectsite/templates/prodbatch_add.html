@@ -1,5 +1,7 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 {% load static %}
+{% load humanize %}
+
 {% block content %}
 <div class="content">
   <div class="container-fluid">
@@ -14,73 +16,67 @@
       <div class="card-header">
         <div class="card-title">Bulk Add Product Batches</div>
       </div>
+
       <div class="card-body">
         <form method="post">
           {% csrf_token %}
+
+          <!-- Scanner Status (keeps UI from your screenshot) -->
+          <div class="text-dark mb-3">
+            <span id="scanner-status" class="badge badge-danger">Disconnected</span>
+          </div>
 
           <!-- Products Table -->
           <div class="mt-3">
             <h5>Products</h5>
 
-          <!-- Scanner Status -->
-          <div class="text-dark mb-3">
-          
-            <span id="scanner-status" class="badge badge-secondary">Connecting...</span>
-          </div>
-
-          <!-- Batch Details -->
-          <div class="row mb-4">
-            <div class="col-md-6">
-              <div class="form-group">
-                <label for="{{ form.manufactured_date.id_for_label }}" class="font-weight-bold">Manufactured Date</label>
-                <input type="date" 
-                       id="{{ form.manufactured_date.id_for_label }}" 
-                       name="{{ form.manufactured_date.name }}" 
-                       class="form-control" 
-                       placeholder="Select Manufactured Date"
-                       value="{{ form.manufactured_date.value|default:'' }}">
-              </div>
-            </div>
-            <div class="col-md-6">
-              <div class="form-group">
-                <label class="font-weight-bold d-block">Options</label>
-                <div class="d-flex align-items-center" style="height: calc(1.5em + 0.75rem + 2px);">
-                  <div class="form-check mb-0">
-                    <input type="checkbox" 
-                           name="{{ form.deduct_raw_material.name }}" 
-                           id="{{ form.deduct_raw_material.id_for_label }}"
-                           class="form-check-input green-checkbox"
-                           style="margin-top: 0;"
-                           {% if form.deduct_raw_material.value %}checked{% endif %}>
-                    <label class="form-check-label" for="{{ form.deduct_raw_material.id_for_label }}" style="margin-left: 0.5rem; cursor: pointer;">
-                      Deduct Raw Materials
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
             <table class="table table-bordered">
               <thead>
                 <tr>
                   <th>Product</th>
                   <th>Current Stock</th>
                   <th>Quantity</th>
+                  <th>Manufactured Date</th>
+                  <th>Expiration Date</th>
                 </tr>
               </thead>
+
               <tbody>
                 {% for p in products %}
-                <tr data-barcode="{{ p.product.barcode }}">
-                  <td>{{ p.product }}</td>
+                <tr data-product-id="{{ p.product.id }}" data-barcode="{{ p.product.barcode }}">
+                  <td>
+                    <div class="d-flex flex-column">
+                      <span>{{ p.product }}</span>
+                    </div>
+                  </td>
+
                   <td>{{ p.product.productinventory.total_stock|floatformat:0 }}</td>
-                  <td>{{ p.qty_field }}</td>
+
+                  <td>
+                    {{ p.qty_field }}
+                  </td>
+
+                  <td>
+                    <input type="date"
+                           name="product_{{ p.product.id }}_manufactured"
+                           class="form-control manufactured-input"
+                           data-product-id="{{ p.product.id }}"
+                           value="{{ today_date }}">
+                  </td>
+
+                  <td>
+                    <input type="date"
+                           name="product_{{ p.product.id }}_expiration"
+                           class="form-control expiration-input"
+                           data-product-id="{{ p.product.id }}"
+                           data-is-yema="{% if p.product.product_type_id == 7 %}true{% else %}false{% endif %}">
+                  </td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
 
-          <!-- Submit Button -->
           <div class="form-group mt-3">
             <button type="submit" class="btn btn-success btn-rounded">Save</button>
           </div>
@@ -90,169 +86,105 @@
   </div>
 </div>
 
-<!-- Beep Sound (NEW) -->
-<audio id="beep-sound" preload="auto">
-  <source src="https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg" type="audio/ogg">
-</audio>
-
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-  const manufacturedDateInput = document.getElementById('{{ form.manufactured_date.id_for_label }}');
-  if (manufacturedDateInput && !manufacturedDateInput.value) {
-    const today = new Date().toISOString().split('T')[0];
-    manufacturedDateInput.value = today;
-  }
+  // ISO YYYY-MM-DD
+  const today = new Date().toISOString().split("T")[0];
 
-  const statusBadge = document.getElementById("scanner-status");
-  const beepSound = document.getElementById("beep-sound");
-  
-  let socket = null;
-  let reconnectTimer = null;
+  // Safely add months handling month overflow
+  function addMonthsSafe(dateObj, months) {
+    const d = new Date(dateObj.getTime());
+    const day = d.getDate();
+    d.setMonth(d.getMonth() + months);
 
-  function updateStatus(text, className) {
-    statusBadge.textContent = text;
-    statusBadge.className = `badge ${className}`;
-  }
-
-  function playBeep() {
-    if (beepSound) {
-      beepSound.currentTime = 0;
-      beepSound.play().catch(err => console.log("Audio blocked:", err));
+    // If month overflowed, set to last day of previous month
+    if (d.getDate() < day) {
+      d.setDate(0);
     }
+    return d;
   }
 
-  function flashRow(row) {
-    row.style.backgroundColor = "#d4edda";
-    setTimeout(() => {
-      row.style.backgroundColor = "";
-    }, 800);
-  }
+  // Compute expiration:
+  // Yema -> +6 months +1 day
+  // Normal -> +1 year +1 day (handle Feb 29 safely)
+  function computeExpiration(mdateStr, isYema) {
+    if (!mdateStr) return "";
+    const base = new Date(mdateStr);
+    if (isNaN(base.getTime())) return "";
 
-  function connectWebSocket() {
-    if (socket) {
-      socket.close();
+    let result;
+    if (isYema) {
+      result = addMonthsSafe(base, 6);
+      result.setDate(result.getDate() + 1);
+    } else {
+      // attempt to add one year safely
+      const y = base.getFullYear() + 1;
+      const m = base.getMonth();
+      const d = base.getDate();
+      result = new Date(base.getTime());
+      result.setFullYear(y);
+      // if month shifted (e.g., Feb 29 -> Mar 1), move to last day of target month then add 1 day
+      if (result.getMonth() !== m) {
+        // last day of original month in target year:
+        result = new Date(y, m + 1, 0);
+      }
+      result.setDate(result.getDate() + 1);
     }
 
-    const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-    const wsUrl = `${protocol}${window.location.host}/ws/scan/`;
-
-    console.log("🔌 Connecting to:", wsUrl);
-    updateStatus("Connecting...", "badge-warning");
-
-    socket = new WebSocket(wsUrl);
-
-    socket.onopen = function() {
-      console.log("✅ Scanner connected");
-      updateStatus("Connected", "badge-success");
-      
-      if (reconnectTimer) {
-        clearTimeout(reconnectTimer);
-        reconnectTimer = null;
-      }
-    };
-
-    socket.onmessage = function(e) {
-      try {
-        const data = JSON.parse(e.data);
-        const barcode = data.barcode;
-
-        if (!barcode) return;
-
-        console.log("📦 Scanned barcode:", barcode);
-
-        // Find the row with matching barcode
-        const row = document.querySelector(`tr[data-barcode="${barcode}"]`);
-        
-        if (row) {
-          // Find the quantity input in that row
-          const qtyInput = row.querySelector('input[type="number"]');
-          
-          if (qtyInput) {
-            // Increment quantity
-            const currentQty = parseInt(qtyInput.value) || 0;
-            qtyInput.value = currentQty + 1;
-            
-            // Visual feedback
-            flashRow(row);
-            playBeep();
-            
-            // Focus the input briefly
-            qtyInput.focus();
-            setTimeout(() => qtyInput.blur(), 200);
-          }
-        } else {
-          console.warn("⚠️ Product not found for barcode:", barcode);
-          // Optional: show a toast notification here
-        }
-
-      } catch (err) {
-        console.error("❌ Error processing scan:", err);
-      }
-    };
-
-    socket.onclose = function(e) {
-      console.log("🔌 Disconnected:", e.code);
-      updateStatus("Disconnected", "badge-danger");
-
-      // Auto-reconnect after 3 seconds
-      if (!reconnectTimer) {
-        reconnectTimer = setTimeout(() => {
-          console.log("🔄 Reconnecting...");
-          connectWebSocket();
-        }, 3000);
-      }
-    };
-
-    socket.onerror = function(err) {
-      console.error("⚠️ WebSocket error:", err);
-      updateStatus("Error", "badge-danger");
-    };
+    return result.toISOString().split("T")[0];
   }
 
-  // Start connection
-  connectWebSocket();
+  // Initialize: manufactured default to today, expiration default computed
+  document.querySelectorAll(".manufactured-input").forEach(m => {
+    if (!m.value) m.value = today;
 
-  // Cleanup
-  window.addEventListener("beforeunload", function() {
-    if (socket) socket.close();
-    if (reconnectTimer) clearTimeout(reconnectTimer);
+    const pid = m.dataset.productId;
+    const exp = document.querySelector(`.expiration-input[data-product-id="${pid}"]`);
+    if (!exp) return;
+    const isYema = exp.dataset.isYema === "true";
+    if (!exp.value) {
+      exp.value = computeExpiration(m.value, isYema);
+    } else {
+      // ensure expiration >= manufactured
+      if (exp.value < m.value) exp.value = m.value;
+    }
+  });
+
+  // When manufactured changes: recompute expiration if the user hasn't manually edited it
+  document.querySelectorAll(".manufactured-input").forEach(m => {
+    m.addEventListener("change", () => {
+      const pid = m.dataset.productId;
+      const exp = document.querySelector(`.expiration-input[data-product-id="${pid}"]`);
+      if (!exp) return;
+      const isYema = exp.dataset.isYema === "true";
+
+      // if user hasn't edited expiration (or it's blank), auto update
+      if (!exp.dataset.userEdited) {
+        exp.value = computeExpiration(m.value, isYema);
+      }
+
+      if (exp.value < m.value) exp.value = m.value;
+    });
+
+    m.addEventListener("input", () => {
+      // mark manufactured input as edited (not strictly required but safe)
+      m.dataset.userEdited = m.value ? "true" : "";
+    });
+  });
+
+  // Expiration is editable for all products. Prevent expiration < manufactured
+  document.querySelectorAll(".expiration-input").forEach(e => {
+    e.addEventListener("change", () => {
+      const pid = e.dataset.productId;
+      const m = document.querySelector(`.manufactured-input[data-product-id="${pid}"]`);
+      e.dataset.userEdited = e.value ? "true" : "";
+      if (m && e.value < m.value) e.value = m.value;
+    });
+
+    e.addEventListener("input", () => {
+      e.dataset.userEdited = e.value ? "true" : "";
+    });
   });
 });
 </script>
-
-<style>
-/* Smooth transitions for row highlighting */
-tr {
-  transition: background-color 0.3s ease;
-}
-
-#scanner-status {
-  font-size: 0.9rem;
-  padding: 0.4rem 0.8rem;
-}
-
-.green-checkbox {
-  width: 20px;
-  height: 20px;
-  cursor: pointer;
-  accent-color: #28a745;
-}
-
-.green-checkbox:checked {
-  background-color: #28a745;
-  border-color: #28a745;
-}
-
-.form-check-label {
-  cursor: pointer;
-  font-size: 1rem;
-  margin-left: 8px;
-  user-select: none;
-}
-
-.col-md-6 .form-group label.font-weight-bold {
-  color: #495057;
-  margin-bottom: 0.5rem;
-}
-</style>
 {% endblock %}
