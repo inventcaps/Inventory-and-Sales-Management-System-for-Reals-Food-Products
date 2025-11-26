@@ -37,7 +37,9 @@
                     <th>Item ID</th>
                     <th>Quantity</th>
                     <th>Reason</th>
+                    {% if user.is_superuser %}
                     <th>Withdrawn By</th>
+                    {% endif %}
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -52,7 +54,9 @@
                     <td>{{ object.get_item_display }}</td>
                     <td>{{ object.quantity }}</td>
                     <td>{{ object.get_reason_display }}</td>
+                    {% if user.is_superuser %}
                     <td>{{ object.created_by_admin.username }}</td>
+                    {% endif %}
                     <td>
                       <a href="#" data-toggle="modal" data-target="#unarchiveWithdrawalModal{{ object.id }}" class="text-success" title="Unarchive">
                         <i class="la la-undo la-lg"></i>
@@ -61,7 +65,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="8" class="text-center text-muted">No archived withdrawals found.</td>
+                    <td colspan="{% if user.is_superuser %}8{% else %}7{% endif %}" class="text-center text-muted">No archived withdrawals found.</td>
                   </tr>
                   {% endfor %}
                 </tbody>
