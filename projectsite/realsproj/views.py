@@ -586,7 +586,7 @@ class ProductsList(ListView):
             if filters:
                 queryset = queryset.filter(**filters)
 
-        return queryset
+        return queryset.order_by('-date_created')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1093,7 +1093,7 @@ class RawMaterialsList(ListView):
         if category in {"PACKAGING", "RECIPE"}:
             queryset = queryset.filter(category__iexact=category)
 
-        return queryset
+        return queryset.order_by('-date_created')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1463,7 +1463,7 @@ class HistoryLogList(ListView):
 
             qs = qs.filter(log_date__gte=start_date, log_date__lte=end_date)
 
-        return qs
+        return qs.order_by('-log_date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1683,7 +1683,6 @@ class SalesExpensesList(ListView):
             # Show all data - no date filter
             pass
         elif date_filter:
-            # Filter by selected month
             try:
                 year_str, month_str = date_filter.split("-")
                 year = int(year_str)
@@ -1699,7 +1698,7 @@ class SalesExpensesList(ListView):
             qs = qs.filter(date__year=today.year, date__month=today.month)
 
         self._full_queryset = qs
-        return qs
+        return qs.order_by('-date')
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -2009,7 +2008,7 @@ class SalesExpensesList(ListView):
                 month_num = int(month_str.lstrip("0"))
                 withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=year, date__month=month_num)
             except ValueError:
-                # Default to current month if invalid format
+                # If invalid format, default to current month
                 today = timezone.now()
                 withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=today.year, date__month=today.month)
         else:
@@ -2031,6 +2030,7 @@ class SalesExpensesList(ListView):
         withdrawal_orders = []
         for group_id, withdrawals in grouped_orders.items():
             first_withdrawal = withdrawals[0]
+            
             # Check if this is a real order group or a single withdrawal
             is_single = isinstance(group_id, str) and group_id.startswith('single_')
             actual_group_id = group_id if not is_single else None
@@ -2699,9 +2699,8 @@ class ProductBatchList(ListView):
             .get_queryset()
             .select_related("product", "created_by_admin")
             .filter(is_archived=False)
-            .order_by('-batch_date')
         )
-
+        
         search = self.request.GET.get("search", "").strip()
         date_filter = self.request.GET.get("date_filter", "").strip()
         show_all = self.request.GET.get("show_all", "").strip()
@@ -2730,8 +2729,10 @@ class ProductBatchList(ListView):
                 batch_date__month=today.month
             )
 
-        return queryset
-    
+        # 🔥 Sort newest batches first
+        return queryset.order_by('-batch_date')
+
+        
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
@@ -5031,7 +5032,8 @@ class BulkProductBatchCreateView(View):
             })
 
         batch_date = timezone.localdate()
-        manufactured_date = form.cleaned_data['manufactured_date']
+        default_manufactured = form.cleaned_data.get('manufactured_date') or timezone.localdate()
+        default_expiration = form.cleaned_data.get('expiration_date')
         auth_user = get_or_create_auth_user(request.user)
 
         try:
@@ -5045,6 +5047,12 @@ class BulkProductBatchCreateView(View):
                     if not qty or float(qty) <= 0:
                         continue
 
+                    manufactured_field_name = f'product_{product.id}_manufactured'
+                    expiration_field_name = f'product_{product.id}_expiration'
+
+                    manufactured_date = form.cleaned_data.get(manufactured_field_name) or default_manufactured
+                    expiration_date = form.cleaned_data.get(expiration_field_name) or default_expiration
+
                     product_code = (product.product_code or '').strip().upper()
                     if not product_code:
                         raise ValueError(f"❌ Product '{product}' is missing a product code. Please set one before creating batches.")
@@ -5056,6 +5064,7 @@ class BulkProductBatchCreateView(View):
                         quantity=qty,
                         batch_date=batch_date,
                         manufactured_date=manufactured_date,
+                        expiration_date=expiration_date,
                         batch_code=batch_code,
                         created_by_admin=auth_user,
                     )

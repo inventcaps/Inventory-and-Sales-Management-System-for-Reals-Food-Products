@@ -1,23 +1,26 @@
 from django.forms import ModelForm
 from django import forms
 from datetime import timedelta
+from calendar import monthrange
 
 from django.utils import timezone
+
 from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, ProductRecipes, Withdrawals
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
-from decimal import Decimal, InvalidOperation
+
+# ... (rest of the code remains the same)
 
 class ProductsForm(forms.ModelForm):
     # ADD THIS - Barcode field
     barcode = forms.CharField(
-        required=False,  # Optional, in case manual entry
+        required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Scan or enter barcode',
-            'id': 'barcode-input'  # Important for WebSocket
+            'id': 'barcode-input'
         })
     )
 
@@ -28,7 +31,7 @@ class ProductsForm(forms.ModelForm):
             'placeholder': 'Enter product code'
         })
     )
-    
+
     product_type = forms.CharField(
         widget=forms.TextInput(attrs={'list': 'product_type-options'}))
     variant = forms.CharField(
@@ -49,18 +52,17 @@ class ProductsForm(forms.ModelForm):
         widgets = {
             'size_unit': forms.Select(attrs={'class': 'form-control'}),
         }
-            
+
     def __init__(self, *args, **kwargs):
         self.created_by_admin = kwargs.pop('created_by_admin', None)
         super().__init__(*args, **kwargs)
 
-        if self.instance.pk:  
+        if self.instance.pk:
             self.fields['product_type'].initial = self.instance.product_type.name
             self.fields['variant'].initial = self.instance.variant.name
             self.fields['size'].initial = self.instance.size.size_label if self.instance.size else ''
             self.fields['unit_price'].initial = self.instance.unit_price.unit_price
             self.fields['srp_price'].initial = self.instance.srp_price.srp_price
-            # ADD THIS - for edit mode
             self.fields['barcode'].initial = self.instance.barcode
             self.fields['product_code'].initial = self.instance.product_code
 
@@ -69,30 +71,26 @@ class ProductsForm(forms.ModelForm):
             self.initial['size'] = self.fields['size'].initial
             self.initial['unit_price'] = self.fields['unit_price'].initial
             self.initial['srp_price'] = self.fields['srp_price'].initial
-            # ADD THIS
             self.initial['barcode'] = self.fields['barcode'].initial
             self.initial['product_code'] = self.fields['product_code'].initial
 
-    # ADD THIS - Clean barcode method
     def clean_barcode(self):
         barcode = self.cleaned_data.get('barcode', '').strip()
-        
-        # If empty on edit, keep existing barcode instead of clearing it
+
         if not barcode:
             if self.instance and self.instance.pk:
                 return self.instance.barcode
             return barcode
-        
-        # Check for duplicate barcode (exclude current instance if editing)
+
         qs = Products.objects.filter(barcode=barcode)
         if self.instance.pk:
             qs = qs.exclude(pk=self.instance.pk)
-        
+
         if qs.exists():
             raise forms.ValidationError(
                 f"Barcode '{barcode}' is already used by another product."
             )
-        
+
         return barcode
 
     def clean_product_code(self):
@@ -114,7 +112,7 @@ class ProductsForm(forms.ModelForm):
 
     def clean_product_type(self):
         name = self.cleaned_data['product_type'].strip()
-        obj, created = ProductTypes.objects.get_or_create(
+        obj, _ = ProductTypes.objects.get_or_create(
             name=name,
             defaults={'created_by_admin': self.created_by_admin}
         )
@@ -122,7 +120,7 @@ class ProductsForm(forms.ModelForm):
 
     def clean_variant(self):
         name = self.cleaned_data['variant'].strip()
-        obj, created = ProductVariants.objects.get_or_create(
+        obj, _ = ProductVariants.objects.get_or_create(
             name=name,
             defaults={'created_by_admin': self.created_by_admin}
         )
@@ -132,20 +130,17 @@ class ProductsForm(forms.ModelForm):
         name = self.cleaned_data['size'].strip()
         if not name:
             return None
-        
-        # Try to get existing size (case-insensitive)
+
         try:
             obj = Sizes.objects.get(size_label__iexact=name)
         except Sizes.DoesNotExist:
-            # Create new if doesn't exist
             obj = Sizes.objects.create(
                 size_label=name,
                 created_by_admin=self.created_by_admin
             )
         except Sizes.MultipleObjectsReturned:
-            # If duplicates exist, use the first one
             obj = Sizes.objects.filter(size_label__iexact=name).first()
-        
+
         return obj
 
     def clean_unit_price(self):
@@ -154,7 +149,6 @@ class ProductsForm(forms.ModelForm):
             unit_price=price,
             defaults={'created_by_admin': self.created_by_admin}
         )
-        # If existing record has no created_by_admin, update it
         if not created and not obj.created_by_admin and self.created_by_admin:
             obj.created_by_admin = self.created_by_admin
             obj.save()
@@ -166,7 +160,6 @@ class ProductsForm(forms.ModelForm):
             srp_price=price,
             defaults={'created_by_admin': self.created_by_admin}
         )
-        # If existing record has no created_by_admin, update it
         if not created and not obj.created_by_admin and self.created_by_admin:
             obj.created_by_admin = self.created_by_admin
             obj.save()
@@ -175,7 +168,6 @@ class ProductsForm(forms.ModelForm):
     def clean(self):
         cleaned_data = super().clean()
 
-        # If other field-level errors exist, skip duplicate validation for now
         if self.errors:
             return cleaned_data
 
@@ -186,7 +178,6 @@ class ProductsForm(forms.ModelForm):
         unit_price = cleaned_data.get('unit_price')
         srp_price = cleaned_data.get('srp_price')
 
-        # Only perform duplicate check if the core attributes are present
         required_fields = [product_type, variant, size_unit, unit_price, srp_price]
         if any(field is None for field in required_fields):
             return cleaned_data
@@ -210,10 +201,12 @@ class ProductsForm(forms.ModelForm):
 
         return cleaned_data
 
+
 class ProductRecipeForm(forms.ModelForm):
     class Meta:
         model = ProductRecipes
         fields = ["material", "quantity_needed", "yield_factor"]
+
 
 class RawMaterialsForm(ModelForm):
     CATEGORY_CHOICES = (
@@ -227,7 +220,7 @@ class RawMaterialsForm(ModelForm):
     class Meta:
         model = RawMaterials
         field_order = ["name", "size", "unit", "price_per_unit", "category"]
-        exclude = ['created_by_admin', 'date_created', 'is_archived'] 
+        exclude = ['created_by_admin', 'date_created', 'is_archived']
         widgets = {
             'expiration_date': forms.DateInput(attrs={'type': 'date'}),
         }
@@ -236,10 +229,12 @@ class RawMaterialsForm(ModelForm):
         value = self.cleaned_data.get('category', 'PACKAGING')
         return (value or 'PACKAGING').upper()
 
+
 class HistoryLogForm(ModelForm):
     class Meta:
         model = HistoryLog
         fields = "__all__"
+
 
 class SalesForm(ModelForm):
     class Meta:
@@ -250,6 +245,7 @@ class SalesForm(ModelForm):
             'date': forms.DateInput(attrs={'type': 'date'}),
         }
 
+
 class ExpensesForm(ModelForm):
     class Meta:
         model = Expenses
@@ -259,9 +255,8 @@ class ExpensesForm(ModelForm):
             'date': forms.DateInput(attrs={'type': 'date'}),
         }
 
+
 class SalesExpensesForm(forms.Form):
-    """Combined form for adding sales with expenses"""
-    # Sales fields
     sales_category = forms.CharField(
         max_length=255,
         label='Sales Category',
@@ -282,8 +277,7 @@ class SalesExpensesForm(forms.Form):
         label='Sales Description',
         widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter Sales Description', 'rows': 3})
     )
-    
-    # Expenses field
+
     total_expenses = forms.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -295,17 +289,17 @@ class SalesExpensesForm(forms.Form):
         label='Expenses Description',
         widget=forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'Enter Expenses Description (Optional)', 'rows': 3})
     )
-    
+
     def clean(self):
         cleaned_data = super().clean()
         sales_amount = cleaned_data.get('sales_amount')
         total_expenses = cleaned_data.get('total_expenses')
-        
-        if sales_amount and total_expenses:
-            if total_expenses > sales_amount:
-                self.add_error('total_expenses', 'Expenses cannot exceed sales amount.')
-        
+
+        if sales_amount and total_expenses and total_expenses > sales_amount:
+            self.add_error('total_expenses', 'Expenses cannot exceed sales amount.')
+
         return cleaned_data
+
 
 class ProductBatchForm(ModelForm):
 
@@ -316,25 +310,21 @@ class ProductBatchForm(ModelForm):
             'quantity',
             'batch_date',
             'manufactured_date',
-            'expiration_date',
             'batch_code',
         ]
         widgets = {
             'product': forms.Select(attrs={'class': 'form-control'}),
             'batch_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'manufactured_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'batch_code': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Auto-generated (MMDDYY + Product Code)'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter out archived products
         self.fields['product'].queryset = Products.objects.filter(is_archived=False)
         self.fields['batch_code'].required = False
         self.fields['batch_code'].disabled = True
-        self.fields['expiration_date'].required = False
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -355,6 +345,7 @@ class ProductInventoryForm(ModelForm):
             'restock_threshold': forms.NumberInput(attrs={'min': 0}),
         }
 
+
 class RawMaterialBatchForm(ModelForm):
     class Meta:
         model = RawMaterialBatches
@@ -366,11 +357,11 @@ class RawMaterialBatchForm(ModelForm):
             'received_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter out archived raw materials
         self.fields['material'].queryset = RawMaterials.objects.filter(is_archived=False)
+
 
 class RawMaterialInventoryForm(ModelForm):
     class Meta:
@@ -381,35 +372,42 @@ class RawMaterialInventoryForm(ModelForm):
             'reorder_threshold': forms.NumberInput(attrs={'min': 0}),
         }
 
+
 class ProductTypesForm(ModelForm):
     class Meta:
         model = ProductTypes
         fields = "__all__"
+
 
 class ProductVariantsForm(ModelForm):
     class Meta:
         model = ProductVariants
         fields = "__all__"
 
+
 class SizesForm(ModelForm):
     class Meta:
         model = Sizes
         fields = "__all__"
+
 
 class SizeUnitsForm(ModelForm):
     class Meta:
         model = SizeUnits
         fields = "__all__"
 
+
 class UnitPricesForm(ModelForm):
     class Meta:
         model = UnitPrices
         fields = "__all__"
 
+
 class SrpPricesForm(ModelForm):
     class Meta:
         model = SrpPrices
         fields = "__all__"
+
 
 class WithdrawEditForm(forms.ModelForm):
     SALES_CHANNEL_CHOICES = [
@@ -486,7 +484,7 @@ class WithdrawEditForm(forms.ModelForm):
         model = Withdrawals
         fields = [
             'item_id', 'quantity', 'reason', 'sales_channel', 'customer_name',
-            'payment_status', 'paid_amount', 'price_type_or_custom', 
+            'payment_status', 'paid_amount', 'price_type_or_custom',
             'discount', 'custom_discount_value',
         ]
 
@@ -518,13 +516,11 @@ class WithdrawEditForm(forms.ModelForm):
             self.fields['item_id'].choices = products + materials
 
         if self.instance.pk:
-            # Set initial values for price
             if self.instance.price_type:
                 self.fields['price_type_or_custom'].initial = self.instance.price_type
             elif self.instance.custom_price:
                 self.fields['price_type_or_custom'].initial = str(self.instance.custom_price)
-            
-            # Set initial values for new fields
+
             if self.instance.customer_name:
                 self.fields['customer_name'].initial = self.instance.customer_name
             if self.instance.payment_status:
@@ -582,12 +578,10 @@ class WithdrawEditForm(forms.ModelForm):
             try:
                 custom_price = Decimal(str(price_input))
                 instance.custom_price = custom_price
-                instance.price_type = None
             except (ValueError, TypeError, InvalidOperation):
                 price_upper = str(price_input).upper().strip()
                 if price_upper in dict(self.PRICE_TYPE_CHOICES):
                     instance.price_type = price_upper
-                    instance.custom_price = None
 
         discount_obj = self.cleaned_data.get("discount")
         custom_discount = self.cleaned_data.get("custom_discount_value")
@@ -602,6 +596,7 @@ class WithdrawEditForm(forms.ModelForm):
             instance.save()
 
         return instance
+
 
 class UnifiedWithdrawForm(forms.Form):
     ITEM_TYPE_CHOICES = [
@@ -641,7 +636,6 @@ class UnifiedWithdrawForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Filter out archived products
         self.fields['item'].choices = [(p.id, str(p)) for p in Products.objects.filter(is_archived=False)]
 
     def clean(self):
@@ -664,10 +658,12 @@ class UnifiedWithdrawForm(forms.Form):
 
         return cleaned_data
 
+
 class NotificationsForm(forms.ModelForm):
     class Meta:
         model = Notifications
         fields = "__all__"
+
 
 class BulkProductBatchForm(forms.Form):
     """
@@ -678,11 +674,9 @@ class BulkProductBatchForm(forms.Form):
 
     manufactured_date = forms.DateField(
         required=False,
-        
-        required=False,
         widget=forms.DateInput(attrs={'type': 'date'})
-    
     )
+
     expiration_date = forms.DateField(
         required=False,
         widget=forms.DateInput(attrs={'type': 'date'})
@@ -692,9 +686,9 @@ class BulkProductBatchForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.products = []
 
-        today = timezone.localdate()
-
+        # Filter out archived products
         for product in Products.objects.filter(is_archived=False).order_by('id'):
+
             qty_field_name = f'product_{product.id}_qty'
             manufactured_field_name = f'product_{product.id}_manufactured'
             expiration_field_name = f'product_{product.id}_expiration'
@@ -717,10 +711,10 @@ class BulkProductBatchForm(forms.Form):
             # Manufactured field with default = today
             self.fields[manufactured_field_name] = forms.DateField(
                 required=False,
-                initial=today,
+                initial=timezone.localdate(),
                 widget=forms.DateInput(attrs={
                     'type': 'date',
-                    'class': 'form-control product-manufactured',
+                    'class': 'form-control product-manufactured manufactured-input',
                     'data-product-id': str(product.id),
                     'data-field-type': 'manufactured',
                     'data-is-yema': 'true' if is_yema else 'false'
@@ -728,14 +722,11 @@ class BulkProductBatchForm(forms.Form):
             )
 
             # Compute default expiration
-            if is_yema:
-                expiration_initial = today + timedelta(days=182)  # ~6 months
-            else:
-                expiration_initial = today + timedelta(days=365)  # 1 year
+            expiration_initial = self._calculate_expiration(timezone.localdate(), is_yema)
 
             expiration_attrs = {
                 'type': 'date',
-                'class': 'form-control product-expiration',
+                'class': 'form-control product-expiration expiration-input',
                 'data-product-id': str(product.id),
                 'data-field-type': 'expiration',
                 'data-is-yema': 'true' if is_yema else 'false'
@@ -766,17 +757,30 @@ class BulkProductBatchForm(forms.Form):
         ])).lower()
         return 'yema' in product_text
 
+    def _add_months_safe(self, date_obj, months):
+        month_index = date_obj.month - 1 + months
+        year = date_obj.year + month_index // 12
+        month = month_index % 12 + 1
+        day = min(date_obj.day, monthrange(year, month)[1])
+        return date_obj.replace(year=year, month=month, day=day)
+
+    def _calculate_expiration(self, manufactured_value, is_yema):
+        months_to_add = 6 if is_yema else 12
+        base_expiration = self._add_months_safe(manufactured_value, months_to_add)
+        return base_expiration + timedelta(days=1)
+
     def clean(self):
-        """
-        Validate and compute manufactured/expiration for each product.
-        """
         cleaned_data = super().clean()
-        default_manufactured = cleaned_data.get('manufactured_date') or timezone.localdate()
+        default_manufactured = cleaned_data.get('manufactured_date')
         default_expiration = cleaned_data.get('expiration_date')
 
-        # Ensure default expiration >= default manufactured
-        if default_expiration and default_expiration < default_manufactured:
-            self.add_error('expiration_date', 'Default expiration cannot be before default manufactured date.')
+        if default_manufactured:
+            if default_expiration and default_expiration < default_manufactured:
+                self.add_error('expiration_date', 'Expiration date cannot be before the manufactured date.')
+        elif default_expiration:
+            self.add_error('manufactured_date', 'Please provide a manufactured date to use as default for all products.')
+        else:
+            default_manufactured = timezone.localdate()
 
         for product_info in self.products:
             product = product_info["product"]
@@ -790,30 +794,39 @@ class BulkProductBatchForm(forms.Form):
             if not qty or float(qty) <= 0:
                 continue
 
-            manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured
-            if not manufactured_value:
-                self.add_error(manufactured_field_name, 'Please set a manufactured date for this product or use the default above.')
-                continue
+            manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured or timezone.localdate()
 
             expiration_value = cleaned_data.get(expiration_field_name)
+
             if is_yema:
-                expiration_value = manufactured_value + timedelta(days=182)
-            elif not expiration_value:
-                expiration_value = default_expiration or (manufactured_value + timedelta(days=365))
+                expiration_value = self._calculate_expiration(manufactured_value, True)
+            elif expiration_value:
+                if expiration_value < manufactured_value:
+                    self.add_error(expiration_field_name, 'Expiration date cannot be before the manufactured date.')
+                    continue
+            elif default_expiration:
+                expiration_value = default_expiration
+            else:
+                expiration_value = self._calculate_expiration(manufactured_value, False)
 
             if expiration_value < manufactured_value:
-                self.add_error(expiration_field_name, 'Expiration date cannot be before manufactured date.')
+                self.add_error(expiration_field_name, 'Expiration date cannot be before the manufactured date.')
                 continue
 
-            # Save computed values back to cleaned_data
             cleaned_data[manufactured_field_name] = manufactured_value
             cleaned_data[expiration_field_name] = expiration_value
 
         # Also ensure top-level defaults exist
         cleaned_data['manufactured_date'] = default_manufactured
-        cleaned_data['expiration_date'] = default_expiration or (default_manufactured + timedelta(days=365))
+        if default_expiration:
+            cleaned_data['expiration_date'] = default_expiration
+        elif default_manufactured:
+            cleaned_data['expiration_date'] = self._calculate_expiration(default_manufactured, False)
+        else:
+            cleaned_data['expiration_date'] = None
 
-        return cleaned_data
+
+# ... (rest of the code remains the same)
 
 class BulkRawMaterialBatchForm(forms.Form):
     CATEGORY_CHOICES = (
