@@ -49,8 +49,8 @@
 
               <!-- Export Dropdown -->
               <div class="dropdown d-inline">
-                <button class="btn btn-primary btn-rounded dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                  <i class="la la-download"></i> Export
+                <button class="btn btn-success btn-rounded dropdown-toggle" type="button" id="exportDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                  <i class="la la-download mr-1"></i> Export Report
                 </button>
                 <div class="dropdown-menu" aria-labelledby="exportDropdown">
                   <a class="dropdown-item" href="#" data-toggle="modal" data-target="#exportSalesModal">
@@ -187,12 +187,12 @@
                       </a>
                       &nbsp;&nbsp;
                       <a href="#" class="text-warning archive-btn" title="Archive" 
-                         onclick="openArchiveModal({{ object.id }}, '{{ object.category }}', '{{ object.amount }}'); return false;">
+                         onclick="openArchiveModal({{ object.id }}, '{{ object.category|escapejs }}', '{{ object.amount|escapejs }}'); return false;">
                         <i class="la la-archive la-lg"></i>
                       </a>
                       &nbsp;&nbsp;
                       <a href="#" class="text-danger delete-btn" title="Delete"
-                         onclick="openDeleteModal({{ object.id }}, '{{ object.category }}', '{{ object.amount }}', '{{ object.date|date:'Y-m-d' }}'); return false;">
+                         onclick="openDeleteModal({{ object.id }}, '{{ object.category|escapejs }}', '{{ object.amount|escapejs }}', '{{ object.date|date:"Y-m-d"|escapejs }}'); return false;">
                         <i class="la la-trash la-lg"></i>
                       </a>
                     </td>
