@@ -4098,11 +4098,27 @@ class WithdrawItemView(View):
                         if reason == "REPLACEMENT_FOR_RETURNED":
                             print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
                         
-                        inv.total_stock -= quantity
-                        inv.save()
-                        
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: Inventory updated. New stock: {inv.total_stock}")
+                        # If withdrawing expired products, mark the batches as expired
+                        if reason == "EXPIRED":
+                            remaining_qty = quantity
+                            # Get batches ordered by expiration date (earliest first)
+                            # Include all non-archived batches, prioritize those that have expired
+                            expired_batches = ProductBatches.objects.filter(
+                                product=product,
+                                is_archived=False
+                            ).exclude(
+                                is_expired=True
+                            ).order_by('expiration_date')
+                            
+                            for batch in expired_batches:
+                                if remaining_qty <= 0:
+                                    break
+                                if batch.quantity > 0:
+                                    deduct_qty = min(batch.quantity, remaining_qty)
+                                    batch.quantity -= deduct_qty
+                                    batch.is_expired = True
+                                    batch.save()
+                                    remaining_qty -= deduct_qty
                         
                         count += 1
                     except Exception as e:

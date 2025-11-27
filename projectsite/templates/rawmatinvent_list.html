@@ -102,13 +102,11 @@
                       </td>
                       <td>{{ item.reorder_threshold|floatformat:0 }}</td>
                       <td class="col-status">
-                        {% if reorder_status.needs_reorder %}
-                          {% if reorder_status.available_stock == 0 %}
-                            <span class="badge bg-danger">Out of Stock</span>
-                          {% else %}
-                            <span class="badge bg-warning text-dark">Low Stock</span>
-                          {% endif %}
-                        {% elif reorder_status.available_stock == item.reorder_threshold %}
+                        {% if item.total_stock == 0 %}
+                          <span class="badge bg-danger">Out of Stock</span>
+                        {% elif item.total_stock < item.reorder_threshold %}
+                          <span class="badge bg-warning text-dark">Low Stock</span>
+                        {% elif item.total_stock == item.reorder_threshold %}
                           <span class="badge bg-info text-dark">Warning</span>
                         {% else %}
                           <span class="badge bg-success">On Stock</span>
