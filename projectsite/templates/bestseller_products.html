@@ -161,6 +161,42 @@
                     <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                         <i class="la la-times"></i>
                     </button>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bestsellerReportModal">
+                        <i class="la la-download"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Generate Report Modal -->
+        <div class="modal fade" id="bestsellerReportModal" tabindex="-1" aria-labelledby="bestsellerReportLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="bestsellerReportLabel">Generate Bestseller Analytics Report</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="reportMonthInput">Month</label>
+                            <input type="month" id="reportMonthInput" class="form-control" value="{% if request.GET.month %}{{ request.GET.month }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}">
+                            <small class="form-text text-muted">Leave empty to use current month, or check 'Show all data'.</small>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" id="reportShowAll" class="form-check-input" {% if request.GET.show_all %}checked{% endif %}>
+                            <label class="form-check-label" for="reportShowAll">Show all data</label>
+                        </div>
+                        <div class="form-check mt-2">
+                            <input type="checkbox" id="reportIncludeZeroSales" class="form-check-input">
+                            <label class="form-check-label" for="reportIncludeZeroSales">Include products with zero sales</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" onclick="exportBestsellerReport()">
+                            <i class="la la-file-excel-o"></i> Export CSV
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -268,12 +304,57 @@
 </div>
 
 <script src="{% static 'js/bestseller_filter.js' %}"></script>
+<script>
+function exportBestsellerReport() {
+    const params = new URLSearchParams();
+    const monthEl = document.getElementById('reportMonthInput');
+    const showAllEl = document.getElementById('reportShowAll');
+    const includeZeroEl = document.getElementById('reportIncludeZeroSales');
+    const month = monthEl ? monthEl.value : '';
+    const showAll = showAllEl ? showAllEl.checked : false;
+    const includeZero = includeZeroEl ? includeZeroEl.checked : false;
+
+    if (showAll) {
+        params.set('show_all', 'true');
+    } else if (month) {
+        params.set('month', month);
+    }
+
+    if (includeZero) {
+        params.set('include_no_sales', 'true');
+    }
+
+    const url = '/best-seller-products/export/' + (params.toString() ? ('?' + params.toString()) : '');
+    window.location.href = url;
+}
+
+// Ensure modal attaches to <body> and initialize programmatically as fallback
+document.addEventListener('DOMContentLoaded', function () {
+    var modalEl = document.getElementById('bestsellerReportModal');
+    if (modalEl && modalEl.parentElement !== document.body) {
+        document.body.appendChild(modalEl);
+    }
+    if (window.bootstrap && window.bootstrap.Modal && modalEl) {
+        var modal = new bootstrap.Modal(modalEl);
+        var trigger = document.querySelector('[data-bs-target="#bestsellerReportModal"]');
+        if (trigger) {
+            trigger.addEventListener('click', function (e) {
+                e.preventDefault();
+                modal.show();
+            });
+        }
+    }
+});
+</script>
 <style>
     .kanga-analytics-card {
         border: none;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
         border-radius: 1rem;
     }
+    /* Modal stacking to ensure clickability */
+    .modal { z-index: 11000 !important; }
+    .modal-backdrop, .modal-backdrop.show { z-index: 10990 !important; }
     
     /* Metric Cards */
     .kanga-metric {
