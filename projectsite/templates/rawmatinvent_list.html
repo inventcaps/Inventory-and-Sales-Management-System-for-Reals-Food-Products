@@ -53,6 +53,9 @@
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#rawmatReportModal">
+                  <i class="la la-download"></i> Generate Report
+                </button>
               </div>
 
               <!-- Table -->
@@ -135,6 +138,45 @@
   </div>
 </div>
 
+<!-- Generate Report Modal -->
+<div class="modal fade" id="rawmatReportModal" tabindex="-1" aria-labelledby="rawmatReportLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="rawmatReportLabel">Generate Raw Materials Inventory Report</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label for="reportCategorySelect">Category</label>
+          <select id="reportCategorySelect" class="form-control">
+            <option value="" {% if not category_filter %}selected{% endif %}>All Categories</option>
+            {% for category in category_choices %}
+              <option value="{{ category|upper }}" {% if category_filter == category|upper %}selected{% endif %}>{{ category|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-2">
+          <label for="reportStatusSelect">Status</label>
+          <select id="reportStatusSelect" class="form-control">
+            <option value="" {% if not request.GET.status %}selected{% endif %}>All</option>
+            <option value="on_stock" {% if request.GET.status == 'on_stock' %}selected{% endif %}>On Stock</option>
+            <option value="low_stock" {% if request.GET.status == 'low_stock' %}selected{% endif %}>Low Stock</option>
+            <option value="warning" {% if request.GET.status == 'warning' %}selected{% endif %}>Warning</option>
+            <option value="out_of_stock" {% if request.GET.status == 'out_of_stock' %}selected{% endif %}>Out of Stock</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="exportRawMatInventoryReport()">
+          <i class="la la-file-excel-o"></i> Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+  </div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
@@ -142,6 +184,10 @@ document.addEventListener('DOMContentLoaded', function() {
   const categoryFilter = document.getElementById('categoryFilter');
   const tableBody = document.getElementById('inventoryTableBody');
   const pagination = document.querySelector('.pagination-container');
+  const modalEl = document.getElementById('rawmatReportModal');
+  if (modalEl && modalEl.parentNode !== document.body) {
+    document.body.appendChild(modalEl);
+  }
   
   let timeout;
   
@@ -235,6 +281,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 });
+
+function exportRawMatInventoryReport() {
+  const params = new URLSearchParams();
+  const category = (document.getElementById('reportCategorySelect') || {}).value || '';
+  const status = (document.getElementById('reportStatusSelect') || {}).value || '';
+  if (category) params.set('category', category);
+  if (status) params.set('status', status);
+  const url = '/rawmaterial-inventory/export/' + (params.toString() ? ('?' + params.toString()) : '');
+  window.location.href = url;
+}
 </script>
 
 <style>
@@ -253,5 +309,7 @@ document.addEventListener('DOMContentLoaded', function() {
   vertical-align: top;
   padding: 12px;
 }
+.modal { z-index: 1060; }
+.modal-backdrop { z-index: 1055; }
 </style>
 {% endblock %}
