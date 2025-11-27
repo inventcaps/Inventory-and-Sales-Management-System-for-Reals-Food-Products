@@ -307,35 +307,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-<<<<<<< HEAD
-  const monthInput = document.getElementById('exportMonth');
-=======
   const exportModal = document.getElementById('exportInventoryModal');
   if (exportModal && exportModal.parentNode !== document.body) {
     document.body.appendChild(exportModal);
   }
 
-  const filterTypeSelect = document.getElementById('exportFilterType');
-  const dateFilterOptions = document.getElementById('dateFilterOptions');
-
-  // Show/hide date filter options based on selection
-  filterTypeSelect.addEventListener('change', function() {
-    if (this.value === 'by_date') {
-      dateFilterOptions.style.display = 'block';
-    } else {
-      dateFilterOptions.style.display = 'none';
-      // Clear date inputs when switching to "All Records"
-      document.getElementById('exportYear').value = '';
-      document.getElementById('exportMonth').value = '';
-      document.getElementById('exportDay').value = '';
-    }
-  });
-
-  // Check if date filters are already set and show the date options
-  const year = document.getElementById('exportYear').value;
-  const month = document.getElementById('exportMonth').value;
-  const day = document.getElementById('exportDay').value;
->>>>>>> 1a38a0aaab3e535f84d41e01675623888e7c7725
+  const monthInput = document.getElementById('exportMonth');
   
   // Set default month to current month if not set
   if (!monthInput.value) {

@@ -129,9 +129,9 @@ import os
 DATABASES = {
    'default': {
        'ENGINE': 'django.db.backends.postgresql',
-       'NAME': 'r_local',
+       'NAME': 'reals_db_reals',
        'USER': 'postgres',
-       'PASSWORD': 'root',
+       'PASSWORD': 'admin',
        'HOST': 'localhost',
        'PORT': '5432',
    }
