@@ -274,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Export Inventory Modal -->
 <div class="modal fade" id="exportInventoryModal" tabindex="-1" role="dialog" aria-labelledby="exportInventoryModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="exportInventoryModalLabel">Export Inventory Data</h5>
@@ -316,7 +316,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-success btn-rounded">
             <i class="la la-download mr-1"></i> Export CSV
           </button>
         </div>
@@ -327,6 +327,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  const exportModal = document.getElementById('exportInventoryModal');
+  if (exportModal && exportModal.parentNode !== document.body) {
+    document.body.appendChild(exportModal);
+  }
+
   const filterTypeSelect = document.getElementById('exportFilterType');
   const dateFilterOptions = document.getElementById('dateFilterOptions');
 
