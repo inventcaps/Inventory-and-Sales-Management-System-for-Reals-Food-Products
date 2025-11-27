@@ -2749,6 +2749,29 @@ class ProductBatchCreateView(CreateView):
     form_class = ProductBatchForm
     template_name = 'prodbatch_add.html'
     success_url = reverse_lazy('product-batch')
+    
+    def form_valid(self, form):
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        form.instance.created_by_admin = auth_user
+        response = super().form_valid(form)
+        
+        # Update ProductInventory total_stock with sum of all non-archived, non-expired batches
+        product = form.instance.product
+        total_qty = ProductBatches.objects.filter(
+            product=product,
+            is_archived=False,
+            is_expired=False
+        ).aggregate(total=Sum('quantity'))['total'] or Decimal(0)
+        
+        try:
+            inv = ProductInventory.objects.get(product=product)
+            inv.total_stock = total_qty
+            inv.save()
+            messages.success(self.request, f"✅ Product Batch created successfully. Total stock updated to {total_qty}.")
+        except ProductInventory.DoesNotExist:
+            messages.warning(self.request, "⚠️ Product Batch created but inventory record not found.")
+        
+        return response
 
 class ProductBatchUpdateView(UpdateView):
     model = ProductBatches
@@ -2759,8 +2782,25 @@ class ProductBatchUpdateView(UpdateView):
     def form_valid(self, form):
         auth_user = AuthUser.objects.get(id=self.request.user.id)
         form.instance.created_by_admin = auth_user
-        messages.success(self.request, "✅ Product Batch updated successfully.")
-        return super().form_valid(form)
+        response = super().form_valid(form)
+        
+        # Update ProductInventory total_stock with sum of all non-archived, non-expired batches
+        product = form.instance.product
+        total_qty = ProductBatches.objects.filter(
+            product=product,
+            is_archived=False,
+            is_expired=False
+        ).aggregate(total=Sum('quantity'))['total'] or Decimal(0)
+        
+        try:
+            inv = ProductInventory.objects.get(product=product)
+            inv.total_stock = total_qty
+            inv.save()
+            messages.success(self.request, "✅ Product Batch updated successfully. Total stock synced.")
+        except ProductInventory.DoesNotExist:
+            messages.warning(self.request, "⚠️ Product Batch updated but inventory record not found.")
+        
+        return response
 
     def form_invalid(self, form):
         messages.error(self.request, "❌ Failed to update Product Batch. Please check the form.")
@@ -2973,8 +3013,10 @@ class ProductInventoryList(ListView):
         if hasattr(inventory_list, 'object_list'):
             inventory_list = inventory_list.object_list
         
+        # Ensure reorder_status is added to ALL items
         for inv in inventory_list:
-            inv.reorder_status = inv.get_reorder_status()
+            if not hasattr(inv, 'reorder_status') or inv.reorder_status is None:
+                inv.reorder_status = inv.get_reorder_status()
         
         # Calculate total stock across all non-archived products
         total_stock = ProductInventory.objects.filter(

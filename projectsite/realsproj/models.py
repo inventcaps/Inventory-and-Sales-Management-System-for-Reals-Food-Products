@@ -919,11 +919,13 @@ class ProductInventory(models.Model):
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
         # Get batches that are NOT expiring soon
+        # is_expired can be NULL or False (not True)
         available_batches = ProductBatches.objects.filter(
             product=self.product,
             is_archived=False,
-            is_expired=False,
             expiration_date__gt=expiration_cutoff
+        ).exclude(
+            is_expired=True
         ).aggregate(total=Sum('quantity'))
         
         available = available_batches['total'] or Decimal(0)
@@ -940,16 +942,21 @@ class ProductInventory(models.Model):
             Decimal: Quantity expiring soon
         """
         from django.utils import timezone
+        from django.db.models import Q
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches expiring within the timeframe
+        # Get batches expiring within the timeframe (including today)
+        # Must exclude NULL expiration_date values and only include non-archived batches
+        # is_expired can be NULL or False (not True)
         expiring_batches = ProductBatches.objects.filter(
             product=self.product,
             is_archived=False,
-            is_expired=False,
+            expiration_date__isnull=False,
             expiration_date__lte=expiration_cutoff,
-            expiration_date__gt=today
+            expiration_date__gte=today
+        ).exclude(
+            is_expired=True
         ).aggregate(total=Sum('quantity'))
         
         expiring = expiring_batches['total'] or Decimal(0)
@@ -1095,11 +1102,13 @@ class RawMaterialInventory(models.Model):
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
         # Get batches that are NOT expiring soon
+        # is_expired can be NULL or False (not True)
         available_batches = RawMaterialBatches.objects.filter(
             material=self.material,
             is_archived=False,
-            is_expired=False,
             expiration_date__gt=expiration_cutoff
+        ).exclude(
+            is_expired=True
         ).aggregate(total=Sum('quantity'))
         
         available = available_batches['total'] or Decimal(0)
@@ -1119,13 +1128,17 @@ class RawMaterialInventory(models.Model):
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches expiring within the timeframe
+        # Get batches expiring within the timeframe (including today)
+        # Must exclude NULL expiration_date values and only include non-archived batches
+        # is_expired can be NULL or False (not True)
         expiring_batches = RawMaterialBatches.objects.filter(
             material=self.material,
             is_archived=False,
-            is_expired=False,
+            expiration_date__isnull=False,
             expiration_date__lte=expiration_cutoff,
-            expiration_date__gt=today
+            expiration_date__gte=today
+        ).exclude(
+            is_expired=True
         ).aggregate(total=Sum('quantity'))
         
         expiring = expiring_batches['total'] or Decimal(0)

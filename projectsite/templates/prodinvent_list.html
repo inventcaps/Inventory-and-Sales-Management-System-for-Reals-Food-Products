@@ -107,35 +107,37 @@
 
                 <tbody id="inventoryTableBody">
                   {% for object in product_inventory %}
+                  {% with reorder_status=object.get_reorder_status %}
                   <tr>
                     <td>{{ object.product.product_code }}</td>
                     <td>{{ object.product }}</td>
                     <td>{{ object.total_stock|floatformat:0 }}</td>
                     <td>
-                      <span class="badge bg-info">{{ object.reorder_status.available_stock|floatformat:0 }}</span>
+                      <span class="badge bg-info">{{ reorder_status.available_stock|floatformat:0 }}</span>
                     </td>
                     <td>
-                      {% if object.reorder_status.expiring_stock > 0 %}
-                        <span class="badge bg-warning text-dark">{{ object.reorder_status.expiring_stock|floatformat:0 }}</span>
+                      {% if reorder_status.expiring_stock > 0 %}
+                        <span class="badge bg-warning text-dark">{{ reorder_status.expiring_stock|floatformat:0 }}</span>
                       {% else %}
                         <span class="badge bg-light text-dark">0</span>
                       {% endif %}
                     </td>
                     <td>{{ object.restock_threshold|floatformat:0 }}</td>
                     <td class="col-status">
-                      {% if object.reorder_status.needs_reorder %}
-                        {% if object.reorder_status.available_stock == 0 %}
+                      {% if reorder_status.needs_reorder %}
+                        {% if reorder_status.available_stock == 0 %}
                           <span class="badge bg-danger">Out of Stock</span>
                         {% else %}
                           <span class="badge bg-warning text-dark">Low Stock</span>
                         {% endif %}
-                      {% elif object.reorder_status.available_stock == object.restock_threshold %}
+                      {% elif reorder_status.available_stock == object.restock_threshold %}
                         <span class="badge bg-info text-dark">Warning</span>
                       {% else %}
                         <span class="badge bg-success">On Stock</span>
                       {% endif %}
                     </td>
                   </tr>
+                  {% endwith %}
                   {% empty %}
                   <tr>
                     <td colspan="7" class="text-center">No inventory found.</td>

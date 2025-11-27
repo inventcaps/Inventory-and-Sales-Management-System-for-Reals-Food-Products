@@ -310,12 +310,14 @@ class ProductBatchForm(ModelForm):
             'quantity',
             'batch_date',
             'manufactured_date',
+            'expiration_date',
             'batch_code',
         ]
         widgets = {
             'product': forms.Select(attrs={'class': 'form-control'}),
             'batch_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'manufactured_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'batch_code': forms.TextInput(attrs={'class': 'form-control', 'readonly': 'readonly', 'placeholder': 'Auto-generated (MMDDYY + Product Code)'}),
         }
