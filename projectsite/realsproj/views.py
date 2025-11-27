@@ -6871,12 +6871,37 @@ def export_product_inventory(request):
     elif status == "out_of_stock":
         queryset = queryset.filter(total_stock=0)
 
-    timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
+    # Get month parameter and filter by batch creation date
+    month_param = request.GET.get("month", "").strip()
+    filename_suffix = month_param if month_param else timezone.localtime().strftime("%Y-%m")
+    
+    # Filter by batches created in the selected month OR include all products with 0 stock
+    if month_param:
+        try:
+            year, month = month_param.split('-')
+            year = int(year)
+            month = int(month)
+            # Filter products that have batches created in the specified month OR have 0 stock
+            from django.db.models import Q as DjangoQ
+            queryset = queryset.filter(
+                DjangoQ(
+                    product__productbatches__batch_date__year=year,
+                    product__productbatches__batch_date__month=month,
+                    product__productbatches__is_archived=False
+                ) | DjangoQ(total_stock=0)
+            ).distinct()
+        except (ValueError, AttributeError):
+            pass
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="product_inventory_{timestamp}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="product_inventory_{filename_suffix}.csv"'
 
     writer = csv.writer(response)
+    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Month', month_param if month_param else 'Current Month'])
+    writer.writerow(['Filters', f"search={search}", f"status={status}"])
+    writer.writerow([])
+    
     writer.writerow([
         'Product Type',
         'Variant',
