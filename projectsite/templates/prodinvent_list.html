@@ -12,8 +12,8 @@
             <div>
               <div class="card-title">List of Product Stock</div>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#exportInventoryModal">
-              <i class="la la-download mr-1"></i> Generate Inventory Report
+            <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#exportInventoryModal">
+              <i class="la la-download mr-1"></i> Export Report
             </button>
           </div>
 
@@ -46,34 +46,6 @@
                   class="form-control" style="width: 350px;"
                   value="{{ request.GET.search }}"
                   placeholder="Search Product Type, Variant, or Size...">
-                
-                <!-- Date Filter Inputs -->
-                <div class="d-flex align-items-center" style="gap:0.3rem;">
-                  <label for="yearFilter" style="margin-bottom: 0; font-weight: 500;">Year:</label>
-                  <input type="number" id="yearFilter" name="batch_date_filter_year" 
-                    class="form-control" style="width: 100px;" 
-                    placeholder="YYYY"
-                    value="{{ request.GET.batch_date_filter_year }}"
-                    min="2000" max="2099">
-                </div>
-                
-                <div class="d-flex align-items-center" style="gap:0.3rem;">
-                  <label for="monthFilter" style="margin-bottom: 0; font-weight: 500;">Month:</label>
-                  <input type="number" id="monthFilter" name="batch_date_filter_month" 
-                    class="form-control" style="width: 80px;" 
-                    placeholder="MM"
-                    value="{{ request.GET.batch_date_filter_month }}"
-                    min="1" max="12">
-                </div>
-                
-                <div class="d-flex align-items-center" style="gap:0.3rem;">
-                  <label for="dayFilter" style="margin-bottom: 0; font-weight: 500;">Day:</label>
-                  <input type="number" id="dayFilter" name="batch_date_filter_day" 
-                    class="form-control" style="width: 80px;" 
-                    placeholder="DD"
-                    value="{{ request.GET.batch_date_filter_day }}"
-                    min="1" max="31">
-                </div>
                 
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>

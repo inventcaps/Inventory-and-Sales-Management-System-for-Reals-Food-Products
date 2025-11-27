@@ -7,8 +7,11 @@
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Price Change History</div>
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-title mb-0">Price Change History</div>
+                        <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#priceHistoryReportModal">
+                            <i class="la la-download mr-1"></i> Export Report
+                        </button>
                     </div>
 
                     <div class="card-body">
@@ -27,9 +30,6 @@
                                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                                     <i class="la la-times"></i>
                                 </button>
-                                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#priceHistoryReportModal">
-                                    <i class="la la-download"></i> Generate Report
-                                </button>
                             </div>
                         </form>
 
@@ -38,24 +38,26 @@
                             <div class="modal-dialog modal-dialog-centered" role="document">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="priceHistoryReportModalLabel">Generate Price History Report</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        <h5 class="modal-title" id="priceHistoryReportModalLabel">Export Price History Data</h5>
+                                        <button type="button" class="close" data-dismiss="modal" data-bs-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
                                     </div>
                                     <div class="modal-body">
                                         <div class="form-group">
                                             <label for="reportMonthInput">Month</label>
                                             <input type="month" id="reportMonthInput" class="form-control" value="{% if request.GET.date_created %}{{ request.GET.date_created }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}">
-                                            <small class="form-text text-muted">Leave empty to use current month, or check 'Show all data'.</small>
+                                            <small class="form-text text-muted">Leave empty to use current month, or check 'Export all data'.</small>
                                         </div>
                                         <div class="form-check mt-2">
                                             <input type="checkbox" id="reportShowAll" class="form-check-input" {% if request.GET.show_all %}checked{% endif %}>
-                                            <label class="form-check-label" for="reportShowAll">Show all data</label>
+                                            <label class="form-check-label" for="reportShowAll">Export all data</label>
                                         </div>
                                     </div>
                                     <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        <button type="button" class="btn btn-primary" onclick="exportPriceHistoryReport()">
-                                            <i class="la la-file-excel-o"></i> Export CSV
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-success btn-rounded" onclick="exportPriceHistoryReport()">
+                                            <i class="la la-download mr-1"></i> Export CSV
                                         </button>
                                     </div>
                                 </div>
@@ -325,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Bootstrap 5 programmatic init fallback
   if (window.bootstrap && window.bootstrap.Modal && modalEl) {
     var phModal = new bootstrap.Modal(modalEl);
-    var trigger = document.querySelector('[data-bs-target="#priceHistoryReportModal"]');
+    var trigger = document.querySelector('[data-target="#priceHistoryReportModal"]');
     if (trigger) {
       trigger.addEventListener('click', function (e) {
         e.preventDefault();

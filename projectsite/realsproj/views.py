@@ -2729,8 +2729,8 @@ class ProductBatchList(ListView):
                 batch_date__month=today.month
             )
 
-        # 🔥 Sort newest batches first
-        return queryset.order_by('-batch_date')
+        # 🔥 Sort newest batches first, breaking ties by latest created record
+        return queryset.order_by('-batch_date', '-id')
 
         
     def get_context_data(self, **kwargs):

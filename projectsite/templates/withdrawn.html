@@ -27,6 +27,10 @@
                 </div>
               </div>
 
+              <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#withdrawalsReportModal">
+                <i class="la la-download mr-1"></i> Export Report
+              </button>
+
               <!-- Withdraw Item button -->
               <a href="{% url 'withdraw-item' %}" class="btn btn-success btn-rounded">Withdraw Item</a>
             </div>
@@ -94,9 +98,6 @@
               </button>
               <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                 <i class="la la-times"></i>
-              </button>
-              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#withdrawalsReportModal">
-                <i class="la la-download"></i> Generate Report
               </button>
             </div>
             
@@ -527,15 +528,14 @@
         <div class="form-group mb-2">
           <label for="reportShowAll">
             <input type="checkbox" id="reportShowAll" {% if request.GET.show_all %}checked{% endif %}>
-            Show All Data
+            Export All Data
           </label>
-          <small class="form-text text-muted">Include all withdrawals regardless of date.</small>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-primary" onclick="exportWithdrawalsReport()">
-          <i class="la la-file-excel-o"></i> Export CSV
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success btn-rounded" onclick="exportWithdrawalsReport()">
+          <i class="la la-download mr-1"></i> Export CSV
         </button>
       </div>
     </div>
