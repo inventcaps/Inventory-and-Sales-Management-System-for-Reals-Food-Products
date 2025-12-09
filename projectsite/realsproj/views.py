@@ -4209,27 +4209,32 @@ class WithdrawItemView(View):
                         if reason == "REPLACEMENT_FOR_RETURNED":
                             print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
                         
-                        # If withdrawing expired products, mark the batches as expired
+                        # If withdrawing expired products, deduct from expiring batches
                         if reason == "EXPIRED":
                             remaining_qty = quantity
-                            # Get batches ordered by expiration date (earliest first)
-                            # Include all non-archived batches, prioritize those that have expired
-                            expired_batches = ProductBatches.objects.filter(
+                            today = timezone.localdate()
+                            expiration_cutoff = today + timezone.timedelta(days=7)
+                            # Get batches that are expiring soon (within 7 days)
+                            # Ordered by expiration date (earliest first - most urgent)
+                            expiring_batches = ProductBatches.objects.filter(
                                 product=product,
-                                is_archived=False
-                            ).exclude(
-                                is_expired=True
+                                is_archived=False,
+                                expiration_date__lte=expiration_cutoff,
+                                expiration_date__gte=today,
+                                quantity__gt=0
                             ).order_by('expiration_date')
                             
-                            for batch in expired_batches:
+                            for batch in expiring_batches:
                                 if remaining_qty <= 0:
                                     break
-                                if batch.quantity > 0:
-                                    deduct_qty = min(batch.quantity, remaining_qty)
-                                    batch.quantity -= deduct_qty
-                                    batch.is_expired = True
-                                    batch.save()
-                                    remaining_qty -= deduct_qty
+                                deduct_qty = min(batch.quantity, remaining_qty)
+                                batch.quantity -= deduct_qty
+                                batch.save()
+                                remaining_qty -= deduct_qty
+                        
+                        # Deduct from product inventory for all withdrawal reasons
+                        inv.total_stock -= quantity
+                        inv.save()
                         
                         count += 1
                     except Exception as e:
@@ -4262,7 +4267,37 @@ class WithdrawItemView(View):
                             reason=reason,
                             date=timezone.now(),
                             created_by_admin=request.user,
+                            sales_channel=sales_channel if reason == "SOLD" else None,
+                            price_type=price_type if reason == "SOLD" and payment_status == "PAID" else None,
+                            custom_price=custom_price if custom_price else None,
+                            customer_name=customer_name if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else None,
+                            payment_status=payment_status if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else 'PAID',
+                            paid_amount=paid_amount if payment_status == 'PARTIAL' else None,
+                            order_group_id=order_group_id,
                         )
+
+                        # If withdrawing expired raw materials, deduct from expiring batches
+                        if reason == "EXPIRED":
+                            remaining_qty = quantity
+                            today = timezone.localdate()
+                            expiration_cutoff = today + timezone.timedelta(days=7)
+                            # Get batches that are expiring soon (within 7 days)
+                            # Ordered by expiration date (earliest first - most urgent)
+                            expiring_batches = RawMaterialBatches.objects.filter(
+                                material=material,
+                                is_archived=False,
+                                expiration_date__lte=expiration_cutoff,
+                                expiration_date__gte=today,
+                                quantity__gt=0
+                            ).order_by('expiration_date')
+                            
+                            for batch in expiring_batches:
+                                if remaining_qty <= 0:
+                                    break
+                                deduct_qty = min(batch.quantity, remaining_qty)
+                                batch.quantity -= deduct_qty
+                                batch.save()
+                                remaining_qty -= deduct_qty
 
                         inv.total_stock -= quantity
                         inv.save()

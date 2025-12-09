@@ -910,7 +910,8 @@ class ProductInventory(models.Model):
 
     def get_available_stock(self, days_ahead=7):
         """
-        Calculate available stock by excluding items expiring within the specified days.
+        Calculate available stock by subtracting expiring stock from total stock.
+        Available Stock = Total Stock - Expiring Soon
         
         Args:
             days_ahead: Number of days to look ahead for expiration (default: 7 days)
@@ -922,15 +923,14 @@ class ProductInventory(models.Model):
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches that are NOT expiring soon
-        # is_expired can be NULL or False (not True)
+        # Get batches that are NOT expiring soon (expiration date is more than days_ahead away)
+        # Only count batches with quantity > 0
         available_batches = ProductBatches.objects.filter(
             product=self.product,
             is_archived=False,
-            expiration_date__gt=expiration_cutoff
-        ).exclude(
-            is_expired=True
-        ).aggregate(total=Sum('quantity'))
+            expiration_date__gt=expiration_cutoff,
+            quantity__gt=0
+        ).aggregate(total=models.Sum('quantity'))
         
         available = available_batches['total'] or Decimal(0)
         return Decimal(available)
@@ -952,16 +952,18 @@ class ProductInventory(models.Model):
         
         # Get batches expiring within the timeframe (including today)
         # Must exclude NULL expiration_date values and only include non-archived batches
-        # is_expired can be NULL or False (not True)
+        # Only count batches that still have quantity > 0 (not fully withdrawn)
+        # Exclude batches already marked as is_expired=True (already withdrawn)
         expiring_batches = ProductBatches.objects.filter(
             product=self.product,
             is_archived=False,
             expiration_date__isnull=False,
             expiration_date__lte=expiration_cutoff,
-            expiration_date__gte=today
+            expiration_date__gte=today,
+            quantity__gt=0
         ).exclude(
             is_expired=True
-        ).aggregate(total=Sum('quantity'))
+        ).aggregate(total=models.Sum('quantity'))
         
         expiring = expiring_batches['total'] or Decimal(0)
         return Decimal(expiring)
@@ -1093,7 +1095,8 @@ class RawMaterialInventory(models.Model):
 
     def get_available_stock(self, days_ahead=7):
         """
-        Calculate available stock by excluding items expiring within the specified days.
+        Calculate available stock by subtracting expiring stock from total stock.
+        Available Stock = Total Stock - Expiring Soon
         
         Args:
             days_ahead: Number of days to look ahead for expiration (default: 7 days)
@@ -1105,15 +1108,14 @@ class RawMaterialInventory(models.Model):
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches that are NOT expiring soon
-        # is_expired can be NULL or False (not True)
+        # Get batches that are NOT expiring soon (expiration date is more than days_ahead away)
+        # Only count batches with quantity > 0
         available_batches = RawMaterialBatches.objects.filter(
             material=self.material,
             is_archived=False,
-            expiration_date__gt=expiration_cutoff
-        ).exclude(
-            is_expired=True
-        ).aggregate(total=Sum('quantity'))
+            expiration_date__gt=expiration_cutoff,
+            quantity__gt=0
+        ).aggregate(total=models.Sum('quantity'))
         
         available = available_batches['total'] or Decimal(0)
         return Decimal(available)
@@ -1134,16 +1136,18 @@ class RawMaterialInventory(models.Model):
         
         # Get batches expiring within the timeframe (including today)
         # Must exclude NULL expiration_date values and only include non-archived batches
-        # is_expired can be NULL or False (not True)
+        # Only count batches that still have quantity > 0 (not fully withdrawn)
+        # Exclude batches already marked as is_expired=True (already withdrawn)
         expiring_batches = RawMaterialBatches.objects.filter(
             material=self.material,
             is_archived=False,
             expiration_date__isnull=False,
             expiration_date__lte=expiration_cutoff,
-            expiration_date__gte=today
+            expiration_date__gte=today,
+            quantity__gt=0
         ).exclude(
             is_expired=True
-        ).aggregate(total=Sum('quantity'))
+        ).aggregate(total=models.Sum('quantity'))
         
         expiring = expiring_batches['total'] or Decimal(0)
         return Decimal(expiring)
