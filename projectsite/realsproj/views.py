@@ -8212,5 +8212,79 @@ def export_price_history(request):
             change_percent,
             changed_by,
         ])
-
+    
     return response
+
+
+@login_required
+def check_product_batches(request):
+    """API endpoint to check if products already have batches with the same quantity."""
+    product_data = request.GET.get('product_data', '[]')
+    
+    try:
+        import json
+        products_list = json.loads(product_data)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicates': []})
+    
+    duplicates = []
+    for item in products_list:
+        try:
+            product_id = item.get('id')
+            quantity = float(item.get('qty', 0))
+            
+            if quantity <= 0:
+                continue
+            
+            product = Products.objects.get(id=product_id)
+            
+            # Check if there's an existing batch with the same quantity
+            batch_exists = ProductBatches.objects.filter(
+                product=product,
+                quantity=quantity,
+                is_archived=False
+            ).exists()
+            
+            if batch_exists:
+                duplicates.append(f"{product.product_type.name} - {product.variant.name} ({product.size.size_label})")
+        except (Products.DoesNotExist, ValueError, KeyError):
+            pass
+    
+    return JsonResponse({'duplicates': duplicates})
+
+
+@login_required
+def check_rawmaterial_batches(request):
+    """API endpoint to check if raw materials already have batches with the same quantity."""
+    material_data = request.GET.get('material_data', '[]')
+    
+    try:
+        import json
+        materials_list = json.loads(material_data)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicates': []})
+    
+    duplicates = []
+    for item in materials_list:
+        try:
+            material_id = item.get('id')
+            quantity = float(item.get('qty', 0))
+            
+            if quantity <= 0:
+                continue
+            
+            material = RawMaterials.objects.get(id=material_id)
+            
+            # Check if there's an existing batch with the same quantity
+            batch_exists = RawMaterialBatches.objects.filter(
+                material=material,
+                quantity=quantity,
+                is_archived=False
+            ).exists()
+            
+            if batch_exists:
+                duplicates.append(f"{material.name}")
+        except (RawMaterials.DoesNotExist, ValueError, KeyError):
+            pass
+    
+    return JsonResponse({'duplicates': duplicates})
