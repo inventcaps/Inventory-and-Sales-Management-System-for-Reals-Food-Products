@@ -118,10 +118,10 @@ import os
 # DATABASES = {
 #    'default': {
 #        'ENGINE': 'django.db.backends.postgresql',
-#        'NAME': 'r_local',
+#        'NAME': 'postgres',
 #        'USER': 'postgres',
-#        'PASSWORD': 'root',
-#        'HOST': 'localhost',
+#        'PASSWORD': 'Reals_DB_123',
+#        'HOST': 'db.ynmwkydtjzqppyecqhux.supabase.co',
 #        'PORT': '5432',
 #    }
 # }
@@ -129,7 +129,7 @@ import os
 DATABASES = {
    'default': {
        'ENGINE': 'django.db.backends.postgresql',
-       'NAME': 'r_local',
+       'NAME': 'reals_l',
        'USER': 'postgres',
        'PASSWORD': 'root',
        'HOST': 'localhost',

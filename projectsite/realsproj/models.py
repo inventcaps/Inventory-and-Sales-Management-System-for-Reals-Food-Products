@@ -740,6 +740,7 @@ class Notifications(models.Model):
             "EXPIRES_IN_WEEK": "notif-warning",
             "EXPIRES_IN_MONTH": "notif-info",
             "LOW_STOCK": "notif-info",
+            "PRE_LOW_STOCK": "notif-warning",
             "OUT_OF_STOCK": "notif-danger",
             "STOCK_HEALTHY": "notif-info",
         }
@@ -753,6 +754,7 @@ class Notifications(models.Model):
             "EXPIRES_IN_WEEK": "la la-exclamation-triangle",
             "EXPIRES_IN_MONTH": "la la-hourglass-half",
             "LOW_STOCK": "la la-arrow-down",
+            "PRE_LOW_STOCK": "la la-exclamation-triangle",
             "OUT_OF_STOCK": "la la-exclamation-circle",
             "STOCK_HEALTHY": "la la-check-circle",
         }
@@ -761,22 +763,76 @@ class Notifications(models.Model):
     @property
     def formatted_message(self):
         notif_type = self.notification_type.upper()
-        from realsproj.models import ProductBatches, RawMaterialBatches, Products, RawMaterials
         item_name = "Unknown Item"
+        expiring_qty = None
 
         try:
             if self.item_type.upper() == "PRODUCT":
-        
-                if notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
-                    batch = (
-                        ProductBatches.objects.filter(id=self.item_id)
-                        .select_related(
+                if notif_type == "PRE_LOW_STOCK":
+                    product = Products.objects.filter(id=self.item_id).select_related(
+                        "product_type",
+                        "variant",
+                        "size_unit",
+                        "size"
+                    ).first()
+
+                    if product:
+                        p = product
+                        product_type = getattr(p.product_type, "name", "")
+                        variant = getattr(p.variant, "name", "")
+                        size_label = getattr(p.size, "size_label", None)
+                        size_unit = getattr(p.size_unit, "unit_name", None)
+                        size_text = f" ({size_label} {size_unit})" if size_label and size_unit else f" ({size_unit})" if size_unit else ""
+
+                        next_batch = ProductBatches.objects.filter(
+                            product_id=p.id,
+                            is_archived=False
+                        ).exclude(is_expired=True).order_by("batch_date").first()
+                        batch_date = None
+                        if next_batch:
+                            batch_date = next_batch.batch_date.strftime("%m/%d/%Y") if next_batch.batch_date else "Unknown"
+
+                        base_name = f"{product_type} - {variant}{size_text}"
+                        item_name = f"{base_name} Batch {batch_date}" if batch_date else base_name
+
+                        expiring_qty = ProductBatches.objects.filter(
+                            product_id=p.id,
+                            is_archived=False,
+                            is_expired=False,
+                            expiration_date__isnull=False,
+                            expiration_date__lte=timezone.localdate() + timezone.timedelta(days=7)
+                        ).aggregate(total=models.Sum('quantity'))['total'] or 0
+                    else:
+                        batch = ProductBatches.objects.filter(id=self.item_id).select_related(
                             "product__product_type",
                             "product__variant",
                             "product__size_unit",
                             "product__size"
                         ).first()
-                    )
+                        if batch and batch.product:
+                            p = batch.product
+                            product_type = getattr(p.product_type, "name", "")
+                            variant = getattr(p.variant, "name", "")
+                            size_label = getattr(p.size, "size_label", None)
+                            size_unit = getattr(p.size_unit, "unit_name", None)
+                            size_text = f" ({size_label} {size_unit})" if size_label and size_unit else f" ({size_unit})" if size_unit else ""
+                            batch_date = batch.batch_date.strftime("%m/%d/%Y") if batch.batch_date else "Unknown"
+                            item_name = f"{product_type} - {variant}{size_text} Batch {batch_date}"
+
+                            expiring_qty = ProductBatches.objects.filter(
+                                product_id=p.id,
+                                is_archived=False,
+                                is_expired=False,
+                                expiration_date__lte=timezone.localdate() + timezone.timedelta(days=7)
+                            ).aggregate(total=models.Sum('quantity'))['total'] or 0
+
+                elif notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
+                    batch = ProductBatches.objects.filter(id=self.item_id).select_related(
+                        "product__product_type",
+                        "product__variant",
+                        "product__size_unit",
+                        "product__size"
+                    ).first()
                     if batch and batch.product:
                         p = batch.product
                         product_type = getattr(p.product_type, "name", "")
@@ -786,16 +842,14 @@ class Notifications(models.Model):
                         size_text = f" ({size_label} {size_unit})" if size_label and size_unit else f" ({size_unit})" if size_unit else ""
                         batch_date = batch.batch_date.strftime("%m/%d/%Y") if batch.batch_date else "Unknown"
                         item_name = f"{product_type} - {variant}{size_text} Batch {batch_date}"
+
                 else:
-                    product = (
-                        Products.objects.filter(id=self.item_id)
-                        .select_related(
-                            "product_type",
-                            "variant",
-                            "size_unit",
-                            "size"
-                        ).first()
-                    )
+                    product = Products.objects.filter(id=self.item_id).select_related(
+                        "product_type",
+                        "variant",
+                        "size_unit",
+                        "size"
+                    ).first()
                     if product:
                         product_type = getattr(product.product_type, "name", "")
                         variant = getattr(product.variant, "name", "")
@@ -805,24 +859,23 @@ class Notifications(models.Model):
                         item_name = f"{product_type} - {variant}{size_text}"
 
             elif self.item_type.upper() == "RAW_MATERIAL":
-                if notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
-                    batch = (
-                        RawMaterialBatches.objects.filter(id=self.item_id)
-                        .select_related("material__unit")
-                        .first()
-                    )
+                if notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH", "PRE_LOW_STOCK"]:
+                    batch = RawMaterialBatches.objects.filter(id=self.item_id).select_related("material__unit").first()
                     if batch and batch.material:
                         material_name = getattr(batch.material, "name", "")
                         unit_name = getattr(batch.material.unit, "unit_name", "")
-                        batch_date = batch.batch_date.strftime("%m/%d/%Y") if batch.batch_date else "Unknown"
+                        batch_date = batch.batch_date.strftime("%m/%d/%Y") if getattr(batch, "batch_date", None) else "Unknown"
                         item_name = f"{material_name} ({unit_name}) Batch {batch_date}"
-                else:
 
-                    material = (
-                        RawMaterials.objects.filter(id=self.item_id)
-                        .select_related("unit")
-                        .first()
-                    )
+                        if notif_type == "PRE_LOW_STOCK":
+                            expiring_qty = RawMaterialBatches.objects.filter(
+                                material_id=batch.material.id,
+                                is_archived=False,
+                                is_expired=False,
+                                expiration_date__lte=timezone.localdate() + timezone.timedelta(days=7)
+                            ).aggregate(total=models.Sum('quantity'))['total'] or 0
+                else:
+                    material = RawMaterials.objects.filter(id=self.item_id).select_related("unit").first()
                     if material:
                         material_name = getattr(material, "name", "")
                         unit_name = getattr(material.unit, "unit_name", "")
@@ -832,7 +885,10 @@ class Notifications(models.Model):
             print(f"[Notification Error] Failed to format {self.item_type} #{self.item_id}: {e}")
             item_name = f"Unknown ({self.item_type} #{self.item_id})"
 
-        if notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
+        # Build final message
+        if notif_type == "PRE_LOW_STOCK" and expiring_qty is not None:
+            return f"PRE LOW STOCK: {item_name} – {expiring_qty} items will expire soon, check remaining stock!"
+        elif notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
             return f"{item_name} {self._expiration_message()}"
         elif notif_type == "LOW_STOCK":
             return f"LOW STOCK: {item_name}"
@@ -845,16 +901,13 @@ class Notifications(models.Model):
 
     def _expiration_message(self):
         today = timezone.localdate()
-
         try:
             if self.item_type.upper() == "PRODUCT":
-                from .models import ProductBatches
                 batch = ProductBatches.objects.filter(id=self.item_id).first()
             else:
-                from .models import RawMaterialBatches
                 batch = RawMaterialBatches.objects.filter(id=self.item_id).first()
 
-            if not batch or not batch.expiration_date:
+            if not batch or not getattr(batch, "expiration_date", None):
                 return "has no expiration date"
 
             delta_days = (batch.expiration_date - today).days
