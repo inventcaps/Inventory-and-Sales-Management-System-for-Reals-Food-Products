@@ -1080,30 +1080,38 @@ $(document).ready(function() {
       const type = "{{ message.tags }}";
       const text = "{{ message|escapejs }}";
 
-      const icon = {
-        success: 'la la-check-circle text-success',
-        error:   'la la-times-circle text-danger',
-        warning: 'la la-exclamation-circle text-warning',
-        info:    'la la-info-circle text-info'
-      }[type] || 'la la-info-circle text-info';
+      // Skip duplication-related error messages (they will be shown in modal instead)
+      if (!(text.includes('complete duplicate') || 
+            text.includes('already used') || 
+            text.includes('already exists') ||
+            text.includes('Please complete all required fields') ||
+            text.includes('Please correct the errors below'))) {
 
-      const toastHTML = `
-        <div class="toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
-          <div class="toast-header">
-            <i class="me-2 ${icon}"></i>
-            <strong class="me-auto text-capitalize">${type}</strong>
-            <small>Just now</small>
-            <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
-          </div>
-          <div class="toast-body">${text}</div>
-        </div>`;
+        const icon = {
+          success: 'la la-check-circle text-success',
+          error:   'la la-times-circle text-danger',
+          warning: 'la la-exclamation-circle text-warning',
+          info:    'la la-info-circle text-info'
+        }[type] || 'la la-info-circle text-info';
 
-      const container = document.getElementById("toast-container");
-      container.insertAdjacentHTML("beforeend", toastHTML);
+        const toastHTML = `
+          <div class="toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+              <i class="me-2 ${icon}"></i>
+              <strong class="me-auto text-capitalize">${type}</strong>
+              <small>Just now</small>
+              <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">${text}</div>
+          </div>`;
 
-      const toastEl = container.querySelector(".toast:last-child");
-      const bsToast = new bootstrap.Toast(toastEl, { autohide: true, delay: 4000 });
-      bsToast.show();
+        const container = document.getElementById("toast-container");
+        container.insertAdjacentHTML("beforeend", toastHTML);
+
+        const toastEl = container.querySelector(".toast:last-child");
+        const bsToast = new bootstrap.Toast(toastEl, { autohide: true, delay: 4000 });
+        bsToast.show();
+      }
     {% endfor %}
   });
 </script>

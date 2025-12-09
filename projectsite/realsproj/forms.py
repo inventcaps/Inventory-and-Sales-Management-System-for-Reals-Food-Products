@@ -100,14 +100,24 @@ class ProductsForm(forms.ModelForm):
         if not code:
             raise forms.ValidationError("Product code is required.")
 
-        qs = Products.objects.filter(product_code__iexact=code)
-        if self.instance.pk:
-            qs = qs.exclude(pk=self.instance.pk)
+        # Get the product type and variant from cleaned data
+        product_type = self.cleaned_data.get('product_type')
+        variant = self.cleaned_data.get('variant')
 
-        if qs.exists():
-            raise forms.ValidationError(
-                f"Product code '{code}' is already used by another product."
+        # Check if product code is used with different product type or variant
+        if product_type and variant:
+            qs = Products.objects.filter(product_code__iexact=code).exclude(
+                product_type=product_type,
+                variant=variant
             )
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+
+            if qs.exists():
+                raise forms.ValidationError(
+                    f"Product code '{code}' is already used by another product with a different type or variant. "
+                    f"Product codes can only be reused for the same product type and variant."
+                )
 
         return code.upper()
 
@@ -172,6 +182,7 @@ class ProductsForm(forms.ModelForm):
         if self.errors:
             return cleaned_data
 
+        product_code = cleaned_data.get('product_code')
         product_type = cleaned_data.get('product_type')
         variant = cleaned_data.get('variant')
         size = cleaned_data.get('size')
@@ -179,11 +190,13 @@ class ProductsForm(forms.ModelForm):
         unit_price = cleaned_data.get('unit_price')
         srp_price = cleaned_data.get('srp_price')
 
-        required_fields = [product_type, variant, size_unit, unit_price, srp_price]
+        required_fields = [product_code, product_type, variant, size_unit, unit_price, srp_price]
         if any(field is None for field in required_fields):
             return cleaned_data
 
+        # Check for complete duplicates: same product code, type, variant, size, size_unit, unit price, and SRP
         duplicate_qs = Products.objects.filter(
+            product_code__iexact=product_code,
             product_type=product_type,
             variant=variant,
             size=size,
@@ -197,7 +210,8 @@ class ProductsForm(forms.ModelForm):
 
         if duplicate_qs.exists():
             raise ValidationError(
-                "A product with the same type, variant, size, unit, unit price, and SRP already exists."
+                "A product with the same code, type, variant, size, unit, unit price, and SRP already exists. "
+                "This is a complete duplicate and cannot be added."
             )
 
         return cleaned_data
@@ -229,6 +243,41 @@ class RawMaterialsForm(ModelForm):
     def clean_category(self):
         value = self.cleaned_data.get('category', 'PACKAGING')
         return (value or 'PACKAGING').upper()
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        if self.errors:
+            return cleaned_data
+
+        name = cleaned_data.get('name')
+        size = cleaned_data.get('size')
+        unit = cleaned_data.get('unit')
+        price_per_unit = cleaned_data.get('price_per_unit')
+
+        # Check if all required fields are present
+        required_fields = [name, size, unit, price_per_unit]
+        if any(field is None for field in required_fields):
+            return cleaned_data
+
+        # Check for complete duplicates: same name, size, unit, and price_per_unit
+        duplicate_qs = RawMaterials.objects.filter(
+            name__iexact=name,
+            size=size,
+            unit=unit,
+            price_per_unit=price_per_unit,
+        )
+
+        if self.instance.pk:
+            duplicate_qs = duplicate_qs.exclude(pk=self.instance.pk)
+
+        if duplicate_qs.exists():
+            raise ValidationError(
+                "A raw material with the same name, size, unit, and price per unit already exists. "
+                "This is a complete duplicate and cannot be added."
+            )
+
+        return cleaned_data
 
 
 class HistoryLogForm(ModelForm):
