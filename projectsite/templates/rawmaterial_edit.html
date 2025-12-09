@@ -77,4 +77,53 @@
     </div>
   </div>
 </div>
+
+<!-- Duplication Warning Modal -->
+<div class="modal fade" id="duplicationWarningModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚠️ Duplicate Raw Material Warning</h5>
+        <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="duplicationWarningMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="$('#duplicationWarningModal').modal('hide')">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Handle duplication warning modal
+  document.addEventListener('DOMContentLoaded', function() {
+    const alertDiv = document.querySelector('.alert-danger');
+    if (alertDiv) {
+      const errorText = alertDiv.innerText;
+      // Check for any duplication-related errors
+      if (errorText.includes('complete duplicate') || 
+          errorText.includes('already used') || 
+          errorText.includes('already exists') ||
+          errorText.includes('Please complete all required fields')) {
+        // Hide the alert
+        alertDiv.style.display = 'none';
+        
+        // Show the modal with the error message
+        const messageElement = document.getElementById('duplicationWarningMessage');
+        if (messageElement) {
+          messageElement.textContent = errorText;
+        }
+        
+        // Show the modal using jQuery with a small delay to ensure jQuery is ready
+        setTimeout(function() {
+          $('#duplicationWarningModal').modal('show');
+        }, 100);
+      }
+    }
+  });
+</script>
 {% endblock %}
