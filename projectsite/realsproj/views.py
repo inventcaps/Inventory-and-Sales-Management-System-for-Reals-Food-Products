@@ -8326,6 +8326,42 @@ def check_rawmaterial_batches(request):
 
 
 @login_required
+def check_rawmaterial_duplicates(request):
+    """API endpoint to check if a raw material with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    name = data.get('name', '').strip()
+    size = data.get('size', '')
+    unit = data.get('unit', '').strip()
+    price_per_unit = data.get('price_per_unit', '')
+    
+    if not name or not size or not unit or not price_per_unit:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        size = float(size)
+        price_per_unit = float(price_per_unit)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same name, size, unit, and price_per_unit)
+    duplicate_exists = RawMaterials.objects.filter(
+        name__iexact=name,
+        size=size,
+        unit__unit_name__iexact=unit,
+        price_per_unit=price_per_unit,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})
+
+
+@login_required
 def check_sales_duplicates(request):
     """API endpoint to check if a sales entry with the same details already exists."""
     import json

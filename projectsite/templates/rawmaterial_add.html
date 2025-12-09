@@ -96,15 +96,79 @@
         <p id="duplicationWarningMessage"></p>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-primary" onclick="$('#duplicationWarningModal').modal('hide')">OK</button>
+        <button type="button" class="btn btn-secondary" onclick="$('#duplicationWarningModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitFormAnyway()">Yes, Add Anyway</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-  // Handle duplication warning modal
+  let allowFormSubmit = false;
+
+  // Handle pre-submission duplication check
   document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+      if (allowFormSubmit) {
+        allowFormSubmit = false;
+        return;
+      }
+
+      e.preventDefault();
+
+      // Get form values
+      const name = document.querySelector('input[name="name"]').value.trim();
+      const size = document.querySelector('input[name="size"]').value.trim();
+      const unit = document.querySelector('input[name="unit"]').value.trim();
+      const pricePerUnit = document.querySelector('input[name="price_per_unit"]').value.trim();
+
+      // Check if all required fields are filled
+      if (!name || !size || !unit || !pricePerUnit) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
+      // Check for duplicates via API
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      
+      fetch('/api/check-rawmaterial-duplicates/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          name: name,
+          size: size,
+          unit: unit,
+          price_per_unit: pricePerUnit
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.duplicate) {
+          // Show modal if duplicate found
+          const messageElement = document.getElementById('duplicationWarningMessage');
+          messageElement.textContent = `A raw material with the same name (${name}), size (${size}), unit (${unit}), and price (₱${pricePerUnit}) already exists. Are you sure you want to add another one?`;
+          $('#duplicationWarningModal').modal('show');
+        } else {
+          // No duplicate, submit form
+          allowFormSubmit = true;
+          form.submit();
+        }
+      })
+      .catch(error => {
+        console.error('Error checking duplicates:', error);
+        // On error, allow submission to proceed
+        allowFormSubmit = true;
+        form.submit();
+      });
+    });
+
+    // Handle post-submission errors (form validation errors)
     const alertDiv = document.querySelector('.alert-danger');
     if (alertDiv) {
       const errorText = alertDiv.innerText;
@@ -129,5 +193,11 @@
       }
     }
   });
+
+  function submitFormAnyway() {
+    $('#duplicationWarningModal').modal('hide');
+    allowFormSubmit = true;
+    document.querySelector('form').submit();
+  }
 </script>
 {% endblock %}
