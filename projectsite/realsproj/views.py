@@ -8288,3 +8288,109 @@ def check_rawmaterial_batches(request):
             pass
     
     return JsonResponse({'duplicates': duplicates})
+
+
+@login_required
+def check_sales_duplicates(request):
+    """API endpoint to check if a sales entry with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    category = data.get('category', '').strip()
+    amount = data.get('amount', '')
+    date = data.get('date', '')
+    description = data.get('description', '').strip()
+    
+    if not category or not amount or not date:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        amount = float(amount)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same category, amount, date, and description)
+    duplicate_exists = Sales.objects.filter(
+        category=category,
+        amount=amount,
+        date=date,
+        description=description,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})
+
+
+@login_required
+def check_expenses_duplicates(request):
+    """API endpoint to check if an expenses entry with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    category = data.get('category', '').strip()
+    amount = data.get('amount', '')
+    date = data.get('date', '')
+    description = data.get('description', '').strip()
+    
+    if not category or not amount or not date:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        amount = float(amount)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same category, amount, date, and description)
+    duplicate_exists = Expenses.objects.filter(
+        category=category,
+        amount=amount,
+        date=date,
+        description=description,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})
+
+
+@login_required
+def check_withdrawal_duplicates(request):
+    """API endpoint to check if a withdrawal entry with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    item_type = data.get('item_type', '').strip()
+    item_id = data.get('item_id', '')
+    quantity = data.get('quantity', '')
+    reason = data.get('reason', '').strip()
+    
+    if not item_type or not item_id or not quantity or not reason:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        item_id = int(item_id)
+        quantity = float(quantity)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same item_type, item_id, quantity, and reason)
+    duplicate_exists = Withdrawals.objects.filter(
+        item_type=item_type,
+        item_id=item_id,
+        quantity=quantity,
+        reason=reason,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})
