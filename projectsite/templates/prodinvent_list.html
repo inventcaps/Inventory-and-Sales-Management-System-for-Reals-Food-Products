@@ -285,29 +285,9 @@ document.addEventListener('DOMContentLoaded', function() {
       <form method="get" action="{% url 'product_inventory_export' %}" id="exportInventoryForm">
         <div class="modal-body">
           <div class="form-group">
-            <label for="exportFilterType">Filter Type</label>
-            <select class="form-control" id="exportFilterType" name="filter_type">
-              <option value="all">All Records</option>
-              <option value="by_date">By Date</option>
-            </select>
-          </div>
-
-          <div id="dateFilterOptions" style="display: none;">
-            <div class="form-group">
-              <label>Year</label>
-              <input type="number" class="form-control" id="exportYear" name="batch_date_filter_year" 
-                placeholder="YYYY" min="2000" max="2099" value="{{ request.GET.batch_date_filter_year }}">
-            </div>
-            <div class="form-group">
-              <label>Month</label>
-              <input type="number" class="form-control" id="exportMonth" name="batch_date_filter_month" 
-                placeholder="MM" min="1" max="12" value="{{ request.GET.batch_date_filter_month }}">
-            </div>
-            <div class="form-group">
-              <label>Day</label>
-              <input type="number" class="form-control" id="exportDay" name="batch_date_filter_day" 
-                placeholder="DD" min="1" max="31" value="{{ request.GET.batch_date_filter_day }}">
-            </div>
+            <label for="exportMonth">Select Month</label>
+            <input type="month" class="form-control" id="exportMonth" name="month" 
+              value="{{ export_month|default:'' }}">
           </div>
 
           <!-- Hidden inputs to preserve current filters -->
@@ -332,30 +312,14 @@ document.addEventListener('DOMContentLoaded', function() {
     document.body.appendChild(exportModal);
   }
 
-  const filterTypeSelect = document.getElementById('exportFilterType');
-  const dateFilterOptions = document.getElementById('dateFilterOptions');
-
-  // Show/hide date filter options based on selection
-  filterTypeSelect.addEventListener('change', function() {
-    if (this.value === 'by_date') {
-      dateFilterOptions.style.display = 'block';
-    } else {
-      dateFilterOptions.style.display = 'none';
-      // Clear date inputs when switching to "All Records"
-      document.getElementById('exportYear').value = '';
-      document.getElementById('exportMonth').value = '';
-      document.getElementById('exportDay').value = '';
-    }
-  });
-
-  // Check if date filters are already set and show the date options
-  const year = document.getElementById('exportYear').value;
-  const month = document.getElementById('exportMonth').value;
-  const day = document.getElementById('exportDay').value;
+  const monthInput = document.getElementById('exportMonth');
   
-  if (year || month || day) {
-    filterTypeSelect.value = 'by_date';
-    dateFilterOptions.style.display = 'block';
+  // Set default month to current month if not set
+  if (!monthInput.value) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    monthInput.value = `${year}-${month}`;
   }
 });
 </script>

@@ -69,4 +69,97 @@
     </div>
   </div>
 </div>
+
+<!-- Duplication Confirmation Modal -->
+<div class="modal fade" id="duplicateModal" tabindex="-1" role="dialog" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="duplicateModalLabel">⚠️ Duplicate Expenses Entry Detected</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>An expenses entry with the same details already exists:</p>
+        <ul style="margin: 15px 0; padding-left: 20px;">
+          <li><strong>Category:</strong> <span id="dupCategory"></span></li>
+          <li><strong>Amount:</strong> ₱<span id="dupAmount"></span></li>
+          <li><strong>Date:</strong> <span id="dupDate"></span></li>
+        </ul>
+        <p><strong>Are you sure you want to add another entry with the same details?</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="confirmDuplicateBtn">Yes, Add Anyway</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const form = document.querySelector('form');
+  const modal = new bootstrap.Modal(document.getElementById('duplicateModal'), { keyboard: false });
+  let allowSubmit = false;
+
+  form.addEventListener('submit', function(e) {
+    if (allowSubmit) {
+      allowSubmit = false;
+      return;
+    }
+
+    e.preventDefault();
+
+    // Get form values
+    const category = document.getElementById('{{ form.category.id_for_label }}').value.trim();
+    const amount = document.getElementById('{{ form.amount.id_for_label }}').value.trim();
+    const date = document.getElementById('{{ form.date.id_for_label }}').value.trim();
+    const description = document.getElementById('{{ form.description.id_for_label }}').value.trim();
+
+    if (!category || !amount || !date) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+
+    // Check for duplicates
+    fetch('/api/check-expenses-duplicates/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: JSON.stringify({
+        category: category,
+        amount: amount,
+        date: date,
+        description: description
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.duplicate) {
+        document.getElementById('dupCategory').textContent = category;
+        document.getElementById('dupAmount').textContent = amount;
+        document.getElementById('dupDate').textContent = date;
+        modal.show();
+      } else {
+        allowSubmit = true;
+        form.submit();
+      }
+    })
+    .catch(error => {
+      console.error('Error checking duplicates:', error);
+      allowSubmit = true;
+      form.submit();
+    });
+  });
+
+  document.getElementById('confirmDuplicateBtn').addEventListener('click', function() {
+    modal.hide();
+    allowSubmit = true;
+    form.submit();
+  });
+});
+</script>
 {% endblock %}

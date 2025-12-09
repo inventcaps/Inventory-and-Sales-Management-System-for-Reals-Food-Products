@@ -38,6 +38,11 @@ urlpatterns = [
     path('products/<pk>/delete', a.ProductsDeleteView.as_view(), name='product-delete'),
     path("products/scan-phone/", a.product_scan_phone, name="product-scan-phone"),
     path("api/check-barcode/", a.check_barcode_availability, name="check-barcode"),
+    path("api/check-product-batches/", a.check_product_batches, name="check-product-batches"),
+    path("api/check-rawmaterial-batches/", a.check_rawmaterial_batches, name="check-rawmaterial-batches"),
+    path("api/check-sales-duplicates/", a.check_sales_duplicates, name="check-sales-duplicates"),
+    path("api/check-expenses-duplicates/", a.check_expenses_duplicates, name="check-expenses-duplicates"),
+    path("api/check-withdrawal-duplicates/", a.check_withdrawal_duplicates, name="check-withdrawal-duplicates"),
     path('price-history/', a.PriceHistoryList.as_view(), name='price-history'),
     path('price-history/export/', a.export_price_history, name='price-history-export'),
 

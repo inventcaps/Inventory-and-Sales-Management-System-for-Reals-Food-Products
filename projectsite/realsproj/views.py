@@ -6871,12 +6871,37 @@ def export_product_inventory(request):
     elif status == "out_of_stock":
         queryset = queryset.filter(total_stock=0)
 
-    timestamp = timezone.localtime().strftime("%Y%m%d_%H%M%S")
+    # Get month parameter and filter by batch creation date
+    month_param = request.GET.get("month", "").strip()
+    filename_suffix = month_param if month_param else timezone.localtime().strftime("%Y-%m")
+    
+    # Filter by batches created in the selected month OR include all products with 0 stock
+    if month_param:
+        try:
+            year, month = month_param.split('-')
+            year = int(year)
+            month = int(month)
+            # Filter products that have batches created in the specified month OR have 0 stock
+            from django.db.models import Q as DjangoQ
+            queryset = queryset.filter(
+                DjangoQ(
+                    product__productbatches__batch_date__year=year,
+                    product__productbatches__batch_date__month=month,
+                    product__productbatches__is_archived=False
+                ) | DjangoQ(total_stock=0)
+            ).distinct()
+        except (ValueError, AttributeError):
+            pass
 
     response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = f'attachment; filename="product_inventory_{timestamp}.csv"'
+    response['Content-Disposition'] = f'attachment; filename="product_inventory_{filename_suffix}.csv"'
 
     writer = csv.writer(response)
+    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+    writer.writerow(['Month', month_param if month_param else 'Current Month'])
+    writer.writerow(['Filters', f"search={search}", f"status={status}"])
+    writer.writerow([])
+    
     writer.writerow([
         'Product Type',
         'Variant',
@@ -8187,5 +8212,185 @@ def export_price_history(request):
             change_percent,
             changed_by,
         ])
-
+    
     return response
+
+
+@login_required
+def check_product_batches(request):
+    """API endpoint to check if products already have batches with the same quantity."""
+    product_data = request.GET.get('product_data', '[]')
+    
+    try:
+        import json
+        products_list = json.loads(product_data)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicates': []})
+    
+    duplicates = []
+    for item in products_list:
+        try:
+            product_id = item.get('id')
+            quantity = float(item.get('qty', 0))
+            
+            if quantity <= 0:
+                continue
+            
+            product = Products.objects.get(id=product_id)
+            
+            # Check if there's an existing batch with the same quantity
+            batch_exists = ProductBatches.objects.filter(
+                product=product,
+                quantity=quantity,
+                is_archived=False
+            ).exists()
+            
+            if batch_exists:
+                duplicates.append(f"{product.product_type.name} - {product.variant.name} ({product.size.size_label})")
+        except (Products.DoesNotExist, ValueError, KeyError):
+            pass
+    
+    return JsonResponse({'duplicates': duplicates})
+
+
+@login_required
+def check_rawmaterial_batches(request):
+    """API endpoint to check if raw materials already have batches with the same quantity."""
+    material_data = request.GET.get('material_data', '[]')
+    
+    try:
+        import json
+        materials_list = json.loads(material_data)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicates': []})
+    
+    duplicates = []
+    for item in materials_list:
+        try:
+            material_id = item.get('id')
+            quantity = float(item.get('qty', 0))
+            
+            if quantity <= 0:
+                continue
+            
+            material = RawMaterials.objects.get(id=material_id)
+            
+            # Check if there's an existing batch with the same quantity
+            batch_exists = RawMaterialBatches.objects.filter(
+                material=material,
+                quantity=quantity,
+                is_archived=False
+            ).exists()
+            
+            if batch_exists:
+                duplicates.append(f"{material.name}")
+        except (RawMaterials.DoesNotExist, ValueError, KeyError):
+            pass
+    
+    return JsonResponse({'duplicates': duplicates})
+
+
+@login_required
+def check_sales_duplicates(request):
+    """API endpoint to check if a sales entry with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    category = data.get('category', '').strip()
+    amount = data.get('amount', '')
+    date = data.get('date', '')
+    description = data.get('description', '').strip()
+    
+    if not category or not amount or not date:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        amount = float(amount)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same category, amount, date, and description)
+    duplicate_exists = Sales.objects.filter(
+        category=category,
+        amount=amount,
+        date=date,
+        description=description,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})
+
+
+@login_required
+def check_expenses_duplicates(request):
+    """API endpoint to check if an expenses entry with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    category = data.get('category', '').strip()
+    amount = data.get('amount', '')
+    date = data.get('date', '')
+    description = data.get('description', '').strip()
+    
+    if not category or not amount or not date:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        amount = float(amount)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same category, amount, date, and description)
+    duplicate_exists = Expenses.objects.filter(
+        category=category,
+        amount=amount,
+        date=date,
+        description=description,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})
+
+
+@login_required
+def check_withdrawal_duplicates(request):
+    """API endpoint to check if a withdrawal entry with the same details already exists."""
+    import json
+    
+    try:
+        data = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({'duplicate': False})
+    
+    item_type = data.get('item_type', '').strip()
+    item_id = data.get('item_id', '')
+    quantity = data.get('quantity', '')
+    reason = data.get('reason', '').strip()
+    
+    if not item_type or not item_id or not quantity or not reason:
+        return JsonResponse({'duplicate': False})
+    
+    try:
+        item_id = int(item_id)
+        quantity = float(quantity)
+    except (ValueError, TypeError):
+        return JsonResponse({'duplicate': False})
+    
+    # Check for exact match (same item_type, item_id, quantity, and reason)
+    duplicate_exists = Withdrawals.objects.filter(
+        item_type=item_type,
+        item_id=item_id,
+        quantity=quantity,
+        reason=reason,
+        is_archived=False
+    ).exists()
+    
+    return JsonResponse({'duplicate': duplicate_exists})

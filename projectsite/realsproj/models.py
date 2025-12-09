@@ -741,6 +741,7 @@ class Notifications(models.Model):
             "EXPIRES_IN_MONTH": "notif-info",
             "LOW_STOCK": "notif-info",
             "PRE_LOW_STOCK": "notif-warning",
+            "PRE_LOW_STOCK": "notif-warning",
             "OUT_OF_STOCK": "notif-danger",
             "STOCK_HEALTHY": "notif-info",
         }
@@ -755,6 +756,7 @@ class Notifications(models.Model):
             "EXPIRES_IN_MONTH": "la la-hourglass-half",
             "LOW_STOCK": "la la-arrow-down",
             "PRE_LOW_STOCK": "la la-exclamation-triangle",
+            "PRE_LOW_STOCK": "la la-exclamation-triangle",
             "OUT_OF_STOCK": "la la-exclamation-circle",
             "STOCK_HEALTHY": "la la-check-circle",
         }
@@ -764,6 +766,7 @@ class Notifications(models.Model):
     def formatted_message(self):
         notif_type = self.notification_type.upper()
         item_name = "Unknown Item"
+        expiring_qty = None
         expiring_qty = None
 
         try:
@@ -850,6 +853,12 @@ class Notifications(models.Model):
                         "size_unit",
                         "size"
                     ).first()
+                    product = Products.objects.filter(id=self.item_id).select_related(
+                        "product_type",
+                        "variant",
+                        "size_unit",
+                        "size"
+                    ).first()
                     if product:
                         product_type = getattr(product.product_type, "name", "")
                         variant = getattr(product.variant, "name", "")
@@ -861,11 +870,24 @@ class Notifications(models.Model):
             elif self.item_type.upper() == "RAW_MATERIAL":
                 if notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH", "PRE_LOW_STOCK"]:
                     batch = RawMaterialBatches.objects.filter(id=self.item_id).select_related("material__unit").first()
+                if notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH", "PRE_LOW_STOCK"]:
+                    batch = RawMaterialBatches.objects.filter(id=self.item_id).select_related("material__unit").first()
                     if batch and batch.material:
                         material_name = getattr(batch.material, "name", "")
                         unit_name = getattr(batch.material.unit, "unit_name", "")
                         batch_date = batch.batch_date.strftime("%m/%d/%Y") if getattr(batch, "batch_date", None) else "Unknown"
+                        batch_date = batch.batch_date.strftime("%m/%d/%Y") if getattr(batch, "batch_date", None) else "Unknown"
                         item_name = f"{material_name} ({unit_name}) Batch {batch_date}"
+
+                        if notif_type == "PRE_LOW_STOCK":
+                            expiring_qty = RawMaterialBatches.objects.filter(
+                                material_id=batch.material.id,
+                                is_archived=False,
+                                is_expired=False,
+                                expiration_date__lte=timezone.localdate() + timezone.timedelta(days=7)
+                            ).aggregate(total=models.Sum('quantity'))['total'] or 0
+                else:
+                    material = RawMaterials.objects.filter(id=self.item_id).select_related("unit").first()
 
                         if notif_type == "PRE_LOW_STOCK":
                             expiring_qty = RawMaterialBatches.objects.filter(
@@ -889,6 +911,10 @@ class Notifications(models.Model):
         if notif_type == "PRE_LOW_STOCK" and expiring_qty is not None:
             return f"PRE LOW STOCK: {item_name} – {expiring_qty} items will expire soon, check remaining stock!"
         elif notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
+        # Build final message
+        if notif_type == "PRE_LOW_STOCK" and expiring_qty is not None:
+            return f"PRE LOW STOCK: {item_name} – {expiring_qty} items will expire soon, check remaining stock!"
+        elif notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
             return f"{item_name} {self._expiration_message()}"
         elif notif_type == "LOW_STOCK":
             return f"LOW STOCK: {item_name}"
@@ -907,6 +933,7 @@ class Notifications(models.Model):
             else:
                 batch = RawMaterialBatches.objects.filter(id=self.item_id).first()
 
+            if not batch or not getattr(batch, "expiration_date", None):
             if not batch or not getattr(batch, "expiration_date", None):
                 return "has no expiration date"
 
