@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 from decouple import config, Csv
-import dj_database_url
+# import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -136,6 +136,17 @@ DATABASES = {
        'PORT': '5432',
    }
 }
+
+# DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.postgresql',
+#        'NAME': 'reals_local',
+#        'USER': 'postgres',
+#        'PASSWORD': 'root',
+#        'HOST': 'localhost',
+#        'PORT': '5432',
+#    }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -276,18 +287,22 @@ else:
 # Email Configuration - Use SendGrid (HTTP API, bypasses Railway SMTP blocks)
 SENDGRID_API_KEY = config('SENDGRID_API_KEY', default='')
 
-if DEBUG:
-    # Development: use console backend for testing
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_BACKEND = config('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend' if DEBUG else 'django.core.mail.backends.console.EmailBackend')
+
+if DEBUG and EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend':
     DEFAULT_FROM_EMAIL = 'inventcaps@gmail.com'
 else:
     # Production: use SendGrid HTTP API (works on Railway, doesn't use SMTP)
-    if SENDGRID_API_KEY:
+    if SENDGRID_API_KEY and EMAIL_BACKEND != 'django.core.mail.backends.smtp.EmailBackend':
         EMAIL_BACKEND = 'realsproj.backends.SendGridBackend'
-    else:
-        # Fallback to console if no API key
-        EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='inventcaps@gmail.com')
+
+# Standard email settings
+EMAIL_HOST = config('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='inventcaps@gmail.com')
+EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
 
 # Email timeout settings
 EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=30, cast=int)

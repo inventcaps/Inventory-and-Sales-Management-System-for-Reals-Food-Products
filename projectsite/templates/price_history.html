@@ -1,6 +1,16 @@
 {% extends 'base.html' %}
 {% load static %}
 {% block content %}
+{% if not user.is_superuser and not user.is_staff %}
+<div class="content">
+    <div class="container-fluid">
+        <div class="alert alert-danger">
+            <h4>Access Denied</h4>
+            <p>You don't have permission to view this page.</p>
+        </div>
+    </div>
+</div>
+{% else %}
 <div class="content">
     <div class="container-fluid">
         <h4 class="page-title">Price Change Log</h4>
@@ -83,7 +93,9 @@
                                         <th>Old Price</th>
                                         <th>New Price</th>
                                         <th>Change</th>
+                                        {% if user.is_superuser %}
                                         <th>By</th>
+                                        {% endif %}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -131,6 +143,7 @@
                                                 <span class="text-muted">New Price</span>
                                             {% endif %}
                                         </td>
+                                        {% if user.is_superuser %}
                                         <td>
                                             {% if change.changed_by_admin %}
                                                 {{ change.changed_by_admin.username }}
@@ -138,10 +151,11 @@
                                                 <span class="text-muted">System</span>
                                             {% endif %}
                                         </td>
+                                        {% endif %}
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="7" class="text-center">No price changes found.</td>
+                                        <td colspan="{% if user.is_superuser %}7{% else %}6{% endif %}" class="text-center">No price changes found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -158,6 +172,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 
 <script>
 // Toggle Show All Data

@@ -193,7 +193,12 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         return context
 
 
+@login_required
 def sales_vs_expenses(request):
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to access financial reports.")
+        return redirect('home')
     sales_monthly = (
         Sales.objects
         .annotate(month=TruncMonth('date'))
@@ -300,7 +305,11 @@ def revenue_change_api(request):
     })
 
 
+@login_required
 def monthly_report(request):
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to view financial reports.")
+        return redirect('home')
 
     sales = (
         Sales.objects.annotate(month=TruncMonth("date"))
@@ -5878,6 +5887,12 @@ def login_view(request):
                 user = User.objects.get(id=user_id)
                 otp_code = request.POST.get('otp_code', '').strip()
                 
+                # Clean up expired OTPs first
+                UserOTP.objects.filter(
+                    user=user,
+                    expires_at__lt=timezone.now()
+                ).delete()
+                
                 otp = UserOTP.objects.filter(
                     user=user,
                     otp_code=otp_code,
@@ -5962,10 +5977,11 @@ def login_view(request):
         ).count()
         
         if recent_failed_attempts >= max_attempts:
-            # Get the time of the last failed attempt
+            # Get the time of the last failed attempt (reuse the same query)
             last_attempt = LoginAttempt.objects.filter(
                 ip_address=ip_address,
-                success=False
+                success=False,
+                timestamp__gte=timezone.now() - lockout_duration
             ).order_by('-timestamp').first()
             
             if last_attempt:
@@ -6018,7 +6034,12 @@ def login_view(request):
                         is_trusted_device=True
                     )
                     
-                    send_login_notification(user, device_info, ip_address, is_new_device=False)
+                    # Send login notification asynchronously to avoid blocking login
+                    try:
+                        from threading import Thread
+                        Thread(target=send_login_notification, args=(user, device_info, ip_address, False)).start()
+                    except Exception:
+                        pass  # Don't block login if notification fails
                     
                     login(request, user)
                     
@@ -6037,20 +6058,31 @@ def login_view(request):
                     UserOTP.objects.create(
                         user=user,
                         otp_code=otp_code,
-                        expires_at=timezone.now() + timedelta(minutes=5),
+                        expires_at=timezone.now() + timedelta(minutes=10),  # Extended to 10 minutes
                         ip_address=ip_address
                     )
                     
+                    # Send OTP email asynchronously to avoid blocking login
+                    def send_otp_email():
+                        try:
+                            send_mail(
+                                subject='🔐 Account Confirmation Required - Real\'s Food Products',
+                                message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 10 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
+                                from_email=settings.DEFAULT_FROM_EMAIL,
+                                recipient_list=[user.email],
+                                fail_silently=False,
+                            )
+                            print(f"[OTP EMAIL] Successfully sent OTP to {user.email}")
+                        except Exception as e:
+                            print(f"[OTP EMAIL ERROR] Failed to send OTP email: {str(e)}")
+                    
+                    # Send email in background thread
                     try:
-                        send_mail(
-                            subject='🔐 Account Confirmation Required - Real\'s Food Products',
-                            message=f'Hello {user.username},\n\nWe need to confirm your account for security purposes.\n\nYour confirmation code is: {otp_code}\n\nThis code will expire in 5 minutes.\n\nPlease enter this code to complete your login.\n\nReal\'s Food Products Security Team',
-                            from_email=settings.DEFAULT_FROM_EMAIL,
-                            recipient_list=[user.email],
-                            fail_silently=False,
-                        )
+                        from threading import Thread
+                        Thread(target=send_otp_email).start()
                     except Exception as e:
-                        pass  
+                        print(f"[THREAD ERROR] Failed to start email thread: {str(e)}")
+                        messages.error(request, "Failed to send confirmation email. Please contact support.")  
 
                     LoginAttempt.objects.create(
                         user=user,
@@ -6829,7 +6861,12 @@ Real's Food Products Security Team''',
     form = UserChangeForm(instance=user)
     return render(request, "editprofile.html", {"form": form, "active_tab": "account-general"})
 
+@login_required
 def export_sales(request):
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to export sales data.")
+        return redirect('home')
     filter_type = request.GET.get('filter', 'date')
     start_date = request.GET.get('start')
     end_date = request.GET.get('end')
@@ -6983,6 +7020,10 @@ def export_product_inventory(request):
     return response
 
 def export_expenses(request):
+    # Restrict to superusers only
+    if not request.user.is_superuser:
+        messages.error(request, "❌ You don't have permission to export expenses data.")
+        return redirect('home')
     filter_type = request.GET.get('filter', 'date')
     start_date = request.GET.get('start')
     end_date = request.GET.get('end')
