@@ -5,148 +5,19 @@
     <div class="container-fluid">
         <h4 class="page-title">Best Seller Products</h4>
 
-        <!-- Analytics Overview -->
-        <div class="card kanga-analytics-card mb-4">
+        <div class="row">
+            <div class="col-md-12">
+                <!-- Analytics Overview Card -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-title mb-0">Sales Performance</div>
+                        <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#bestsellerReportModal">
+                            <i class="la la-download mr-1"></i> Export Report
+                        </button>
+                    </div>
             <div class="card-body">
-                <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                    <div>
-                        <p class="text-uppercase text-muted small mb-1">📊 Sales Performance</p>
-                        <h5 class="mb-0">
-                            {% if filter_type == 'all' %}
-                                All Time Overview
-                            {% elif filter_month_name and filter_year %}
-                                {{ filter_month_name }} {{ filter_year }}
-                            {% elif current_month_name and current_year %}
-                                {{ current_month_name }} {{ current_year }}
-                            {% else %}
-                                Performance Overview
-                            {% endif %}
-                        </h5>
-                    </div>
-                </div>
-
-                <!-- Key Metrics Row -->
-                <div class="row mt-3">
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <div class="kanga-metric">
-                            <div class="metric-icon">📦</div>
-                            <p class="kanga-metric-label">Total Units Sold</p>
-                            <h3 class="kanga-metric-value">{{ total_quantity|default:0|floatformat:0 }}</h3>
-                            <small class="text-muted">items moved</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <div class="kanga-metric metric-success">
-                            <div class="metric-icon">💰</div>
-                            <p class="kanga-metric-label">Total Revenue</p>
-                            <h3 class="kanga-metric-value">₱{{ total_revenue|default:0|floatformat:0 }}</h3>
-                            <small class="text-muted">total earnings</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <div class="kanga-metric metric-info">
-                            <div class="metric-icon">🏷️</div>
-                            <p class="kanga-metric-label">Product Variety</p>
-                            <h3 class="kanga-metric-value">{{ total_products|default:0 }}</h3>
-                            <small class="text-muted">different products</small>
-                        </div>
-                    </div>
-                    <div class="col-md-3 col-sm-6 mb-3">
-                        <div class="kanga-metric metric-warning">
-                            <div class="metric-icon">📈</div>
-                            <p class="kanga-metric-label">Avg Revenue/Product</p>
-                            <h3 class="kanga-metric-value">₱{{ average_revenue|default:0|floatformat:0 }}</h3>
-                            <small class="text-muted">per item type</small>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Highlights Section -->
-                <div class="row mt-4">
-                    <div class="col-lg-6 mb-3">
-                        <div class="kanga-highlight highlight-success">
-                            <div class="highlight-header">
-                                <div>
-                                    <h6 class="mb-1">🌟 Your Top Performer</h6>
-                                    <p class="text-muted small mb-0">Best selling product this period</p>
-                                </div>
-                                <span class="badge badge-success">1st Place</span>
-                            </div>
-                            {% with top_product=best_sellers|first %}
-                                {% if top_product %}
-                                    <div class="highlight-content mt-3">
-                                        <p class="mb-1"><strong>{{ top_product.product__product_type__name }}</strong></p>
-                                        <p class="text-muted small mb-3">{{ top_product.product__variant__name }} ({{ top_product.product__size__size_label }} {{ top_product.product__size_unit__unit_name }})</p>
-                                        <div class="highlight-stats">
-                                            <div class="stat-item">
-                                                <span class="stat-label">Units Sold:</span>
-                                                <span class="stat-value">{{ top_product.total_quantity|floatformat:0 }}</span>
-                                            </div>
-                                            <div class="stat-item">
-                                                <span class="stat-label">Revenue:</span>
-                                                <span class="stat-value">₱{{ top_product.total_revenue|floatformat:2 }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    {% if best_sellers|length > 1 %}
-                                        <div class="top-list mt-3 pt-3 border-top">
-                                            <p class="small text-muted mb-2">Other Top Sellers:</p>
-                                            <ul class="kanga-mini-list mb-0">
-                                                {% for product in best_sellers|slice:"1:4" %}
-                                                    <li>
-                                                        <span class="rank-badge">{{ forloop.counter|add:1 }}</span>
-                                                        <span class="product-name">{{ product.product__product_type__name }}</span>
-                                                        <span class="product-qty">{{ product.total_quantity|floatformat:0 }} units</span>
-                                                    </li>
-                                                {% endfor %}
-                                            </ul>
-                                        </div>
-                                    {% endif %}
-                                {% else %}
-                                    <p class="text-muted mb-0 mt-3">📭 No sales data available yet</p>
-                                {% endif %}
-                            {% endwith %}
-                        </div>
-                    </div>
-                    <div class="col-lg-6 mb-3">
-                        <div class="kanga-highlight highlight-warning">
-                            <div class="highlight-header">
-                                <div>
-                                    <h6 class="mb-1">⚠️ Needs Attention</h6>
-                                    <p class="text-muted small mb-0">Low performing products</p>
-                                </div>
-                                <span class="badge badge-warning">Action Needed</span>
-                            </div>
-                            {% if low_sellers %}
-                                <div class="highlight-content mt-3">
-                                    <ul class="kanga-mini-list mb-0">
-                                        {% for product in low_sellers|slice:":5" %}
-                                            <li>
-                                                <span class="rank-badge warning">{{ forloop.counter }}</span>
-                                                <span class="product-name">{{ product.product__product_type__name }}</span>
-                                                <span class="product-qty">{{ product.total_quantity|floatformat:0 }} units</span>
-                                            </li>
-                                        {% endfor %}
-                                    </ul>
-                                    {% if no_sales_products %}
-                                        <div class="alert alert-info small mt-3 mb-0">
-                                            <strong>💡 Tip:</strong> {{ no_sales_products|length }} product(s) have zero sales. Consider reviewing pricing or promotion.
-                                        </div>
-                                    {% endif %}
-                                </div>
-                            {% else %}
-                                <p class="text-muted mb-0 mt-3">✅ All products are performing well!</p>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filter Section -->
-        <div class="card mb-3">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-2 gap-2">
+                <!-- Filter Section -->
+                <div class="d-flex align-items-center flex-wrap mb-4" style="gap:0.5rem;">
                     <input
                         type="month"
                         id="monthFilter"
@@ -161,9 +32,218 @@
                     <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                         <i class="la la-times"></i>
                     </button>
-                    <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#bestsellerReportModal">
-                        <i class="la la-download mr-1"></i> Export Report
-                    </button>
+                </div>
+
+                <!-- Content that updates with filter -->
+                <div id="bestsellerContent">
+                    <!-- Key Metrics Row -->
+                    <div class="row mb-2">
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card" style="background: white; border: 1px solid #e5e7eb;">
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">Total Units Sold</p>
+                                    <h3 class="mb-2" style="color: #16a34a; font-weight: 600;">{{ total_quantity|default:0|floatformat:0 }}</h3>
+                                    <small class="text-muted">items moved</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card" style="background: white; border: 1px solid #e5e7eb;">
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">Total Revenue</p>
+                                    <h3 class="mb-2" style="color: #dc2626; font-weight: 600;">₱{{ total_revenue|default:0|floatformat:0 }}</h3>
+                                    <small class="text-muted">total earnings</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card" style="background: white; border: 1px solid #e5e7eb;">
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">Product Variety</p>
+                                    <h3 class="mb-2" style="color: #0284c7; font-weight: 600;">{{ total_products|default:0 }}</h3>
+                                    <small class="text-muted">different products</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 col-sm-6 mb-3">
+                            <div class="card" style="background: white; border: 1px solid #e5e7eb;">
+                                <div class="card-body">
+                                    <p class="text-muted small mb-2">Avg Revenue/Product</p>
+                                    <h3 class="mb-2" style="color: #d97706; font-weight: 600;">₱{{ average_revenue|default:0|floatformat:0 }}</h3>
+                                    <small class="text-muted">per item type</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Highlights Section -->
+                    <div class="row" style="min-height: 300px;">
+                    <div class="col-lg-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h6 class="mb-1">Your Top Performer</h6>
+                                        <p class="text-muted small mb-0">Best selling product this period</p>
+                                    </div>
+                                    <span class="badge badge-success">1st Place</span>
+                                </div>
+                                {% with top_product=best_sellers|first %}
+                                    {% if top_product %}
+                                        <div class="flex-grow-1">
+                                            <p class="mb-1"><strong>{{ top_product.product__product_type__name }}</strong></p>
+                                            <p class="text-muted small mb-3">{{ top_product.product__variant__name }} ({{ top_product.product__size__size_label }} {{ top_product.product__size_unit__unit_name }})</p>
+                                            <div class="bg-light p-3 rounded mb-3">
+                                                <div class="d-flex justify-content-between mb-2">
+                                                    <span class="text-muted small">Units Sold:</span>
+                                                    <span class="font-weight-bold">{{ top_product.total_quantity|floatformat:0 }}</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between">
+                                                    <span class="text-muted small">Revenue:</span>
+                                                    <span class="font-weight-bold">₱{{ top_product.total_revenue|floatformat:2 }}</span>
+                                                </div>
+                                            </div>
+                                            {% if best_sellers|length > 1 %}
+                                                <div class="pt-3 border-top">
+                                                    <p class="small text-muted mb-2">Other Top Sellers:</p>
+                                                    <ul class="list-unstyled mb-0">
+                                                        {% for product in best_sellers|slice:"1:4" %}
+                                                            <li class="d-flex align-items-center gap-2 mb-2">
+                                                                <span class="badge badge-primary">{{ forloop.counter|add:1 }}</span>
+                                                                <span>{{ product.product__product_type__name }}</span>
+                                                                <span class="text-muted small ms-auto">{{ product.total_quantity|floatformat:0 }} units</span>
+                                                            </li>
+                                                        {% endfor %}
+                                                    </ul>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    {% else %}
+                                        <p class="text-muted mb-0">No sales data available yet</p>
+                                    {% endif %}
+                                {% endwith %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h6 class="mb-1">Needs Attention</h6>
+                                        <p class="text-muted small mb-0">Low performing products</p>
+                                    </div>
+                                    <span class="badge badge-warning">Action Needed</span>
+                                </div>
+                                {% if low_sellers %}
+                                    <div class="flex-grow-1">
+                                        <ul class="list-unstyled mb-3">
+                                            {% for product in low_sellers|slice:":5" %}
+                                                <li class="d-flex align-items-center gap-2 mb-2">
+                                                    <span class="badge badge-warning" style="min-width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;">{{ forloop.counter }}</span>
+                                                    <span>{{ product.product__product_type__name }}</span>
+                                                    <span class="text-muted small ms-auto">{{ product.total_quantity|floatformat:0 }} units</span>
+                                                </li>
+                                            {% endfor %}
+                                        </ul>
+                                        {% if no_sales_products %}
+                                            <div class="alert alert-info small mb-0">
+                                                <strong>💡 Tip:</strong> {{ no_sales_products|length }} product(s) have zero sales. Consider reviewing pricing or promotion.
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted mb-0">✅ All products are performing well!</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                    <!-- Tables Section -->
+                    <div class="row">
+                        <!-- Best Sellers Table -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Top Selling Products</h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Product</th>
+                                            <th class="col-total-sold" style="text-align: right;">Total Sold</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if best_sellers %}
+                                            {% for product in best_sellers %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge" style="background-color: #10b981; color: white; padding: 6px 10px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">#{{ forloop.counter }}</span>
+                                                </td>
+                                                <td>
+                                                    <strong>{{ product.product__product_type__name }}</strong><br>
+                                                    <small class="text-muted">
+                                                        {{ product.product__variant__name }} 
+                                                        ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
+                                                    </small>
+                                                </td>
+                                                <td class="col-total-sold" style="text-align: right;">
+                                                    <span class="badge" style="background-color: #6b7280; color: white; padding: 6px 12px;">{{ product.total_quantity|floatformat:0 }} units</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-4">No sales data available yet</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Low Sellers Table -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Low Selling Products</h6>
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Product</th>
+                                            <th class="col-total-sold" style="text-align: right;">Total Sold</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if low_sellers %}
+                                            {% for product in low_sellers %}
+                                            <tr>
+                                                <td>
+                                                    <span class="badge" style="background-color: #f97316; color: white; padding: 6px 10px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">#{{ forloop.counter }}</span>
+                                                </td>
+                                                <td>
+                                                    <strong>{{ product.product__product_type__name }}</strong><br>
+                                                    <small class="text-muted">
+                                                        {{ product.product__variant__name }} 
+                                                        ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
+                                                    </small>
+                                                </td>
+                                                <td class="col-total-sold" style="text-align: right;">
+                                                    <span class="badge" style="background-color: #6b7280; color: white; padding: 6px 12px;">{{ product.total_quantity|floatformat:0 }} units</span>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="3" class="text-center text-muted py-4">No sales data available yet</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -203,105 +283,6 @@
             </div>
         </div>
         
-        <div class="row" id="bestsellerContent">
-            <!-- Best Sellers Section -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Top Selling Products</div>
-                        <p class="text-muted mb-0">Products with highest sales quantity</p>
-                    </div>
-                    <div class="card-body">
-                        {% if best_sellers %}
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Rank</th>
-                                            <th>Product</th>
-                                            <th class="col-total-sold">Total Sold</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for product in best_sellers %}
-                                        <tr>
-                                            <td>
-                                                <span class="badge badge-success">#{{ forloop.counter }}</span>
-                                            </td>
-                                            <td>
-                                                <strong>{{ product.product__product_type__name }}</strong><br>
-                                                <small class="text-muted">
-                                                    {{ product.product__variant__name }} 
-                                                    ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
-                                                </small>
-                                            </td>
-                                            <td class="col-total-sold">
-                                                <span class="badge badge-primary">{{ product.total_quantity|floatformat:0 }} units</span>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <div class="text-center py-5">
-                                <i class="la la-chart-line la-3x text-muted"></i>
-                                <p class="text-muted mt-3">No sales data available yet</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Low Sellers Section -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <div class="card-title">Low Selling Products</div>
-                        <p class="text-muted mb-0">Products with lowest sales quantity</p>
-                    </div>
-                    <div class="card-body">
-                        {% if low_sellers %}
-                            <div class="table-responsive">
-                                <table class="table table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Rank</th>
-                                            <th>Product</th>
-                                            <th class="col-total-sold">Total Sold</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for product in low_sellers %}
-                                        <tr>
-                                            <td>
-                                                <span class="badge badge-warning">#{{ forloop.counter }}</span>
-                                            </td>
-                                            <td>
-                                                <strong>{{ product.product__product_type__name }}</strong><br>
-                                                <small class="text-muted">
-                                                    {{ product.product__variant__name }} 
-                                                    ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
-                                                </small>
-                                            </td>
-                                            <td class="col-total-sold">
-                                                <span class="badge badge-secondary">{{ product.total_quantity|floatformat:0 }} units</span>
-                                            </td>
-                                        </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                        {% else %}
-                            <div class="text-center py-5">
-                                <i class="la la-chart-line la-3x text-muted"></i>
-                                <p class="text-muted mt-3">No sales data available yet</p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -348,213 +329,4 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 });
 </script>
-<style>
-    .kanga-analytics-card {
-        border: none;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-        border-radius: 0.75rem;
-    }
-    
-    /* Metric Cards */
-    .kanga-metric {
-        background: #fff;
-        border-radius: 0.75rem;
-        padding: 1.25rem;
-        height: 100%;
-        border: 1px solid #e5e7eb;
-        transition: box-shadow 0.2s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .kanga-metric:hover {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-    }
-    
-    .kanga-metric::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        /* background: linear-gradient(90deg, #4f46e5, #22d3ee); */
-    }
-    
-    /* .metric-primary::before { background: linear-gradient(90deg, #3b82f6, #06b6d4); }
-    .metric-success::before { background: linear-gradient(90deg, #10b981, #34d399); }
-    .metric-info::before { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
-    .metric-warning::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); } */
-    
-    .metric-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-    }
-    
-    .kanga-metric-label {
-        margin-bottom: 0.25rem;
-        font-size: 0.8rem;
-        text-transform: uppercase;
-        color: #6b7280;
-        letter-spacing: 0.05em;
-        font-weight: 500;
-    }
-    
-    .kanga-metric-value {
-        font-weight: 600;
-        color: #111827;
-        font-size: 1.75rem;
-        line-height: 1.2;
-        margin-bottom: 0.25rem;
-    }
-    
-    .kanga-metric small {
-        color: #9ca3af;
-        font-size: 0.75rem;
-    }
-    
-    /* Highlight Boxes */
-    .kanga-highlight {
-        border: 1px solid #e5e7eb;
-        border-radius: 0.75rem;
-        padding: 1.25rem;
-        background: #fff;
-        height: 100%;
-    }
-    
-    /* .highlight-success {
-        border-left: 4px solid #10b981;
-    }
-    
-    .highlight-warning {
-        border-left: 4px solid #f59e0b;
-    } */
-    
-    .highlight-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .highlight-header h6 {
-        font-size: 1rem;
-        font-weight: 500;
-        color: #111827;
-        margin: 0;
-    }
-    
-    .highlight-content {
-        margin-top: 0.5rem;
-    }
-    
-    .highlight-stats {
-        background: #f9fafb;
-        border-radius: 0.5rem;
-        padding: 0.75rem;
-        margin-top: 0.75rem;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .stat-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.375rem 0;
-        font-size: 0.9rem;
-    }
-    
-    .stat-label {
-        color: #6b7280;
-        font-weight: 400;
-    }
-    
-    .stat-value {
-        color: #111827;
-        font-weight: 500;
-        font-size: 1rem;
-    }
-    
-    /* Mini List */
-    .kanga-mini-list {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-    
-    .kanga-mini-list li {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 0.9rem;
-        padding: 0.5rem 0;
-        border-bottom: 1px solid #e5e7eb;
-    }
-    
-    .kanga-mini-list li:last-child {
-        border-bottom: none;
-    }
-    
-    .rank-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 24px;
-        height: 24px;
-        background: #e0e7ff;
-        color: #4f46e5;
-        border-radius: 50%;
-        font-weight: 600;
-        font-size: 0.8rem;
-        flex-shrink: 0;
-    }
-    
-    .rank-badge.warning {
-        background: #fef3c7;
-        color: #d97706;
-    }
-    
-    .product-name {
-        flex: 1;
-        font-weight: 400;
-        color: #111827;
-    }
-    
-    .product-qty {
-        color: #6b7280;
-        font-size: 0.8rem;
-        font-weight: 400;
-        white-space: nowrap;
-    }
-    
-    .top-list {
-        padding: 0.75rem 0;
-    }
-    
-    .alert {
-        border-radius: 0.5rem;
-        border: 1px solid #dbeafe;
-        background: #eff6ff;
-    }
-    
-    .alert-info {
-        color: #1e40af;
-    }
-    
-    @media (max-width: 767px) {
-        .kanga-metric {
-            padding: 1rem;
-        }
-        
-        .kanga-metric-value {
-            font-size: 1.5rem;
-        }
-        
-        .highlight-header {
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-    }
-</style>
 {% endblock %}
