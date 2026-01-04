@@ -2053,6 +2053,7 @@ class SalesExpensesList(ListView):
                 'group_id': group_id,
                 'actual_group_id': actual_group_id,
                 'is_single': is_single,
+                'receipt_number': first_withdrawal.receipt_number,
                 'customer_name': first_withdrawal.customer_name,
                 'sales_channel': sales_channel_display,
                 'payment_status': first_withdrawal.payment_status,
@@ -7221,22 +7222,38 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
             if current_month:
                 filters['date__month'] = current_month
 
-        withdrawals = Withdrawals.objects.filter(**filters).values('item_id', 'quantity', 'custom_price')
+        withdrawals = Withdrawals.objects.filter(**filters).values(
+            'item_id',
+            'quantity',
+            'custom_price',
+            'total_amount',
+            'final_price_per_unit',
+        )
 
         product_sales = {}
         for w in withdrawals:
             product_id = w['item_id']
-            quantity = w['quantity'] or 0
-            price = w['custom_price'] or 0
-            
+            quantity = Decimal(w['quantity'] or 0)
+            custom_price = w.get('custom_price')
+            total_amount = w.get('total_amount')
+            final_price_per_unit = w.get('final_price_per_unit')
+
+            revenue = Decimal('0')
+            if total_amount is not None:
+                revenue = Decimal(total_amount)
+            elif custom_price is not None:
+                revenue = Decimal(custom_price)
+            elif final_price_per_unit is not None:
+                revenue = quantity * Decimal(final_price_per_unit)
+
             if product_id not in product_sales:
                 product_sales[product_id] = {
-                    'total_quantity': 0,
-                    'total_revenue': 0
+                    'total_quantity': Decimal('0'),
+                    'total_revenue': Decimal('0')
                 }
-            
+
             product_sales[product_id]['total_quantity'] += quantity
-            product_sales[product_id]['total_revenue'] += quantity * price
+            product_sales[product_id]['total_revenue'] += revenue
 
         sold_products_list = []
         for product_id, sales_data in product_sales.items():
@@ -7252,7 +7269,7 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
                     'product__size__size_label': product.size.size_label if product.size else '',
                     'product__size_unit__unit_name': product.size_unit.unit_name,
                     'total_quantity': sales_data['total_quantity'],
-                    'total_revenue': sales_data['total_revenue']
+                    'total_revenue': sales_data['total_revenue'],
                 })
             except Products.DoesNotExist:
                 continue
@@ -7287,15 +7304,15 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
                     'product__variant__name': product.variant.name,
                     'product__size__size_label': product.size.size_label if product.size else '',
                     'product__size_unit__unit_name': product.size_unit.unit_name,
-                    'total_quantity': 0,
-                    'total_revenue': 0
+                    'total_quantity': Decimal('0'),
+                    'total_revenue': Decimal('0'),
                 })
         
         low_sellers = low_sellers_list[:10]
         total_quantity = sum(p['total_quantity'] for p in sold_products_list)
         total_revenue = sum(p['total_revenue'] for p in sold_products_list)
         total_products = len(sold_products_list)
-        average_revenue = total_revenue / total_products if total_products > 0 else 0
+        average_revenue = total_revenue / total_products if total_products > 0 else Decimal('0')
         available_years = Withdrawals.objects.filter(
             item_type='PRODUCT',
             reason='SOLD',
@@ -7381,18 +7398,38 @@ def export_bestseller_report(request):
         if current_month:
             filters['date__month'] = current_month
 
-    withdrawals = Withdrawals.objects.filter(**filters).values('item_id', 'quantity', 'custom_price')
+    withdrawals = Withdrawals.objects.filter(**filters).values(
+        'item_id',
+        'quantity',
+        'custom_price',
+        'total_amount',
+        'final_price_per_unit',
+    )
 
     # Aggregate by product
     product_sales = {}
     for w in withdrawals:
         pid = w['item_id']
-        qty = w['quantity'] or 0
-        price = w['custom_price'] or 0
+        qty = Decimal(w['quantity'] or 0)
+        custom_price = w.get('custom_price')
+        total_amount = w.get('total_amount')
+        final_price_per_unit = w.get('final_price_per_unit')
+
+        revenue = Decimal('0')
+        if total_amount is not None:
+            revenue = Decimal(total_amount)
+        elif custom_price is not None:
+            revenue = Decimal(custom_price)
+        elif final_price_per_unit is not None:
+            revenue = qty * Decimal(final_price_per_unit)
+
         if pid not in product_sales:
-            product_sales[pid] = {'total_quantity': 0, 'total_revenue': 0}
+            product_sales[pid] = {
+                'total_quantity': Decimal('0'),
+                'total_revenue': Decimal('0')
+            }
         product_sales[pid]['total_quantity'] += qty
-        product_sales[pid]['total_revenue'] += qty * price
+        product_sales[pid]['total_revenue'] += revenue
 
     # Build detailed list with product fields
     sold_products_list = []
@@ -7444,7 +7481,7 @@ def export_bestseller_report(request):
     total_quantity = sum(p['total_quantity'] for p in sold_products_list)
     total_revenue = sum(p['total_revenue'] for p in sold_products_list)
     total_products = len(sold_products_list)
-    average_revenue = (total_revenue / total_products) if total_products > 0 else 0
+    average_revenue = (total_revenue / total_products) if total_products > 0 else Decimal('0')
 
     # Prepare CSV response
     response = HttpResponse(content_type='text/csv')
