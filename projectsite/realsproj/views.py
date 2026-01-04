@@ -8333,13 +8333,14 @@ def export_price_history(request):
 def check_product_batches(request):
     """API endpoint to check if products already have batches with the same quantity."""
     product_data = request.GET.get('product_data', '[]')
-    
+
     try:
         import json
         products_list = json.loads(product_data)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'duplicates': []})
-    
+
+    today = timezone.localdate()
     duplicates = []
     for item in products_list:
         try:
@@ -8350,19 +8351,20 @@ def check_product_batches(request):
                 continue
             
             product = Products.objects.get(id=product_id)
-            
+
             # Check if there's an existing batch with the same quantity
             batch_exists = ProductBatches.objects.filter(
                 product=product,
                 quantity=quantity,
-                is_archived=False
+                is_archived=False,
+                batch_date=today
             ).exists()
-            
+
             if batch_exists:
                 duplicates.append(f"{product.product_type.name} - {product.variant.name} ({product.size.size_label})")
         except (Products.DoesNotExist, ValueError, KeyError):
             pass
-    
+
     return JsonResponse({'duplicates': duplicates})
 
 
@@ -8376,7 +8378,8 @@ def check_rawmaterial_batches(request):
         materials_list = json.loads(material_data)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'duplicates': []})
-    
+
+    today = timezone.localdate()
     duplicates = []
     for item in materials_list:
         try:
@@ -8387,19 +8390,20 @@ def check_rawmaterial_batches(request):
                 continue
             
             material = RawMaterials.objects.get(id=material_id)
-            
+
             # Check if there's an existing batch with the same quantity
             batch_exists = RawMaterialBatches.objects.filter(
                 material=material,
                 quantity=quantity,
-                is_archived=False
+                is_archived=False,
+                batch_date=today
             ).exists()
-            
+
             if batch_exists:
                 duplicates.append(f"{material.name}")
         except (RawMaterials.DoesNotExist, ValueError, KeyError):
             pass
-    
+
     return JsonResponse({'duplicates': duplicates})
 
 
@@ -8533,13 +8537,15 @@ def check_withdrawal_duplicates(request):
     except (ValueError, TypeError):
         return JsonResponse({'duplicate': False})
     
+    today = timezone.localdate()
     # Check for exact match (same item_type, item_id, quantity, and reason)
     duplicate_exists = Withdrawals.objects.filter(
         item_type=item_type,
         item_id=item_id,
         quantity=quantity,
         reason=reason,
-        is_archived=False
+        is_archived=False,
+        date__date=today
     ).exists()
-    
+
     return JsonResponse({'duplicate': duplicate_exists})
