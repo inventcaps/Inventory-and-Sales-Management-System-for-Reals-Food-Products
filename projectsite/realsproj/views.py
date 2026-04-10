@@ -548,10 +548,11 @@ class ProductsList(ListView):
             .order_by("-id")
         )
 
-        # Unified search field for Product Type, Variant, and Size
+        # Unified search: Code, Product Type, Variant, and Size
         search = self.request.GET.get("search", "").strip()
         if search:
             queryset = queryset.filter(
+                Q(product_code__icontains=search) |
                 Q(product_type__name__icontains=search) |
                 Q(variant__name__icontains=search) |
                 Q(size__size_label__icontains=search)
