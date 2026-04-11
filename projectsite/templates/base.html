@@ -517,20 +517,14 @@
 
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#rawmatMenu" 
-                       aria-expanded="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory packaging-materials packaging-materials-add packaging-materials-edit recipe-materials recipe-materials-add recipe-materials-edit' %}true{% else %}false{% endif %}">
+                       aria-expanded="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory' %}true{% else %}false{% endif %}">
                         <i class="la la-cubes"></i><p>Raw Materials</p><span class="caret"></span>
                     </a>
-                    <div class="collapse {% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory packaging-materials packaging-materials-add packaging-materials-edit recipe-materials recipe-materials-add recipe-materials-edit' %}show{% endif %}" id="rawmatMenu" data-parent="">
+                    <div class="collapse {% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory' %}show{% endif %}" id="rawmatMenu" data-parent="">
                         <ul class="nav nav-collapse">
                             <li class="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list' %}active{% endif %}">
                                 <a href="{% url 'rawmaterials' %}"><span class="sub-item">Raw Materials List</span></a>
                             </li>
-                            <!-- <li class="{% if request.resolver_match.url_name in 'packaging-materials packaging-materials-add packaging-materials-edit' %}active{% endif %}">
-                                <a href="{% url 'packaging-materials' %}"><span class="sub-item">Packaging Materials List</span></a>
-                            </li>
-                            <li class="{% if request.resolver_match.url_name in 'recipe-materials recipe-materials-add recipe-materials-edit' %}active{% endif %}">
-                                <a href="{% url 'recipe-materials' %}"><span class="sub-item">Recipe Materials List</span></a>
-                            </li> -->
                             <li class="{% if request.resolver_match.url_name == 'rawmaterial-batch' %}active{% endif %}">
                                 <a href="{% url 'rawmaterial-batch' %}"><span class="sub-item">Raw Material Batch</span></a>
                             </li>

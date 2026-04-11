@@ -144,11 +144,7 @@
 
               <!-- Buttons -->
               <div class="form-actions btn-row mt-3">
-                {% if object and object.id %}
-                  <a href="{% url 'recipe-list' object.id %}" class="btn btn-secondary">Manage Recipes</a>
-                {% else %}
-                  <button type="submit" class="btn btn-primary btn-rounded">Save</button>
-                {% endif %}
+                <button type="submit" class="btn btn-primary btn-rounded">Save</button>
               </div>
 
               </form>

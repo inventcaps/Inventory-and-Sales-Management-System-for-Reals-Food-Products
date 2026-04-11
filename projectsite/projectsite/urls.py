@@ -65,11 +65,6 @@ urlpatterns = [
     path('packaging-materials/<int:pk>', a.PackagingMaterialsUpdateView.as_view(), name='packaging-materials-edit'),
     path('packaging-materials/archived/', a.ArchivedPackagingMaterialsListView.as_view(), name='packaging-archived-list'),
 
-    path('recipe-materials/', a.RecipeMaterialsList.as_view(), name='recipe-materials'),
-    path('recipe-materials/add', a.RecipeMaterialsCreateView.as_view(), name='recipe-materials-add'),
-    path('recipe-materials/<int:pk>', a.RecipeMaterialsUpdateView.as_view(), name='recipe-materials-edit'),
-    path('recipe-materials/archived/', a.ArchivedRecipeMaterialsListView.as_view(), name='recipe-archived-list'),
-
     path('historylog/', a.HistoryLogList.as_view(), name='historylog'),
     path('history/', a.HistoryLogList.as_view(), name='history_log'),  
 
@@ -262,10 +257,6 @@ urlpatterns = [
     path('products/bulk-delete/', a.product_bulk_delete, name='product-bulk-delete'),
     path('products/bulk-archive/', a.product_bulk_archive, name='product-bulk-archive'),
     path('products/bulk-restore/', a.product_bulk_restore, name='products-bulk-restore'),
-    path("products/<int:product_id>/recipes/", a.ProductRecipeListView.as_view(), name="recipe-list"),
-    path("products/<int:product_id>/recipes/add/", a.ProductRecipeBulkCreateView.as_view(), name="recipe-add"),
-    path("recipes/<int:pk>/edit/", a.ProductRecipeUpdateView.as_view(), name="recipe-edit"),
-    path("recipes/<int:pk>/delete/", a.ProductRecipeDeleteView.as_view(), name="recipe-delete"),
     path("report/", a.monthly_report, name="monthly-report"),
     path("report/export/", a.monthly_report_export, name="monthly-report-export"),
 

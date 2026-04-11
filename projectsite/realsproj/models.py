@@ -254,16 +254,6 @@ class HistoryLog(models.Model):
                     
                     return f"Deleted Withdrawal #{self.entity_id}"
 
-            elif self.entity_type == "product_recipe":
-                pr = ProductRecipes.objects.select_related(
-                    "product__product_type",
-                    "product__variant",
-                    "product__size_unit",
-                    "product__size",
-                    "material"
-                ).get(pk=self.entity_id)
-                return f"{pr.product.product_type.name} - {pr.product.variant.name} ({pr.product.size.size_label if pr.product.size else ''} {pr.product.size_unit.unit_name})"
-
             elif self.entity_type == "product_type":
                 pt = ProductTypes.objects.get(pk=self.entity_id)
                 return pt.name
@@ -1045,26 +1035,6 @@ class ProductInventory(models.Model):
             'needs_reorder': available < self.restock_threshold,
             'expiration_impact': self.total_stock - available
         }
-
-
-class ProductRecipes(models.Model):
-    id = models.BigAutoField(primary_key=True)
-    product = models.ForeignKey(
-        "Products",
-        on_delete=models.CASCADE,
-        related_name="recipes"  # lets you do product.recipes.all()
-    )
-    material = models.ForeignKey(
-        "RawMaterials",
-        on_delete=models.DO_NOTHING,
-        db_column="material_id"
-    )
-    quantity_needed = models.DecimalField(max_digits=10, decimal_places=2)
-    created_by_admin = models.ForeignKey("AuthUser", models.DO_NOTHING)
-    yield_factor = models.DecimalField(max_digits=5, decimal_places=2, default=1.00)
-
-    class Meta:
-        db_table = "product_recipes" 
 
 
 class ProductTypes(models.Model):

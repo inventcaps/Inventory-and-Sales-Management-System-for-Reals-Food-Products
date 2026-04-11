@@ -33,19 +33,7 @@
                            placeholder="Select Received Date"
                            value="{{ form.received_date.value|default:'' }}">
                   </div>
-                  <div class="form-group mb-4">
-                    {% with current_category=form.selected_category|default:form.category.value|default:"PACKAGING" %}
-                    <label for="categorySelect" class="font-weight-bold">Category</label>
-                    <select id="categorySelect"
-                            name="{{ form.category.name }}"
-                            class="form-control"
-                            style="max-width: 300px;">
-                      <option value="PACKAGING" {% if current_category == "PACKAGING" %}selected{% endif %}>Packaging Materials</option>
-                      <option value="RECIPE" {% if current_category == "RECIPE" %}selected{% endif %}>Recipe Materials</option>
-                    </select>
-                    <small class="form-text text-muted">Switching the category reloads this page to show the matching materials only.</small>
-                    {% endwith %}
-                  </div>
+                  <input type="hidden" name="{{ form.category.name }}" value="PACKAGING">
                 </div>
 
                 <!-- Raw Materials Table -->
@@ -111,18 +99,9 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const receivedDateInput = document.getElementById('{{ form.received_date.id_for_label }}');
-  const categorySelect = document.getElementById('categorySelect');
   if (receivedDateInput && !receivedDateInput.value) {
     const today = new Date().toISOString().split('T')[0];
     receivedDateInput.value = today;
-  }
-
-  if (categorySelect) {
-    categorySelect.addEventListener('change', function() {
-      const params = new URLSearchParams(window.location.search);
-      params.set('category', this.value);
-      window.location.href = window.location.pathname + '?' + params.toString();
-    });
   }
 
   // Duplicate detection logic for raw materials

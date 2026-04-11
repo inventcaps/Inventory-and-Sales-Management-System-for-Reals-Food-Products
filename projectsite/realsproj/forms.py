@@ -6,7 +6,7 @@ from calendar import monthrange
 
 from django.utils import timezone
 
-from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, ProductRecipes, Withdrawals
+from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, Withdrawals
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.core.exceptions import ValidationError
@@ -217,16 +217,9 @@ class ProductsForm(forms.ModelForm):
         return cleaned_data
 
 
-class ProductRecipeForm(forms.ModelForm):
-    class Meta:
-        model = ProductRecipes
-        fields = ["material", "quantity_needed", "yield_factor"]
-
-
 class RawMaterialsForm(ModelForm):
     CATEGORY_CHOICES = (
         ("PACKAGING", "Packaging"),
-        ("RECIPE", "Recipe"),
     )
 
     category = forms.ChoiceField(choices=CATEGORY_CHOICES)
@@ -883,7 +876,6 @@ class BulkProductBatchForm(forms.Form):
 class BulkRawMaterialBatchForm(forms.Form):
     CATEGORY_CHOICES = (
         ('PACKAGING', 'Packaging'),
-        ('RECIPE', 'Recipe'),
     )
 
     category = forms.ChoiceField(choices=CATEGORY_CHOICES, required=False)

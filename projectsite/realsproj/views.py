@@ -39,12 +39,11 @@ from realsproj.forms import (
     SizesForm,
     SizeUnitsForm,
     UnitPricesForm,
-    SrpPricesForm, 
+    SrpPricesForm,
     NotificationsForm,
     BulkProductBatchForm,
     StockChangesForm,
     BulkRawMaterialBatchForm,
-    ProductRecipeForm,
     UnifiedWithdrawForm,
     CustomUserCreationForm,
     WithdrawEditForm
@@ -74,7 +73,6 @@ from realsproj.models import (
     SalesSummary,
     ExpensesSummary,
     Discounts,
-    ProductRecipes,
     UserActivity,
     PriceHistory
 )
@@ -830,7 +828,7 @@ class ProductCreateView(CreateView):
             return redirect(self.request.path)  
 
         messages.success(self.request, "✅ Product added successfully.")
-        return redirect('recipe-list', product_id=self.object.id)
+        return redirect('products')
 
     def form_invalid(self, form):
         """Handle validation errors (e.g., duplicate barcode)"""
@@ -865,7 +863,6 @@ class ProductsUpdateView(UpdateView):
         context['size_units'] = SizeUnits.objects.all()
         context['unit_prices'] = UnitPrices.objects.all()
         context['srp_prices'] = SrpPrices.objects.all()
-        context['recipe_list_url'] = reverse_lazy('recipe-list', kwargs={'product_id': self.object.id})
         
         # Store the current page number
         referer = self.request.META.get('HTTP_REFERER', '')
@@ -1010,63 +1007,6 @@ class ProductsDeleteView(UserPassesTestMixin, DeleteView):
             return f"{reverse_lazy('products')}?page={page}"
         return super().get_success_url()
 
-class ProductRecipeListView(ListView):
-    model = ProductRecipes
-    template_name = "prodrecipe_list.html"
-    context_object_name = "recipes"
-
-    def get_queryset(self):
-        return ProductRecipes.objects.filter(product_id=self.kwargs['product_id']).select_related("material")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["product"] = Products.objects.get(pk=self.kwargs["product_id"])
-        return context
-
-class ProductRecipeBulkCreateView(View):
-    template_name = "prodrecipe_add.html"
-
-    def get(self, request, product_id):
-        product = Products.objects.get(pk=product_id)
-        RecipeFormSet = modelformset_factory(ProductRecipes, form=ProductRecipeForm, extra=1, can_delete=False)
-
-        formset = RecipeFormSet(queryset=ProductRecipes.objects.none())
-        return render(request, self.template_name, {"formset": formset, "product": product})
-
-    def post(self, request, product_id):
-        product = Products.objects.get(pk=product_id)
-        auth_user = AuthUser.objects.get(username=request.user.username)
-        RecipeFormSet = modelformset_factory(ProductRecipes, form=ProductRecipeForm, extra=0, can_delete=False)
-
-        formset = RecipeFormSet(request.POST)
-
-        if formset.is_valid():
-            instances = formset.save(commit=False)
-            for instance in instances:
-                instance.product = product
-                instance.created_by_admin = auth_user
-                instance.save()
-            if instances:
-                messages.success(request, "✅ Recipes added successfully.")
-            return redirect("recipe-list", product_id=product.id)
-
-        return render(request, self.template_name, {"formset": formset, "product": product})
-
-class ProductRecipeUpdateView(UpdateView):
-    model = ProductRecipes
-    form_class = ProductRecipeForm
-    template_name = "prodrecipe_edit.html"
-
-    def get_success_url(self):
-        messages.success(self.request, "✅ Recipe updated successfully.")
-        return reverse_lazy("recipe-list", kwargs={"product_id": self.object.product_id})
-
-class ProductRecipeDeleteView(DeleteView):
-    model = ProductRecipes
-
-    def get_success_url(self):
-        messages.success(self.request, "🗑️ Recipe deleted successfully.")
-        return reverse_lazy("recipe-list", kwargs={"product_id": self.object.product_id})
 
 class RawMaterialsList(ListView):
     model = RawMaterials
@@ -1100,7 +1040,13 @@ class RawMaterialsList(ListView):
             except ValueError:
                 pass  # Ignore invalid format
 
-        if category in {"PACKAGING", "RECIPE"}:
+        distinct_categories = (
+            RawMaterials.objects.filter(is_archived=False)
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        valid_categories = {c.upper() for c in distinct_categories if c}
+        if category and category in valid_categories:
             queryset = queryset.filter(category__iexact=category)
 
         return queryset.order_by('-date_created')
@@ -1108,13 +1054,13 @@ class RawMaterialsList(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         category = self.request.GET.get("category", "").strip().upper()
-        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
         distinct_categories = (
             RawMaterials.objects.filter(is_archived=False)
             .values_list('category', flat=True)
             .distinct()
         )
         context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
+        context['category_filter'] = category if category in context['category_choices'] else ""
         context['total_raw_materials'] = context['paginator'].count if 'paginator' in context else 0
         return context
 
@@ -1222,13 +1168,6 @@ class ArchivedPackagingMaterialsListView(ArchivedRawMaterialsListView):
         return (super().get_queryset()
                 .filter(category__iexact='PACKAGING'))
 
-
-class ArchivedRecipeMaterialsListView(ArchivedRawMaterialsListView):
-    template_name = 'archived_recipe.html'
-
-    def get_queryset(self):
-        return (super().get_queryset()
-                .filter(category__iexact='RECIPE'))
 
 class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
@@ -1406,22 +1345,6 @@ class PackagingMaterialsUpdateView(CategoryRawMaterialsUpdateView):
     success_url = reverse_lazy('packaging-materials')
     category_value = 'PACKAGING'
 
-
-class RecipeMaterialsList(CategoryFilteredRawMaterialsList):
-    category_value = 'RECIPE'
-    template_name = 'recipe_list.html'
-
-
-class RecipeMaterialsCreateView(CategoryRawMaterialsCreateView):
-    template_name = 'recipe_add.html'
-    success_url = reverse_lazy('recipe-materials')
-    category_value = 'RECIPE'
-
-
-class RecipeMaterialsUpdateView(CategoryRawMaterialsUpdateView):
-    template_name = 'recipe_edit.html'
-    success_url = reverse_lazy('recipe-materials')
-    category_value = 'RECIPE'
 
 class HistoryLogList(ListView):
     model = HistoryLog
@@ -3268,7 +3191,14 @@ class RawMaterialInventoryList(ListView):
                 Q(reorder_threshold__icontains=q)
             )
 
-        if category in {"PACKAGING", "RECIPE"}:
+        valid_cats = {
+            c.upper()
+            for c in RawMaterials.objects.filter(is_archived=False)
+            .values_list("category", flat=True)
+            .distinct()
+            if c
+        }
+        if category and category in valid_cats:
             queryset = queryset.filter(material__category__iexact=category)
 
         return queryset
@@ -3326,13 +3256,13 @@ class RawMaterialInventoryList(ListView):
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
         category = self.request.GET.get("category", "").strip().upper()
-        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
         distinct_categories = (
             RawMaterials.objects.filter(is_archived=False)
             .values_list('category', flat=True)
             .distinct()
         )
         context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
+        context['category_filter'] = category if category in context['category_choices'] else ""
         return context
 
 @require_GET
@@ -3353,7 +3283,14 @@ def export_rawmaterial_inventory(request):
             Q(reorder_threshold__icontains=q)
         )
 
-    if category in {"PACKAGING", "RECIPE"}:
+    valid_cats = {
+        c.upper()
+        for c in RawMaterials.objects.filter(is_archived=False)
+        .values_list("category", flat=True)
+        .distinct()
+        if c
+    }
+    if category and category in valid_cats:
         qs = qs.filter(material__category__iexact=category)
 
     if status == "on_stock":

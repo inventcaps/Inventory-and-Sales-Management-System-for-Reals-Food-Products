@@ -64,8 +64,9 @@
                                 <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 250px;">
                                 <select id="categoryFilter" name="category" class="form-control" style="width: 200px;">
                                     <option value="">All Categories</option>
-                                    <option value="PACKAGING" {% if category_filter == "PACKAGING" %}selected{% endif %}>Packaging</option>
-                                    <option value="RECIPE" {% if category_filter == "RECIPE" %}selected{% endif %}>Recipe</option>
+                                    {% for cat in category_choices %}
+                                    <option value="{{ cat }}" {% if category_filter == cat %}selected{% endif %}>{{ cat|title }}</option>
+                                    {% endfor %}
                                 </select>
                                 <input type="month" name="date_created" id="dateFilter" class="form-control" style="width:180px;"
                                        placeholder="Filter by Month"
