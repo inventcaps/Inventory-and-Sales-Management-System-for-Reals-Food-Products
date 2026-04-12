@@ -5,16 +5,16 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'rawmaterial-batch' %}" class="btn btn-link p-0 mr-2" title="Back to Raw Material Batches">
+      <a href="{% url 'rawmaterial-batch' %}" class="btn btn-link p-0 mr-2" title="Back to Packaging Batches">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
-      Raw Material Batches
+      Packaging Batches
     </h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Edit Raw Material Batch</div>
+            <div class="card-title">Edit Packaging Batch</div>
           </div>
 
           <div class="card-body">
@@ -54,15 +54,6 @@
                     <label for="{{ form.received_date.id_for_label }}">{{ form.received_date.label }}</label>
                     {% render_field form.received_date class="form-control" %}
                     {% for error in form.received_date.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
-                  </div>
-
-                  <!-- Expiration Date - Full Width -->
-                  <div class="form-item" style="flex: 1 1 100%;">
-                    <label for="{{ form.expiration_date.id_for_label }}">{{ form.expiration_date.label }}</label>
-                    {% render_field form.expiration_date class="form-control" %}
-                    {% for error in form.expiration_date.errors %}
                       <div class="invalid-feedback d-block">{{ error }}</div>
                     {% endfor %}
                   </div>

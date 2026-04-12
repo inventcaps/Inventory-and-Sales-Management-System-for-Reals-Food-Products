@@ -927,8 +927,8 @@ class ProductBatches(models.Model):
     is_archived = models.BooleanField(default=False)
     is_expired = models.BooleanField(blank=True, null=True)
     expiration_date = models.DateField(blank=True, null=True)
-
     batch_code = models.CharField(max_length=20, blank=True, null=True)
+    packaging = models.ForeignKey('RawMaterials', models.DO_NOTHING, blank=True, null=True)
 
     class Meta:
         managed = False

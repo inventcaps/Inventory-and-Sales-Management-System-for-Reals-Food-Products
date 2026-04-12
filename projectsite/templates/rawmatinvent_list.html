@@ -4,7 +4,7 @@
 {% block content %}
 <div class="content">
   <div class="container-fluid">
-    <h4 class="page-title">Raw Material Inventory</h4>
+    <h4 class="page-title">Packaging Inventory</h4>
     
     <div class="row">
       <div class="col-md-12">
@@ -12,7 +12,7 @@
           <!-- Card Header -->
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-              <div class="card-title">List of Raw Material Inventory</div>
+              <div class="card-title">List of Packaging Inventory</div>
             </div>
             <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#rawmatReportModal">
               <i class="la la-download mr-1"></i> Export Report
@@ -30,8 +30,8 @@
                     <div class="card-body">
                       <div class="d-flex justify-content-between align-items-center">
                         <div>
-                          <h5 class="card-title mb-1">Total Raw Material Stock</h5>
-                          <p class="text-muted mb-0">Sum of all raw material inventory</p>
+                          <h5 class="card-title mb-1">Total Packaging Stock</h5>
+                          <p class="text-muted mb-0">Sum of all packaging inventory</p>
                         </div>
                         <div class="text-right">
                           <h2 class="mb-0 text-primary">{{ total_rawmat_stock|floatformat:0 }}</h2>
@@ -46,13 +46,7 @@
               <!-- Search bar -->
               <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
                 <input type="text" id="searchInput" name="q" value="{{ request.GET.q }}" 
-                  class="form-control" style="width: 280px;" placeholder="Search raw material inventory...">
-                <select id="categoryFilter" name="category" class="form-control" style="width: 200px;">
-                  <option value="" {% if not category_filter %}selected{% endif %}>All Categories</option>
-                  {% for category in category_choices %}
-                    <option value="{{ category|upper }}" {% if category_filter == category|upper %}selected{% endif %}>{{ category|title }}</option>
-                  {% endfor %}
-                </select>
+                  class="form-control" style="width: 280px;" placeholder="Search packaging materials...">
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
@@ -65,10 +59,7 @@
                     <tr>
                       <th>Material</th>
                       <th>Price Per Unit</th>
-                      <th>Category</th>
                       <th>Total Stock</th>
-                      <th>Available Stock</th>
-                      <th>Expiring Soon</th>
                       <th>Restock Threshold</th>
                       <th class="col-status">
                         <span class="fw-bold me-2">Status</span>
@@ -85,24 +76,12 @@
                   </thead>
                   <tbody id="inventoryTableBody">
                     {% for item in rawmatinvent %}
-                    {% with reorder_status=item.get_reorder_status %}
                     <tr>
                       <td>
-                        {{ item.material.name }} ({{ item.material.size|floatformat:0 }} {{ item.material.unit.unit_name|default:item.material.unit }})
+                        {{ item.material.name|title }} ({{ item.material.size|floatformat:0 }} {{ item.material.unit.unit_name|default:item.material.unit }})
                       </td>
                       <td>₱{{ item.material.price_per_unit|floatformat:2 }}</td>
-                      <td><span class="badge badge-info">{{ item.material.category|default:'N/A'|title }}</span></td>
                       <td>{{ item.total_stock|floatformat:0 }}</td>
-                      <td>
-                        <span class="badge bg-info">{{ reorder_status.available_stock|floatformat:0 }}</span>
-                      </td>
-                      <td>
-                        {% if reorder_status.expiring_stock > 0 %}
-                          <span class="badge bg-warning text-dark">{{ reorder_status.expiring_stock|floatformat:0 }}</span>
-                        {% else %}
-                          <span class="badge bg-light text-dark">0</span>
-                        {% endif %}
-                      </td>
                       <td>{{ item.reorder_threshold|floatformat:0 }}</td>
                       <td class="col-status">
                         {% if item.total_stock == 0 %}
@@ -116,10 +95,9 @@
                         {% endif %}
                       </td>
                     </tr>
-                    {% endwith %}
                     {% empty %}
                     <tr>
-                      <td colspan="8" class="text-center">No inventory found.</td>
+                      <td colspan="5" class="text-center">No inventory found.</td>
                     </tr>
                     {% endfor %}
                   </tbody>
@@ -143,22 +121,13 @@
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="rawmatReportLabel">Export Raw Materials Inventory</h5>
+        <h5 class="modal-title" id="rawmatReportLabel">Export Packaging Inventory</h5>
         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
           <span aria-hidden="true">&times;</span>
         </button>
       </div>
       <div class="modal-body">
-        <div class="form-group mb-2">
-          <label for="reportCategorySelect">Category</label>
-          <select id="reportCategorySelect" class="form-control">
-            <option value="" {% if not category_filter %}selected{% endif %}>All Categories</option>
-            {% for category in category_choices %}
-              <option value="{{ category|upper }}" {% if category_filter == category|upper %}selected{% endif %}>{{ category|title }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="form-group mb-2">
+                <div class="form-group mb-2">
           <label for="reportStatusSelect">Status</label>
           <select id="reportStatusSelect" class="form-control">
             <option value="" {% if not request.GET.status %}selected{% endif %}>All</option>
@@ -183,7 +152,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
   const statusFilter = document.getElementById('statusFilter');
-  const categoryFilter = document.getElementById('categoryFilter');
   const tableBody = document.getElementById('inventoryTableBody');
   const pagination = document.querySelector('.pagination-container');
   const modalEl = document.getElementById('rawmatReportModal');
@@ -212,13 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
         params.delete("status");
       }
 
-      // Update or remove category filter
-      if (categoryFilter.value) {
-        params.set("category", categoryFilter.value);
-      } else {
-        params.delete("category");
-      }
-      
+            
       // Reset to page 1 when filters change
       if (resetPage) {
         params.delete("page");
@@ -250,7 +212,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Event listeners
   searchInput.addEventListener('keyup', () => fetchInventory(true));
   statusFilter.addEventListener('change', () => fetchInventory(true));
-  categoryFilter.addEventListener('change', () => fetchInventory(true));
   
   // Handle pagination clicks
   document.addEventListener('click', function(e) {
@@ -286,9 +247,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function exportRawMatInventoryReport() {
   const params = new URLSearchParams();
-  const category = (document.getElementById('reportCategorySelect') || {}).value || '';
   const status = (document.getElementById('reportStatusSelect') || {}).value || '';
-  if (category) params.set('category', category);
   if (status) params.set('status', status);
   const url = '/rawmaterial-inventory/export/' + (params.toString() ? ('?' + params.toString()) : '');
   window.location.href = url;

@@ -6,16 +6,16 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Raw Materials">
+      <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Packaging Materials">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
-      Raw Materials
+      Packaging Materials
     </h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Add New Raw Material</div>
+            <div class="card-title">Add New Packaging Material</div>
           </div>
 
           <div class="card-body">
@@ -44,12 +44,8 @@
                   <!-- Unit -->
                   <div class="form-item">
                     <label>Size Unit</label>
-                    <input type="text" name="unit" list="unit-options" class="form-control" value="{{ form.unit.value|default:'' }}" placeholder="Enter Size Unit" required>
-                    <datalist id="unit-options">
-                      {% for su in size_units %}
-                        <option value="{{ su.unit_name }}">
-                      {% endfor %}
-                    </datalist>
+                    <input type="text" name="unit" class="form-control" value="grams" readonly required>
+                    <small class="text-muted">Fixed to grams for packaging materials</small>
                   </div>
 
                   <!-- Price Per Unit -->
@@ -80,7 +76,7 @@
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">⚠️ Duplicate Raw Material Warning</h5>
+        <h5 class="modal-title">⚠️ Duplicate Packaging Material Warning</h5>
         <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
           <span>&times;</span>
         </button>
@@ -145,7 +141,7 @@
         if (data.duplicate) {
           // Show modal if duplicate found
           const messageElement = document.getElementById('duplicationWarningMessage');
-          messageElement.textContent = `A raw material with the same name (${name}), size (${size}), unit (${unit}), and price (₱${pricePerUnit}) already exists. Are you sure you want to add another one?`;
+          messageElement.textContent = `A packaging material with the same name (${name}), size (${size}), unit (${unit}), and price (₱${pricePerUnit}) already exists. Are you sure you want to add another one?`;
           $('#duplicationWarningModal').modal('show');
         } else {
           // No duplicate, submit form
