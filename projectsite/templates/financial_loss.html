@@ -15,11 +15,11 @@
             <div class="d-flex justify-content-between align-items-center">
               <div>
                 <h5 class="card-title mb-1">Total Financial Loss</h5>
-                <p class="text-muted mb-0">Combined loss from products and raw materials</p>
+                <p class="text-muted mb-0">Combined loss from products and packaging materials</p>
               </div>
               <div class="text-right">
                 <h2 class="mb-0 text-danger">₱{{ product_loss|add:raw_material_loss|floatformat:2|intcomma }}</h2>
-                <small class="text-muted">Products: ₱{{ product_loss|floatformat:2|intcomma }} + Raw Materials: ₱{{ raw_material_loss|floatformat:2|intcomma }}</small>
+                <small class="text-muted">Products: ₱{{ product_loss|floatformat:2|intcomma }} + Packaging Materials: ₱{{ raw_material_loss|floatformat:2|intcomma }}</small>
               </div>
             </div>
           </div>
@@ -35,11 +35,9 @@
             <div>
               <div class="card-title">Products - Expired & Damaged</div>
             </div>
-            <div>
-              <button type="button" class="btn btn-primary btn-rounded" data-toggle="modal" data-target="#exportLossModal">
-                <i class="la la-download"></i> Export
-              </button>
-            </div>
+            <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#exportLossModal">
+              <i class="la la-download mr-1"></i> Export Report
+            </button>
           </div>
 
           <div class="card-body">
@@ -185,26 +183,26 @@
       </div>
     </div>
 
-    <!-- Raw Materials Loss Section -->
+    <!-- Packaging Materials Loss Section -->
     <div class="row mt-4">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-              <div class="card-title">Raw Materials - Expired & Damaged</div>
+              <div class="card-title">Packaging Materials - Expired & Damaged</div>
             </div>
           </div>
 
           <div class="card-body">
-            <!-- Raw Material Loss Summary -->
+            <!-- Packaging Material Loss Summary -->
             <div class="row mb-3">
               <div class="col-md-12">
                 <div class="card">
                   <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                       <div>
-                        <h5 class="card-title mb-1">Raw Material Loss</h5>
-                        <p class="text-muted mb-0">Total loss from expired & damaged raw materials</p>
+                        <h5 class="card-title mb-1">Packaging Material Loss</h5>
+                        <p class="text-muted mb-0">Total loss from expired & damaged packaging materials</p>
                       </div>
                       <div class="text-right">
                         <h2 id="rawMaterialLoss" class="mb-0 text-info">₱{{ raw_material_loss|floatformat:2|intcomma }}</h2>
@@ -216,7 +214,7 @@
               </div>
             </div>
             
-            <!-- Raw Material Filters -->
+            <!-- Packaging Material Filters -->
             <div class="d-flex align-items-center mb-3" style="gap:0.5rem;">
               <input type="month" id="rawMaterialDateFilter" class="form-control" style="width:180px;" placeholder="Select month" value="{% if request.GET.raw_material_date_filter %}{{ request.GET.raw_material_date_filter }}{% elif not request.GET.raw_material_show_all %}{{ current_month_value }}{% endif %}" />
               <button type="button" class="btn btn-info" onclick="toggleRawMaterialShowAll()">
@@ -231,7 +229,7 @@
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Raw Material</th>
+                    <th>Packaging Material</th>
                     <th>Quantity</th>
                     <th>Price per Unit</th>
                     <th class="col-reason">Reason</th>
@@ -254,14 +252,14 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="6" class="text-center text-muted">No raw material losses found</td>
+                    <td colspan="6" class="text-center text-muted">No packaging material losses found</td>
                   </tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
             
-            <!-- Raw Materials Pagination -->
+            <!-- Packaging Materials Pagination -->
             {% if raw_material_is_paginated %}
             <nav aria-label="Page navigation" class="mt-4">
               <ul class="pagination justify-content-center">
@@ -429,7 +427,7 @@ function resetProductFilters() {
   window.location.href = window.location.pathname + '?' + params.toString();
 }
 
-// Raw Material filters
+// Packaging Material filters
 document.getElementById("rawMaterialDateFilter").addEventListener("change", function() {
   const params = new URLSearchParams(window.location.search);
   params.set('raw_material_date_filter', this.value);

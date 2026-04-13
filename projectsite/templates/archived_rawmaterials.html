@@ -4,16 +4,16 @@
 <div class="content">
     <div class="container-fluid">
         <h4 class="page-title">
-            <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Active Raw Materials">
+            <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Active Packaging Materials">
                 <i class="la la-arrow-left" style="font-size: 24px;"></i>
             </a>
-            Archived Raw Materials
+            Archived Packaging Materials
         </h4>
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header">
-                        <div class="card-title">List of Archived Raw Materials</div>
+                        <div class="card-title">List of Archived Packaging Materials</div>
                     </div>
                     <div class="card-body">
                         <!-- Bulk Action Buttons -->
@@ -55,7 +55,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="6" class="text-center text-muted">No archived raw materials found.</td>
+                                        <td colspan="6" class="text-center text-muted">No archived packaging materials found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -79,7 +79,7 @@
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span>&times;</span></button>
             </div>
             <div class="modal-body">
-                Are you sure you want to restore this raw material?
+                Are you sure you want to restore this packaging material?
             </div>
             <div class="modal-footer">
                 <form method="post" action="{% url 'rawmaterials-unarchive' object.id %}" onsubmit="handleUnarchiveSubmit(event, '{{ object.name }} ({{ object.size }} {{ object.unit }})')">
@@ -101,9 +101,9 @@
         <h5 class="modal-title">Confirm Bulk Restore</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to restore <strong id="bulkRestoreCount">0</strong> raw material(s)?
+        Are you sure you want to restore <strong id="bulkRestoreCount">0</strong> packaging material(s)?
         <br><br>
-        <small class="text-muted">These raw materials will be moved back to the active list.</small>
+        <small class="text-muted">These packaging materials will be moved back to the active list.</small>
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-secondary" onclick="$('#bulkRestoreModal').modal('hide')">Cancel</button>
@@ -154,7 +154,7 @@ function getSelectedIds() {
 function bulkRestore() {
     const selectedIds = getSelectedIds();
     if (selectedIds.length === 0) {
-        showToast('Please select at least one raw material', 'warning');
+        showToast('Please select at least one packaging material', 'warning');
         return;
     }
     
@@ -189,12 +189,12 @@ function confirmBulkRestore() {
             // Reload page immediately
             window.location.reload();
         } else {
-            showToast(data.message || 'Failed to restore raw materials', 'error');
+            showToast(data.message || 'Failed to restore packaging materials', 'error');
         }
     })
     .catch(error => {
         console.error('Bulk restore error:', error);
-        showToast('An error occurred while restoring raw materials', 'error');
+        showToast('An error occurred while restoring packaging materials', 'error');
     });
 }
 
@@ -217,16 +217,16 @@ function handleUnarchiveSubmit(event, materialName) {
     .then(response => {
         if (response.ok) {
             // Store success message in sessionStorage
-            sessionStorage.setItem('unarchiveRawMaterialSuccess', `Raw material "${materialName}" restored successfully!`);
+            sessionStorage.setItem('unarchiveRawMaterialSuccess', `Packaging material "${materialName}" restored successfully!`);
             // Reload page immediately
             window.location.reload();
         } else {
-            showToast('Failed to restore raw material. Please try again.', 'error');
+            showToast('Failed to restore packaging material. Please try again.', 'error');
         }
     })
     .catch(error => {
         console.error('Unarchive error:', error);
-        showToast('An error occurred while restoring the raw material.', 'error');
+        showToast('An error occurred while restoring the packaging material.', 'error');
     });
 }
 </script>

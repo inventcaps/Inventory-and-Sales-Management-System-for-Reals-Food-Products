@@ -25,7 +25,7 @@
               <form method="post" enctype="multipart/form-data">
                 {% csrf_token %}
                 {% if form.errors %}
-                  <div class="alert alert-danger">{{ form.errors }}</div>
+                  <div class="alert alert-danger" id="formErrorsAlert">{{ form.errors }}</div>
                 {% endif %}
                 {% if current_page %}
                   <input type="hidden" name="current_page" value="{{ current_page }}">
@@ -157,9 +157,6 @@
                   </div>
                   <!-- Actions -->
                   <div class="form-actions btn-row mt-3" style="display: flex; gap: 10px;">
-                    {% if object and object.id %}
-                      <a href="{% url 'recipe-list' object.id %}" class="btn btn-secondary">Manage Materials</a>
-                    {% endif %}
                     <button type="submit" class="btn btn-primary btn-rounded">Update</button>
                   </div>
                 </div>
@@ -300,6 +297,51 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   connectWebSocket();
+
+  // Handle duplication warning modal
+  const alertDiv = document.querySelector('#formErrorsAlert');
+  if (alertDiv) {
+    const errorText = alertDiv.innerText;
+    // Check for any duplication-related errors
+    if (errorText.includes('complete duplicate') || 
+        errorText.includes('already used') || 
+        errorText.includes('already exists') ||
+        errorText.includes('Please complete all required fields')) {
+      // Hide the alert
+      alertDiv.style.display = 'none';
+      
+      // Show the modal with the error message
+      const messageElement = document.getElementById('duplicationWarningMessage');
+      if (messageElement) {
+        messageElement.textContent = errorText;
+      }
+      
+      // Show the modal using jQuery with a small delay to ensure jQuery is ready
+      setTimeout(function() {
+        $('#duplicationWarningModal').modal('show');
+      }, 100);
+    }
+  }
 });
 </script>
+
+<!-- Duplication Warning Modal -->
+<div class="modal fade" id="duplicationWarningModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚠️ Duplicate Product Warning</h5>
+        <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="duplicationWarningMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="$('#duplicationWarningModal').modal('hide')">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

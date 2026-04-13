@@ -12,8 +12,8 @@
             <div>
               <div class="card-title">List of Product Stock</div>
             </div>
-            <button type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#exportInventoryModal">
-              <i class="la la-download mr-1"></i> Generate Inventory Report
+            <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#exportInventoryModal">
+              <i class="la la-download mr-1"></i> Export Report
             </button>
           </div>
 
@@ -47,34 +47,6 @@
                   value="{{ request.GET.search }}"
                   placeholder="Search Product Type, Variant, or Size...">
                 
-                <!-- Date Filter Inputs -->
-                <div class="d-flex align-items-center" style="gap:0.3rem;">
-                  <label for="yearFilter" style="margin-bottom: 0; font-weight: 500;">Year:</label>
-                  <input type="number" id="yearFilter" name="batch_date_filter_year" 
-                    class="form-control" style="width: 100px;" 
-                    placeholder="YYYY"
-                    value="{{ request.GET.batch_date_filter_year }}"
-                    min="2000" max="2099">
-                </div>
-                
-                <div class="d-flex align-items-center" style="gap:0.3rem;">
-                  <label for="monthFilter" style="margin-bottom: 0; font-weight: 500;">Month:</label>
-                  <input type="number" id="monthFilter" name="batch_date_filter_month" 
-                    class="form-control" style="width: 80px;" 
-                    placeholder="MM"
-                    value="{{ request.GET.batch_date_filter_month }}"
-                    min="1" max="12">
-                </div>
-                
-                <div class="d-flex align-items-center" style="gap:0.3rem;">
-                  <label for="dayFilter" style="margin-bottom: 0; font-weight: 500;">Day:</label>
-                  <input type="number" id="dayFilter" name="batch_date_filter_day" 
-                    class="form-control" style="width: 80px;" 
-                    placeholder="DD"
-                    value="{{ request.GET.batch_date_filter_day }}"
-                    min="1" max="31">
-                </div>
-                
                 <button type="button" onclick="window.location.href=window.location.pathname" class="btn btn-secondary" title="Reset filters">
                   <i class="la la-times"></i>
                 </button>
@@ -87,7 +59,9 @@
                   <tr>
                     <th>Code</th>
                     <th>Product</th>
-                    <th>Current Stock</th>
+                    <th>Total Stock</th>
+                    <th>Available Stock</th>
+                    <th>Expiring Soon</th>
                     <th>Restock Threshold</th>
                     <th class="col-status">
                       <span class="fw-bold me-2">Status</span>
@@ -105,10 +79,21 @@
 
                 <tbody id="inventoryTableBody">
                   {% for object in product_inventory %}
+                  {% with reorder_status=object.get_reorder_status %}
                   <tr>
                     <td>{{ object.product.product_code }}</td>
                     <td>{{ object.product }}</td>
                     <td>{{ object.total_stock|floatformat:0 }}</td>
+                    <td>
+                      <span class="badge bg-info">{{ reorder_status.available_stock|floatformat:0 }}</span>
+                    </td>
+                    <td>
+                      {% if reorder_status.expiring_stock > 0 %}
+                        <span class="badge bg-warning text-dark">{{ reorder_status.expiring_stock|floatformat:0 }}</span>
+                      {% else %}
+                        <span class="badge bg-light text-dark">0</span>
+                      {% endif %}
+                    </td>
                     <td>{{ object.restock_threshold|floatformat:0 }}</td>
                     <td class="col-status">
                       {% if object.total_stock == 0 %}
@@ -122,9 +107,10 @@
                       {% endif %}
                     </td>
                   </tr>
+                  {% endwith %}
                   {% empty %}
                   <tr>
-                    <td colspan="4" class="text-center">No inventory found.</td>
+                    <td colspan="7" class="text-center">No inventory found.</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -288,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Export Inventory Modal -->
 <div class="modal fade" id="exportInventoryModal" tabindex="-1" role="dialog" aria-labelledby="exportInventoryModalLabel" aria-hidden="true">
-  <div class="modal-dialog" role="document">
+  <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title" id="exportInventoryModalLabel">Export Inventory Data</h5>
@@ -299,29 +285,9 @@ document.addEventListener('DOMContentLoaded', function() {
       <form method="get" action="{% url 'product_inventory_export' %}" id="exportInventoryForm">
         <div class="modal-body">
           <div class="form-group">
-            <label for="exportFilterType">Filter Type</label>
-            <select class="form-control" id="exportFilterType" name="filter_type">
-              <option value="all">All Records</option>
-              <option value="by_date">By Date</option>
-            </select>
-          </div>
-
-          <div id="dateFilterOptions" style="display: none;">
-            <div class="form-group">
-              <label>Year</label>
-              <input type="number" class="form-control" id="exportYear" name="batch_date_filter_year" 
-                placeholder="YYYY" min="2000" max="2099" value="{{ request.GET.batch_date_filter_year }}">
-            </div>
-            <div class="form-group">
-              <label>Month</label>
-              <input type="number" class="form-control" id="exportMonth" name="batch_date_filter_month" 
-                placeholder="MM" min="1" max="12" value="{{ request.GET.batch_date_filter_month }}">
-            </div>
-            <div class="form-group">
-              <label>Day</label>
-              <input type="number" class="form-control" id="exportDay" name="batch_date_filter_day" 
-                placeholder="DD" min="1" max="31" value="{{ request.GET.batch_date_filter_day }}">
-            </div>
+            <label for="exportMonth">Select Month</label>
+            <input type="month" class="form-control" id="exportMonth" name="month" 
+              value="{{ export_month|default:'' }}">
           </div>
 
           <!-- Hidden inputs to preserve current filters -->
@@ -330,7 +296,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">
+          <button type="submit" class="btn btn-success btn-rounded">
             <i class="la la-download mr-1"></i> Export CSV
           </button>
         </div>
@@ -341,30 +307,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const filterTypeSelect = document.getElementById('exportFilterType');
-  const dateFilterOptions = document.getElementById('dateFilterOptions');
+  const exportModal = document.getElementById('exportInventoryModal');
+  if (exportModal && exportModal.parentNode !== document.body) {
+    document.body.appendChild(exportModal);
+  }
 
-  // Show/hide date filter options based on selection
-  filterTypeSelect.addEventListener('change', function() {
-    if (this.value === 'by_date') {
-      dateFilterOptions.style.display = 'block';
-    } else {
-      dateFilterOptions.style.display = 'none';
-      // Clear date inputs when switching to "All Records"
-      document.getElementById('exportYear').value = '';
-      document.getElementById('exportMonth').value = '';
-      document.getElementById('exportDay').value = '';
-    }
-  });
-
-  // Check if date filters are already set and show the date options
-  const year = document.getElementById('exportYear').value;
-  const month = document.getElementById('exportMonth').value;
-  const day = document.getElementById('exportDay').value;
+  const monthInput = document.getElementById('exportMonth');
   
-  if (year || month || day) {
-    filterTypeSelect.value = 'by_date';
-    dateFilterOptions.style.display = 'block';
+  // Set default month to current month if not set
+  if (!monthInput.value) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    monthInput.value = `${year}-${month}`;
   }
 });
 </script>

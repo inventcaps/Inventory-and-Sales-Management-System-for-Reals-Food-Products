@@ -5,20 +5,20 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'rawmaterial-batch' %}" class="btn btn-link p-0 mr-2" title="Back to Raw Material Batches">
+      <a href="{% url 'rawmaterial-batch' %}" class="btn btn-link p-0 mr-2" title="Back to Packaging Batches">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
-      Raw Material Batches
+      Packaging Batches
     </h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Bulk Add Raw Material Batches</div>
+            <div class="card-title">Bulk Add Packaging Batches</div>
           </div>
 
           <div class="card-body">
-              <form method="post">
+              <form method="post" id="batchForm">
                 {% csrf_token %}
 
                 <!-- Batch Details -->
@@ -33,40 +33,26 @@
                            placeholder="Select Received Date"
                            value="{{ form.received_date.value|default:'' }}">
                   </div>
-                  <div class="form-group mb-4">
-                    {% with current_category=form.selected_category|default:form.category.value|default:"PACKAGING" %}
-                    <label for="categorySelect" class="font-weight-bold">Category</label>
-                    <select id="categorySelect"
-                            name="{{ form.category.name }}"
-                            class="form-control"
-                            style="max-width: 300px;">
-                      <option value="PACKAGING" {% if current_category == "PACKAGING" %}selected{% endif %}>Packaging Materials</option>
-                      <option value="RECIPE" {% if current_category == "RECIPE" %}selected{% endif %}>Recipe Materials</option>
-                    </select>
-                    <small class="form-text text-muted">Switching the category reloads this page to show the matching materials only.</small>
-                    {% endwith %}
-                  </div>
+                  <input type="hidden" name="{{ form.category.name }}" value="PACKAGING">
                 </div>
 
                 <!-- Raw Materials Table -->
                 <div class="mt-3">
-                  <h5>Raw Materials</h5>
+                  <h5>Packaging Materials</h5>
                   <table class="table table-bordered">
                     <thead>
                       <tr>
-                        <th>Raw Material</th>
+                        <th>Packaging Material</th>
                         <th>Current Stock</th>
                         <th>Quantity</th>
-                        <th>Expiration Date</th>
                       </tr>
                     </thead>
                     <tbody>
                       {% for r in raw_materials %}
-                      <tr>
-                        <td>{{ r.rawmaterial }}</td>
+                      <tr data-material-id="{{ r.rawmaterial.id }}" data-material-name="{{ r.rawmaterial }}">
+                        <td>{{ r.rawmaterial.name|title }} ({{ r.rawmaterial.size|floatformat:0 }}{{ r.rawmaterial.unit.unit_name|default:r.rawmaterial.unit }}) - ₱{{ r.rawmaterial.price_per_unit|floatformat:2 }}</td>
                         <td>{{ r.rawmaterial.rawmaterialinventory.total_stock|floatformat:0 }}</td>
                         <td>{{ r.qty_field }}</td>
-                        <td>{{ r.exp_field }}</td>
                       </tr>
                       {% endfor %}
                     </tbody>
@@ -85,22 +71,113 @@
   </div>
 </div>
 
+<!-- Duplication Confirmation Modal -->
+<div class="modal fade" id="duplicateModal" tabindex="-1" role="dialog" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="duplicateModalLabel">⚠️ Duplicate Batch Detected</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>The following packaging material(s) already have batch(es) with the same quantity:</p>
+        <ul id="duplicateList" style="margin: 15px 0; padding-left: 20px;"></ul>
+        <p><strong>Are you sure you want to add another batch for this material?</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="confirmDuplicateBtn">Yes, Add Anyway</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const receivedDateInput = document.getElementById('{{ form.received_date.id_for_label }}');
-  const categorySelect = document.getElementById('categorySelect');
   if (receivedDateInput && !receivedDateInput.value) {
     const today = new Date().toISOString().split('T')[0];
     receivedDateInput.value = today;
   }
 
-  if (categorySelect) {
-    categorySelect.addEventListener('change', function() {
-      const params = new URLSearchParams(window.location.search);
-      params.set('category', this.value);
-      window.location.href = window.location.pathname + '?' + params.toString();
+  // Duplicate detection logic for raw materials
+  const quantityInputs = document.querySelectorAll('input[placeholder="Enter Quantity"]');
+  const form = document.getElementById('batchForm');
+  const modal = new bootstrap.Modal(document.getElementById('duplicateModal'), { keyboard: false });
+  let materialsWithQty = [];
+  let allowSubmit = false;
+
+  quantityInputs.forEach(input => {
+    input.addEventListener('change', function() {
+      const qty = parseFloat(this.value) || 0;
+      const row = this.closest('tr');
+      const materialId = row?.dataset.materialId;
+      const materialName = row?.dataset.materialName || 'Unknown';
+
+      if (qty > 0) {
+        if (!materialsWithQty.find(m => m.id === materialId)) {
+          materialsWithQty.push({ id: materialId, name: materialName });
+        }
+      } else {
+        materialsWithQty = materialsWithQty.filter(m => m.id !== materialId);
+      }
     });
-  }
+  });
+
+  form.addEventListener('submit', function(e) {
+    if (allowSubmit) {
+      allowSubmit = false;
+      return;
+    }
+
+    e.preventDefault();
+
+    if (materialsWithQty.length === 0) {
+      alert('Please enter at least one packaging material quantity.');
+      return;
+    }
+
+    // Check for duplicates with quantities
+    const materialData = JSON.stringify(materialsWithQty.map(m => {
+      const row = document.querySelector(`tr[data-material-id="${m.id}"]`);
+      const qtyInput = row?.querySelector('input[placeholder="Enter Quantity"]');
+      return {
+        id: m.id,
+        qty: parseFloat(qtyInput?.value) || 0
+      };
+    }));
+    
+    fetch(`/api/check-rawmaterial-batches/?material_data=${encodeURIComponent(materialData)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.duplicates && data.duplicates.length > 0) {
+          const duplicateList = document.getElementById('duplicateList');
+          duplicateList.innerHTML = '';
+          data.duplicates.forEach(dup => {
+            const li = document.createElement('li');
+            li.textContent = dup;
+            duplicateList.appendChild(li);
+          });
+          modal.show();
+        } else {
+          allowSubmit = true;
+          form.submit();
+        }
+      })
+      .catch(error => {
+        console.error('Error checking duplicates:', error);
+        allowSubmit = true;
+        form.submit();
+      });
+  });
+
+  document.getElementById('confirmDuplicateBtn').addEventListener('click', function() {
+    modal.hide();
+    allowSubmit = true;
+    form.submit();
+  });
 });
 </script>
 {% endblock %}

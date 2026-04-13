@@ -38,7 +38,14 @@ urlpatterns = [
     path('products/<pk>/delete', a.ProductsDeleteView.as_view(), name='product-delete'),
     path("products/scan-phone/", a.product_scan_phone, name="product-scan-phone"),
     path("api/check-barcode/", a.check_barcode_availability, name="check-barcode"),
+    path("api/check-product-batches/", a.check_product_batches, name="check-product-batches"),
+    path("api/check-rawmaterial-batches/", a.check_rawmaterial_batches, name="check-rawmaterial-batches"),
+    path("api/check-rawmaterial-duplicates/", a.check_rawmaterial_duplicates, name="check-rawmaterial-duplicates"),
+    path("api/check-sales-duplicates/", a.check_sales_duplicates, name="check-sales-duplicates"),
+    path("api/check-expenses-duplicates/", a.check_expenses_duplicates, name="check-expenses-duplicates"),
+    path("api/check-withdrawal-duplicates/", a.check_withdrawal_duplicates, name="check-withdrawal-duplicates"),
     path('price-history/', a.PriceHistoryList.as_view(), name='price-history'),
+    path('price-history/export/', a.export_price_history, name='price-history-export'),
 
     path('rawmaterials/', a.RawMaterialsList.as_view(), name='rawmaterials-list'),
     path('rawmaterials/', a.RawMaterialsList.as_view(), name='rawmaterials'),
@@ -57,11 +64,6 @@ urlpatterns = [
     path('packaging-materials/add', a.PackagingMaterialsCreateView.as_view(), name='packaging-materials-add'),
     path('packaging-materials/<int:pk>', a.PackagingMaterialsUpdateView.as_view(), name='packaging-materials-edit'),
     path('packaging-materials/archived/', a.ArchivedPackagingMaterialsListView.as_view(), name='packaging-archived-list'),
-
-    path('recipe-materials/', a.RecipeMaterialsList.as_view(), name='recipe-materials'),
-    path('recipe-materials/add', a.RecipeMaterialsCreateView.as_view(), name='recipe-materials-add'),
-    path('recipe-materials/<int:pk>', a.RecipeMaterialsUpdateView.as_view(), name='recipe-materials-edit'),
-    path('recipe-materials/archived/', a.ArchivedRecipeMaterialsListView.as_view(), name='recipe-archived-list'),
 
     path('historylog/', a.HistoryLogList.as_view(), name='historylog'),
     path('history/', a.HistoryLogList.as_view(), name='history_log'),  
@@ -108,6 +110,7 @@ urlpatterns = [
 
     path('product-inventory/', a.ProductInventoryList.as_view(), name='product-inventory'),
     path('best-seller-products/', a.BestSellerProductsView.as_view(), name='best-seller-products'),
+    path('best-seller-products/export/', a.export_bestseller_report, name='best-seller-products-export'),
 
     path('rawmatbatch/', a.RawMaterialBatchList.as_view(), name='rawmaterial-batch'),
     path('rawmatbatch/add', a.BulkRawMaterialBatchCreateView.as_view(), name='rawmaterial-batch-add'),
@@ -123,8 +126,9 @@ urlpatterns = [
     path('rawmatbatch/bulk-delete-archived/', a.RawMaterialBatchBulkDeleteView.as_view(), name='rawmaterial-batch-bulk-delete-archived'),
 
     path('rawmaterial-inventory/', a.RawMaterialInventoryList.as_view(), name='rawmaterial-inventory'),
+    path('rawmaterial-inventory/export/', a.export_rawmaterial_inventory, name='rawmaterial-inventory-export'),
 
-    path('producttypes/add', a.ProductTypeCreateView.as_view(), name='product-types-add'),
+    path('producttypes/add', a.ProductTypeAddView.as_view(), name='product-types-add'),
     path('productvariants/add', a.ProductVariantCreateView.as_view(), name='product-variants-add'),
     path('sizes/add', a.SizesCreateView.as_view(), name='sizes-add'),
     path('sizeunits/add', a.SizeUnitsCreateView.as_view(), name='size-units-add'),
@@ -165,6 +169,7 @@ urlpatterns = [
     path('product-attributes/srp-price/<int:pk>/delete/', a.SrpPriceDeleteView.as_view(), name='srp-price-delete'),
 
     path('withdrawals/', a.WithdrawSuccessView.as_view(), name='withdrawals'),
+    path('withdrawals/export/', a.export_withdrawals, name='withdrawals-export'),
     path('withdraw/<int:pk>/edit/', a.WithdrawUpdateView.as_view(), name='withdraw-edit'),
     path("withdraw-item/<pk>/delete", a.WithdrawDeleteView.as_view(), name="withdraw-delete"),
     path("withdraw-item/", a.WithdrawItemView.as_view(), name="withdraw-item"),
@@ -219,6 +224,7 @@ urlpatterns = [
     path('notifications/<int:pk>/read/', a.mark_notification_read, name='notification_read'),
 
     path('stock-changes/', a.StockChangesList.as_view(), name='stock-changes'),
+    path('stock-changes/export/', a.export_stock_changes, name='stock-changes-export'),
     path('stock-changes/<int:pk>/archive/', a.StockChangesArchiveView.as_view(), name='stock-changes-archive'),
     path('stock-changes/archived/', a.ArchivedStockChangesListView.as_view(), name='stock-changes-archived-list'),
     path('stock-changes/<int:pk>/unarchive/', a.StockChangesUnarchiveView.as_view(), name='stock-changes-unarchive'),
@@ -251,10 +257,6 @@ urlpatterns = [
     path('products/bulk-delete/', a.product_bulk_delete, name='product-bulk-delete'),
     path('products/bulk-archive/', a.product_bulk_archive, name='product-bulk-archive'),
     path('products/bulk-restore/', a.product_bulk_restore, name='products-bulk-restore'),
-    path("products/<int:product_id>/recipes/", a.ProductRecipeListView.as_view(), name="recipe-list"),
-    path("products/<int:product_id>/recipes/add/", a.ProductRecipeBulkCreateView.as_view(), name="recipe-add"),
-    path("recipes/<int:pk>/edit/", a.ProductRecipeUpdateView.as_view(), name="recipe-edit"),
-    path("recipes/<int:pk>/delete/", a.ProductRecipeDeleteView.as_view(), name="recipe-delete"),
     path("report/", a.monthly_report, name="monthly-report"),
     path("report/export/", a.monthly_report_export, name="monthly-report-export"),
 

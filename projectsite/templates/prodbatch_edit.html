@@ -10,6 +10,7 @@
       </a>
       Product Batches
     </h4>
+
     <div class="row">
       <div class="col-md-12">
         <div class="card">
@@ -18,63 +19,80 @@
           </div>
 
           <div class="card-body">
-              <form action="" method="post" novalidate>
-                {% csrf_token %}
+            <form action="" method="post" novalidate>
+              {% csrf_token %}
 
-                <div class="form-container">
-                  <!-- Product -->
-                  <div class="form-item">
-                    <label for="{{ form.product.id_for_label }}">{{ form.product.label }}</label>
-                    {% render_field form.product class="form-control" %}
-                    {% for error in form.product.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
-                  </div>
-
-                  <!-- Quantity -->
-                  <div class="form-item">
-                    <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
-                    {% render_field form.quantity class="form-control" %}
-                    {% for error in form.quantity.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
-                  </div>
-
-                  <!-- Batch Date -->
-                  <div class="form-item">
-                    <label for="{{ form.batch_date.id_for_label }}">{{ form.batch_date.label }}</label>
-                    {% render_field form.batch_date class="form-control" %}
-                    {% for error in form.batch_date.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
-                  </div>
-
-                  <!-- Manufactured Date -->
-                  <div class="form-item">
-                    <label for="{{ form.manufactured_date.id_for_label }}">{{ form.manufactured_date.label }}</label>
-                    {% render_field form.manufactured_date class="form-control" %}
-                    {% for error in form.manufactured_date.errors %}
-                      <div class="invalid-feedback d-block">{{ error }}</div>
-                    {% endfor %}
-                  </div>
-
-                  <!-- Batch Code (auto) -->
-                  <div class="form-item">
-                    <label for="{{ form.batch_code.id_for_label }}">Batch Code</label>
-                    {% render_field form.batch_code class="form-control" %}
-                    <small class="form-text text-muted">Auto-generated as <strong>MMDDYY + Product Code</strong>.</small>
-                  </div>
-                <div class="form-actions btn-row mt-3">
-                  <button type="submit" class="btn btn-primary btn-rounded">Update</button>
+              <div class="form-container">
+                <div class="form-item" style="flex: 1 1 100%;">
+                  <label for="{{ form.product.id_for_label }}">{{ form.product.label }}</label>
+                  {% render_field form.product class="form-control" %}
+                  {% for error in form.product.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
                 </div>
-              </form>
+
+                <div class="form-item" style="flex: 1 1 100%;">
+                  <label for="{{ form.packaging.id_for_label }}">{{ form.packaging.label }}</label>
+                  {% render_field form.packaging class="form-control" %}
+                  {% for error in form.packaging.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="form-item">
+                  <label for="{{ form.batch_code.id_for_label }}">{{ form.batch_code.label }}</label>
+                  {% render_field form.batch_code class="form-control" %}
+                  {% for error in form.batch_code.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="form-item">
+                  <label for="{{ form.quantity.id_for_label }}">{{ form.quantity.label }}</label>
+                  {% render_field form.quantity class="form-control" %}
+                  {% for error in form.quantity.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="form-item">
+                  <label for="{{ form.batch_date.id_for_label }}">{{ form.batch_date.label }}</label>
+                  {% render_field form.batch_date class="form-control" %}
+                  {% for error in form.batch_date.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="form-item">
+                  <label for="{{ form.manufactured_date.id_for_label }}">{{ form.manufactured_date.label }}</label>
+                  {% render_field form.manufactured_date class="form-control" %}
+                  {% for error in form.manufactured_date.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
+                <div class="form-item">
+                  <label for="{{ form.expiration_date.id_for_label }}">{{ form.expiration_date.label }}</label>
+                  {% render_field form.expiration_date class="form-control" %}
+                  {% for error in form.expiration_date.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+              </div>
+
+              <div class="form-actions btn-row mt-3">
+                <button type="submit" class="btn btn-primary btn-rounded">Update</button>
+              </div>
+
+            </form>
           </div>
+
         </div>
       </div>
     </div>
+
   </div>
 </div>
-
 <style>
 .green-checkbox {
   width: 20px;

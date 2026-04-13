@@ -13,7 +13,7 @@
                     <div class="card-header">
                         <div class="card-title">Edit withdrawn Item
                             {% if is_raw_material %}
-                                <span class="badge badge-info ml-2">Raw Material</span>
+                                <span class="badge badge-info ml-2">Packaging Material</span>
                             {% else %}
                                 <span class="badge badge-success ml-2">Product</span>
                             {% endif %}
@@ -51,11 +51,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const reasonField = document.querySelector('[name="reason"]');
     const form = priceField ? priceField.closest("form") : document.querySelector("form");
     
-    // Check if this is a raw material withdrawal
+    // Check if this is a packaging material withdrawal
     const isRawMaterial = {{ is_raw_material|yesno:"true,false" }};
     
     // Debug logging
-    console.log('Raw Material Status:', isRawMaterial);
+    console.log('Packaging Material Status:', isRawMaterial);
     console.log('Badge element:', document.querySelector('.badge'));
 
     // Function to hide/show a field's parent container
@@ -111,9 +111,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const salesChannel = salesChannelField ? salesChannelField.value : "";
         const paymentStatus = paymentStatusField ? paymentStatusField.value : "";
         
-        // Raw material logic
+        // Packaging material logic
         if (isRawMaterial) {
-            console.log('Hiding fields for raw material...');
+            console.log('Hiding fields for packaging material...');
             
             // Use both methods to ensure fields are hidden
             setFieldVisibility(salesChannelField, false);
@@ -207,9 +207,9 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Backup execution after a short delay to ensure DOM is fully loaded
     setTimeout(function() {
-        console.log('Backup execution - checking raw material status again...');
+        console.log('Backup execution - checking packaging material status again...');
         if (isRawMaterial) {
-            console.log('Backup: Hiding fields for raw material...');
+            console.log('Backup: Hiding fields for packaging material...');
             
             // Force hide using CSS classes
             const fieldsToHide = [
@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     form.addEventListener("submit", function (e) {
-        // Skip validation for raw materials
+        // Skip validation for packaging materials
         if (isRawMaterial) {
             return true;
         }
@@ -292,10 +292,10 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 
-<!-- CSS to force hide sales fields for raw materials -->
+<!-- CSS to force hide sales fields for packaging materials -->
 {% if is_raw_material %}
 <style>
-/* Force hide sales-related fields for raw materials */
+/* Force hide sales-related fields for packaging materials */
 [name="sales_channel"],
 [name="customer_name"], 
 [name="payment_status"],

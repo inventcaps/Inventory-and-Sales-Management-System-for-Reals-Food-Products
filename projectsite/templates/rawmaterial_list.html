@@ -3,14 +3,14 @@
 {% block content %}
 <div class="content">
     <div class="container-fluid">
-        <h4 class="page-title">Raw Material List</h4>
+        <h4 class="page-title">Packaging Materials List</h4>
         
         <div class="row">
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <div>
-                            <div class="card-title">List of Raw Materials</div>
+                            <div class="card-title">List of Packaging Materials</div>
                         </div>
                         <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
                             <!-- Actions Dropdown -->
@@ -25,7 +25,7 @@
                             </div>
 
                             <!-- Add Button -->
-                            <a href="{% url 'rawmaterials-add' %}" class="btn btn-success btn-rounded">Add Raw Material</a>
+                            <a href="{% url 'rawmaterials-add' %}" class="btn btn-success btn-rounded">Add Packaging Material</a>
                         </div>
                     </div>
 
@@ -39,13 +39,9 @@
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-center">
                                                 <div>
-                                                    <h5 class="card-title mb-1">Total Raw Materials{% if category_filter %} - {{ category_filter|title }}{% endif %}</h5>
+                                                    <h5 class="card-title mb-1">Total Packaging Materials</h5>
                                                     <p class="text-muted mb-0">
-                                                        {% if category_filter %}
-                                                            Showing active {{ category_filter|title }} materials
-                                                        {% else %}
-                                                            Total number of active raw materials
-                                                        {% endif %}
+                                                        Total number of active packaging materials
                                                     </p>
                                                 </div>
                                                 <div class="text-right">
@@ -61,12 +57,7 @@
 
                             <!-- Search -->
                             <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
-                                <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search raw materials..." value="{{ request.GET.q }}" style="width: 250px;">
-                                <select id="categoryFilter" name="category" class="form-control" style="width: 200px;">
-                                    <option value="">All Categories</option>
-                                    <option value="PACKAGING" {% if category_filter == "PACKAGING" %}selected{% endif %}>Packaging</option>
-                                    <option value="RECIPE" {% if category_filter == "RECIPE" %}selected{% endif %}>Recipe</option>
-                                </select>
+                                <input type="text" id="searchInput" name= "q" class="form-control" placeholder="Search packaging materials..." value="{{ request.GET.q }}" style="width: 250px;">
                                 <input type="month" name="date_created" id="dateFilter" class="form-control" style="width:180px;"
                                        placeholder="Filter by Month"
                                        value="{{ request.GET.date_created }}">
@@ -98,7 +89,6 @@
                                         </th>
                                         <th scope="col">Material</th>
                                         <th scope="col">Price Per Unit</th>
-                                        <th scope="col">Category</th>
                                         <th scope="col">Date Created</th>
                                         <th scope="col">Actions</th>
                                     </tr>
@@ -112,10 +102,7 @@
                                         <td>
                                             {{ object.name }} ({{ object.size|floatformat:0 }} {{ object.unit.unit_name|default:object.unit }})
                                         </td>
-                                        <td>{{ object.price_per_unit }}</td>
-                                        <td>
-                                            <span class="badge badge-info">{{ object.category|default:'N/A'|title }}</span>
-                                        </td>
+                                        <td>₱{{ object.price_per_unit }}</td>
                                         <td>{{ object.date_created|date:"Y-m-d g:i A" }}</td>
                                         <td>
                                             <a href="{% url 'rawmaterials-edit' object.id %}" class="text-primary" title="Edit">
@@ -135,7 +122,7 @@
                                     </tr>
                                     {% empty %}
                                     <tr>
-                                        <td colspan="8" class="text-center">No raw materials found.</td>
+                                        <td colspan="5" class="text-center">No packaging materials found.</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -275,7 +262,6 @@ document.addEventListener('DOMContentLoaded', function() {
   
   const searchInput = document.getElementById('searchInput');
   const dateFilter = document.getElementById('dateFilter');
-  const categoryFilter = document.getElementById('categoryFilter');
   const tableBody = document.getElementById('rawMaterialsTable');
   const pagination = document.querySelector('.pagination-container');
   const modalsContainer = document.querySelector('#rawMaterialModalsContainer');
@@ -293,13 +279,6 @@ document.addEventListener('DOMContentLoaded', function() {
         params.set("q", searchInput.value);
       } else {
         params.delete("q");
-      }
-      
-      // Update or remove category filter
-      if (categoryFilter.value) {
-        params.set("category", categoryFilter.value);
-      } else {
-        params.delete("category");
       }
 
       // Update or remove date filter
@@ -349,7 +328,6 @@ document.addEventListener('DOMContentLoaded', function() {
   // Event listeners
   searchInput.addEventListener('keyup', () => fetchRawMaterials(true));
   dateFilter.addEventListener('change', () => fetchRawMaterials(true));
-  categoryFilter.addEventListener('change', () => fetchRawMaterials(true));
   
   // Handle pagination clicks
   document.addEventListener('click', function(e) {
@@ -583,6 +561,51 @@ function handleDeleteSubmit(event, materialName) {
     });
 }
 
+</script>
+
+<!-- Duplication Warning Modal -->
+<div class="modal fade" id="duplicationWarningModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚠️ Duplicate Raw Material Warning</h5>
+        <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="duplicationWarningMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="$('#duplicationWarningModal').modal('hide')">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show duplication modal on page load if there's a duplication error
+  document.addEventListener('DOMContentLoaded', function() {
+    const alertDiv = document.querySelector('.alert-danger');
+    if (alertDiv) {
+      const errorText = alertDiv.innerText;
+      if (errorText.includes('complete duplicate') || 
+          errorText.includes('already used') || 
+          errorText.includes('already exists') ||
+          errorText.includes('Please complete all required fields')) {
+        // Hide the alert
+        alertDiv.style.display = 'none';
+        
+        const messageElement = document.getElementById('duplicationWarningMessage');
+        if (messageElement) {
+          messageElement.textContent = errorText;
+        }
+        setTimeout(function() {
+          $('#duplicationWarningModal').modal('show');
+        }, 100);
+      }
+    }
+  });
 </script>
 
 <style>

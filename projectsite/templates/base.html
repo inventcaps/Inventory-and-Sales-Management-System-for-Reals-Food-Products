@@ -517,25 +517,19 @@
 
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#rawmatMenu" 
-                       aria-expanded="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory packaging-materials packaging-materials-add packaging-materials-edit recipe-materials recipe-materials-add recipe-materials-edit' %}true{% else %}false{% endif %}">
-                        <i class="la la-cubes"></i><p>Raw Materials</p><span class="caret"></span>
+                       aria-expanded="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory' %}true{% else %}false{% endif %}">
+                        <i class="la la-cubes"></i><p>Packaging Materials</p><span class="caret"></span>
                     </a>
-                    <div class="collapse {% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory packaging-materials packaging-materials-add packaging-materials-edit recipe-materials recipe-materials-add recipe-materials-edit' %}show{% endif %}" id="rawmatMenu" data-parent="">
+                    <div class="collapse {% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory' %}show{% endif %}" id="rawmatMenu" data-parent="">
                         <ul class="nav nav-collapse">
                             <li class="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list' %}active{% endif %}">
-                                <a href="{% url 'rawmaterials' %}"><span class="sub-item">Raw Materials List</span></a>
+                                <a href="{% url 'rawmaterials' %}"><span class="sub-item">Packaging Materials List</span></a>
                             </li>
-                            <!-- <li class="{% if request.resolver_match.url_name in 'packaging-materials packaging-materials-add packaging-materials-edit' %}active{% endif %}">
-                                <a href="{% url 'packaging-materials' %}"><span class="sub-item">Packaging Materials List</span></a>
-                            </li>
-                            <li class="{% if request.resolver_match.url_name in 'recipe-materials recipe-materials-add recipe-materials-edit' %}active{% endif %}">
-                                <a href="{% url 'recipe-materials' %}"><span class="sub-item">Recipe Materials List</span></a>
-                            </li> -->
                             <li class="{% if request.resolver_match.url_name == 'rawmaterial-batch' %}active{% endif %}">
-                                <a href="{% url 'rawmaterial-batch' %}"><span class="sub-item">Raw Material Batch</span></a>
+                                <a href="{% url 'rawmaterial-batch' %}"><span class="sub-item">Packaging Batch</span></a>
                             </li>
                             <li class="{% if request.resolver_match.url_name == 'rawmaterial-inventory' %}active{% endif %}">
-                                <a href="{% url 'rawmaterial-inventory' %}"><span class="sub-item">Raw Material Inventory</span></a>
+                                <a href="{% url 'rawmaterial-inventory' %}"><span class="sub-item">Packaging Inventory</span></a>
                             </li>
                         </ul>
                     </div>
@@ -1080,30 +1074,38 @@ $(document).ready(function() {
       const type = "{{ message.tags }}";
       const text = "{{ message|escapejs }}";
 
-      const icon = {
-        success: 'la la-check-circle text-success',
-        error:   'la la-times-circle text-danger',
-        warning: 'la la-exclamation-circle text-warning',
-        info:    'la la-info-circle text-info'
-      }[type] || 'la la-info-circle text-info';
+      // Skip duplication-related error messages (they will be shown in modal instead)
+      if (!(text.includes('complete duplicate') || 
+            text.includes('already used') || 
+            text.includes('already exists') ||
+            text.includes('Please complete all required fields') ||
+            text.includes('Please correct the errors below'))) {
 
-      const toastHTML = `
-        <div class="toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
-          <div class="toast-header">
-            <i class="me-2 ${icon}"></i>
-            <strong class="me-auto text-capitalize">${type}</strong>
-            <small>Just now</small>
-            <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
-          </div>
-          <div class="toast-body">${text}</div>
-        </div>`;
+        const icon = {
+          success: 'la la-check-circle text-success',
+          error:   'la la-times-circle text-danger',
+          warning: 'la la-exclamation-circle text-warning',
+          info:    'la la-info-circle text-info'
+        }[type] || 'la la-info-circle text-info';
 
-      const container = document.getElementById("toast-container");
-      container.insertAdjacentHTML("beforeend", toastHTML);
+        const toastHTML = `
+          <div class="toast toast-${type}" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+              <i class="me-2 ${icon}"></i>
+              <strong class="me-auto text-capitalize">${type}</strong>
+              <small>Just now</small>
+              <button type="button" class="btn-close ms-2 mb-1" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">${text}</div>
+          </div>`;
 
-      const toastEl = container.querySelector(".toast:last-child");
-      const bsToast = new bootstrap.Toast(toastEl, { autohide: true, delay: 4000 });
-      bsToast.show();
+        const container = document.getElementById("toast-container");
+        container.insertAdjacentHTML("beforeend", toastHTML);
+
+        const toastEl = container.querySelector(".toast:last-child");
+        const bsToast = new bootstrap.Toast(toastEl, { autohide: true, delay: 4000 });
+        bsToast.show();
+      }
     {% endfor %}
   });
 </script>

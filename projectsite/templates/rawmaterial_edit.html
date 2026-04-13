@@ -6,16 +6,16 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'rawmaterial-batch' %}" class="btn btn-link p-0 mr-2" title="Back to Raw Materials">
+      <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Packaging Materials">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
-      Raw Materials
+      Packaging Materials
     </h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Edit Raw Material</div>
+            <div class="card-title">Edit Packaging Material</div>
           </div>
 
           <div class="card-body">
@@ -55,13 +55,7 @@
                   <input type="number" step="0.01" name="price_per_unit" class="form-control" value="{{ form.price_per_unit.value|default:'' }}" required>
                 </div>
 
-                <div class="form-item">
-                  <label>Category</label>
-                  <select name="category" class="form-control" required>
-                    <option value="PACKAGING" {% if form.category.value == "PACKAGING" %}selected{% endif %}>Packaging Materials</option>
-                    <option value="RECIPE" {% if form.category.value == "RECIPE" %}selected{% endif %}>Recipe Materials</option>
-                  </select>
-                </div>
+                <input type="hidden" name="category" value="PACKAGING">
               </div>
 
               <div class="form-actions btn-row mt-3">
@@ -77,4 +71,53 @@
     </div>
   </div>
 </div>
+
+<!-- Duplication Warning Modal -->
+<div class="modal fade" id="duplicationWarningModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚠️ Duplicate Packaging Material Warning</h5>
+        <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="duplicationWarningMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="$('#duplicationWarningModal').modal('hide')">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Handle duplication warning modal
+  document.addEventListener('DOMContentLoaded', function() {
+    const alertDiv = document.querySelector('.alert-danger');
+    if (alertDiv) {
+      const errorText = alertDiv.innerText;
+      // Check for any duplication-related errors
+      if (errorText.includes('complete duplicate') || 
+          errorText.includes('already used') || 
+          errorText.includes('already exists') ||
+          errorText.includes('Please complete all required fields')) {
+        // Hide the alert
+        alertDiv.style.display = 'none';
+        
+        // Show the modal with the error message
+        const messageElement = document.getElementById('duplicationWarningMessage');
+        if (messageElement) {
+          messageElement.textContent = errorText;
+        }
+        
+        // Show the modal using jQuery with a small delay to ensure jQuery is ready
+        setTimeout(function() {
+          $('#duplicationWarningModal').modal('show');
+        }, 100);
+      }
+    }
+  });
+</script>
 {% endblock %}

@@ -25,6 +25,9 @@
                   <a class="dropdown-item" href="#" data-toggle="modal" data-target="#archiveOldStockChangesModal">Archive Old Data</a>
                 </div>
               </div>
+              <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#stockChangesReportModal">
+                <i class="la la-download mr-1"></i> Export Report
+              </button>
             </div>
           </div>
 
@@ -170,6 +173,39 @@
   </div>
 </div>
 
+<!-- Generate Report Modal -->
+<div class="modal fade" id="stockChangesReportModal" tabindex="-1" aria-labelledby="stockChangesReportLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="stockChangesReportLabel">Export Stock Changes Data</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label for="reportDateFilter">Month</label>
+          <input type="month" id="reportDateFilter" class="form-control" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}">
+          <small class="form-text text-muted">Leave empty to use current month, or check 'Show all data'.</small>
+        </div>
+        <div class="form-group mb-2">
+          <label for="reportShowAll">
+            <input type="checkbox" id="reportShowAll" {% if request.GET.show_all %}checked{% endif %}>
+            Export All Data
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success" onclick="exportStockChangesReport()">
+          <i class="la la-download mr-1"></i> Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     // Check for success message after page reload
@@ -310,6 +346,21 @@ function toggleShowAll() {
   window.location.href = window.location.pathname + '?' + params.toString();
 }
 
+function exportStockChangesReport() {
+  const params = new URLSearchParams();
+  const dateFilter = (document.getElementById('reportDateFilter') || {}).value || '';
+  const showAll = (document.getElementById('reportShowAll') || {}).checked;
+  
+  if (showAll) {
+    params.set('show_all', '1');
+  } else if (dateFilter) {
+    params.set('date_filter', dateFilter);
+  }
+  
+  const url = '/stock-changes/export/' + (params.toString() ? ('?' + params.toString()) : '');
+  window.location.href = url;
+}
+
 </script>
 
 <script src="{% static 'js/stock_changes_search.js' %}"></script>
@@ -330,5 +381,7 @@ function toggleShowAll() {
   vertical-align: top;
   padding: 12px;
 }
+.modal { z-index: 1060; }
+.modal-backdrop { z-index: 1055; }
 </style>
 {% endblock %}

@@ -6,16 +6,16 @@
 <div class="content">
   <div class="container-fluid">
     <h4 class="page-title">
-      <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Raw Materials">
+      <a href="{% url 'rawmaterials-list' %}" class="btn btn-link p-0 mr-2" title="Back to Packaging Materials">
         <i class="la la-arrow-left" style="font-size: 24px;"></i>
       </a>
-      Raw Materials
+      Packaging Materials
     </h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <div class="card-header">
-            <div class="card-title">Add New Raw Material</div>
+            <div class="card-title">Add New Packaging Material</div>
           </div>
 
           <div class="card-body">
@@ -44,12 +44,8 @@
                   <!-- Unit -->
                   <div class="form-item">
                     <label>Size Unit</label>
-                    <input type="text" name="unit" list="unit-options" class="form-control" value="{{ form.unit.value|default:'' }}" placeholder="Enter Size Unit" required>
-                    <datalist id="unit-options">
-                      {% for su in size_units %}
-                        <option value="{{ su.unit_name }}">
-                      {% endfor %}
-                    </datalist>
+                    <input type="text" name="unit" class="form-control" value="grams" readonly required>
+                    <small class="text-muted">Fixed to grams for packaging materials</small>
                   </div>
 
                   <!-- Price Per Unit -->
@@ -58,14 +54,7 @@
                     <input type="number" step="0.01" name="price_per_unit" class="form-control" value="{{ form.price_per_unit.value|default:'' }}" placeholder="Enter Price Per Unit" required>
                   </div>
 
-                  <!-- Category -->
-                  <div class="form-item">
-                    <label>Category</label>
-                    <select name="category" class="form-control" required>
-                      <option value="PACKAGING" {% if form.category.value == "PACKAGING" or not form.category.value %}selected{% endif %}>Packaging Materials</option>
-                      <option value="RECIPE" {% if form.category.value == "RECIPE" %}selected{% endif %}>Recipe Materials</option>
-                    </select>
-                  </div>
+                  <input type="hidden" name="category" value="PACKAGING">
                 </div>
 
                 <!-- Buttons -->
@@ -81,4 +70,123 @@
     </div>
   </div>
 </div>
+
+<!-- Duplication Warning Modal -->
+<div class="modal fade" id="duplicationWarningModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚠️ Duplicate Packaging Material Warning</h5>
+        <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="duplicationWarningMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="$('#duplicationWarningModal').modal('hide')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="submitFormAnyway()">Yes, Add Anyway</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let allowFormSubmit = false;
+
+  // Handle pre-submission duplication check
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    form.addEventListener('submit', function(e) {
+      if (allowFormSubmit) {
+        allowFormSubmit = false;
+        return;
+      }
+
+      e.preventDefault();
+
+      // Get form values
+      const name = document.querySelector('input[name="name"]').value.trim();
+      const size = document.querySelector('input[name="size"]').value.trim();
+      const unit = document.querySelector('input[name="unit"]').value.trim();
+      const pricePerUnit = document.querySelector('input[name="price_per_unit"]').value.trim();
+
+      // Check if all required fields are filled
+      if (!name || !size || !unit || !pricePerUnit) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
+      // Check for duplicates via API
+      const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+      
+      fetch('/api/check-rawmaterial-duplicates/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          name: name,
+          size: size,
+          unit: unit,
+          price_per_unit: pricePerUnit
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.duplicate) {
+          // Show modal if duplicate found
+          const messageElement = document.getElementById('duplicationWarningMessage');
+          messageElement.textContent = `A packaging material with the same name (${name}), size (${size}), unit (${unit}), and price (₱${pricePerUnit}) already exists. Are you sure you want to add another one?`;
+          $('#duplicationWarningModal').modal('show');
+        } else {
+          // No duplicate, submit form
+          allowFormSubmit = true;
+          form.submit();
+        }
+      })
+      .catch(error => {
+        console.error('Error checking duplicates:', error);
+        // On error, allow submission to proceed
+        allowFormSubmit = true;
+        form.submit();
+      });
+    });
+
+    // Handle post-submission errors (form validation errors)
+    const alertDiv = document.querySelector('.alert-danger');
+    if (alertDiv) {
+      const errorText = alertDiv.innerText;
+      // Check for any duplication-related errors
+      if (errorText.includes('complete duplicate') || 
+          errorText.includes('already used') || 
+          errorText.includes('already exists') ||
+          errorText.includes('Please complete all required fields')) {
+        // Hide the alert
+        alertDiv.style.display = 'none';
+        
+        // Show the modal with the error message
+        const messageElement = document.getElementById('duplicationWarningMessage');
+        if (messageElement) {
+          messageElement.textContent = errorText;
+        }
+        
+        // Show the modal using jQuery with a small delay to ensure jQuery is ready
+        setTimeout(function() {
+          $('#duplicationWarningModal').modal('show');
+        }, 100);
+      }
+    }
+  });
+
+  function submitFormAnyway() {
+    $('#duplicationWarningModal').modal('hide');
+    allowFormSubmit = true;
+    document.querySelector('form').submit();
+  }
+</script>
 {% endblock %}

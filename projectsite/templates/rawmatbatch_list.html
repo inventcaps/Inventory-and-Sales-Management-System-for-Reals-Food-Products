@@ -3,14 +3,14 @@
 {% block content %}
 <div class="content">
   <div class="container-fluid">
-    <h4 class="page-title">Raw Material Batches</h4>
+    <h4 class="page-title">Packaging Batches</h4>
     <div class="row">
       <div class="col-md-12">
         <div class="card">
           <!-- Header -->
           <div class="card-header d-flex justify-content-between align-items-center">
             <div>
-              <div class="card-title">List of Raw Material Batches</div>
+              <div class="card-title">List of Packaging Batches</div>
             </div>
 
             <div class="d-flex align-items-center flex-wrap" style="gap:0.5rem;">
@@ -26,7 +26,7 @@
               </div>
               
               <!-- Add Button -->
-              <a href="{% url 'rawmaterial-batch-add' %}" class="btn btn-success btn-rounded">Add Raw Material Batch</a>
+              <a href="{% url 'rawmaterial-batch-add' %}" class="btn btn-success btn-rounded">Add Packaging Batch</a>
             </div>
           </div>
 
@@ -68,7 +68,6 @@
                     <th scope="col">Material</th>
                     <th scope="col">Quantity</th>
                     <th scope="col">Received Date</th>
-                    <th scope="col">Expiration Date</th>
                     <th scope="col">Actions</th>
                   </tr>
                 </thead>
@@ -79,10 +78,9 @@
                         <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
                     </td>
                     <td>{{ object.batch_date|date:"Y-m-d" }}</td>
-                    <td>{{ object.material }}</td>
+                    <td>{{ object.material.name|title }} ({{ object.material.size|floatformat:0 }} {{ object.material.unit.unit_name|default:object.material.unit }})</td>
                     <td>{{ object.quantity|floatformat:0 }}</td>
                     <td>{{ object.received_date|date:"Y-m-d" }}</td>
-                    <td>{{ object.expiration_date|date:"Y-m-d" }}</td>
                     <td>
                       <a href="{% url 'rawmaterial-batch-edit' object.id %}" style="color: blue;" title="Edit">
                         <i class="la la-edit la-lg"></i>
@@ -101,7 +99,7 @@
                   </tr>
                   {% empty %}
                   <tr>
-                    <td colspan="6" class="text-center">No raw material batches found.</td>
+                    <td colspan="5" class="text-center">No packaging batches found.</td>
                   </tr>
                   {% endfor %}
                 </tbody>
@@ -129,8 +127,8 @@
         <h5 class="modal-title">Confirm Archive</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to archive the raw material batch:
-        <strong>{{ object.material }}</strong> ({{ object.batch_date|date:"Y-m-d" }})?
+        Are you sure you want to archive the packaging batch:
+        <strong>{{ object.material.name|title }} ({{ object.material.size|floatformat:0 }} {{ object.material.unit.unit_name|default:object.material.unit }})</strong> ({{ object.batch_date|date:"Y-m-d" }})?
       </div>
       <div class="modal-footer">
         <form method="post" action="{% url 'rawmaterial-batch-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.material }} ({{ object.batch_date|date:'Y-m-d' }})')">
@@ -151,8 +149,8 @@
         <h5 class="modal-title">Confirm Delete</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to delete the raw material batch:
-        <strong>{{ object.material }}</strong> ({{ object.batch_date|date:"Y-m-d" }})?
+        Are you sure you want to delete the packaging batch:
+        <strong>{{ object.material.name|title }} ({{ object.material.size|floatformat:0 }} {{ object.material.unit.unit_name|default:object.material.unit }})</strong> ({{ object.batch_date|date:"Y-m-d" }})?
       </div>
       <div class="modal-footer">
         <form method="post" action="{% url 'rawmaterial-batch-delete' object.id %}" onsubmit="handleDeleteSubmit(event, '{{ object.material }} ({{ object.batch_date|date:'Y-m-d' }})')">
@@ -167,15 +165,15 @@
 {% endfor %}
 </div>
 
-<!-- Archive Old Raw Material Batches Modal -->
+<!-- Archive Old Packaging Batches Modal -->
 <div class="modal fade" id="archiveOldRawBatchesModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title">Archive Old Raw Material Batches</h5>
+        <h5 class="modal-title">Archive Old Packaging Batches</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to archive all raw material batches older than 1 year?
+        Are you sure you want to archive all packaging batches older than 1 year?
         <br><br>
         <strong>Note:</strong> This will archive all batches with batch date more than 1 year ago.
       </div>
@@ -198,7 +196,7 @@
         <h5 class="modal-title">Confirm Bulk Delete</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to delete <strong id="bulkDeleteCount">0</strong> raw material batch(es)?
+        Are you sure you want to delete <strong id="bulkDeleteCount">0</strong> packaging batch(es)?
         <br><br>
         <small class="text-muted">This action cannot be undone.</small>
       </div>
@@ -218,7 +216,7 @@
         <h5 class="modal-title">Confirm Bulk Archive</h5>
       </div>
       <div class="modal-body">
-        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> raw material batch(es)?
+        Are you sure you want to archive <strong id="bulkArchiveCount">0</strong> packaging batch(es)?
         <br><br>
         <small class="text-muted">These batches will be moved to the archived list.</small>
       </div>
@@ -509,7 +507,7 @@ function handleArchiveSubmit(event, batchName) {
     .then(response => {
         if (response.ok) {
             // Store success message in sessionStorage
-            sessionStorage.setItem('rawMatBatchSuccess', `Raw material batch "${batchName}" archived successfully!`);
+            sessionStorage.setItem('rawMatBatchSuccess', `Packaging batch "${batchName}" archived successfully!`);
             // Reload page immediately
             window.location.reload();
         } else {
@@ -541,7 +539,7 @@ function handleDeleteSubmit(event, batchName) {
     .then(response => {
         if (response.ok) {
             // Store success message in sessionStorage
-            sessionStorage.setItem('rawMatBatchSuccess', `Raw material batch "${batchName}" deleted successfully!`);
+            sessionStorage.setItem('rawMatBatchSuccess', `Packaging batch "${batchName}" deleted successfully!`);
             // Reload page immediately
             window.location.reload();
         } else {
@@ -553,7 +551,48 @@ function handleDeleteSubmit(event, batchName) {
         showToast('An error occurred while deleting the batch.', 'error');
     });
 }
+
 </script>
+
+<!-- Duplication Warning Modal -->
+<div class="modal fade" id="duplicationWarningModal" tabindex="-1" role="dialog" aria-hidden="true" data-backdrop="static" data-keyboard="false">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">⚠️ Duplicate Packaging Warning</h5>
+        <button type="button" class="close" onclick="$('#duplicationWarningModal').modal('hide')" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="duplicationWarningMessage"></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" onclick="$('#duplicationWarningModal').modal('hide')">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Show duplication modal on page load if there's a duplication error
+  document.addEventListener('DOMContentLoaded', function() {
+    const alertDiv = document.querySelector('.alert-danger');
+    if (alertDiv) {
+      const errorText = alertDiv.innerText;
+      if (errorText.includes('complete duplicate')) {
+        const messageElement = document.getElementById('duplicationWarningMessage');
+        if (messageElement) {
+          messageElement.textContent = errorText;
+        }
+        setTimeout(function() {
+          $('#duplicationWarningModal').modal('show');
+        }, 100);
+      }
+    }
+  });
+</script>
+
 <style>
 .table-responsive {
   overflow-x: auto;

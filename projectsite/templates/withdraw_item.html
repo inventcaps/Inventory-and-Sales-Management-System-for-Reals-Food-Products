@@ -22,7 +22,7 @@
             <select name="item_type" id="item_type" class="form-control" required>
               <option value="">Select Type</option>
               <option value="PRODUCT">Product</option>
-              <option value="RAW_MATERIAL">Raw Material</option>
+              <option value="RAW_MATERIAL">Packaging Material</option>
             </select>
           </div>
 
@@ -145,13 +145,13 @@
             </table>
           </div>
 
-          <!-- Raw materials table -->
+          <!-- Packaging materials table -->
           <div id="rawmaterials_table" class="mt-3" style="display:none;">
-            <h5>Raw Materials</h5>
+            <h5>Packaging Materials</h5>
             <table class="table table-bordered">
               <thead>
                 <tr>
-                  <th>Raw Material</th>
+                  <th>Packaging Material</th>
                   <th>Current Stock</th>
                   <th>Withdraw Quantity</th>
                 </tr>
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const soldOption = reasonField.querySelector('option[value="SOLD"]');
     
     if (itemType === "RAW_MATERIAL") {
-      // Hide SOLD option for raw materials
+      // Hide SOLD option for packaging materials
       if (soldOption) {
         soldOption.style.display = "none";
         soldOption.disabled = true;
@@ -434,6 +434,119 @@ document.addEventListener("DOMContentLoaded", function() {
   // Initial call to set correct state
   updateDiscountFieldStates();
 
+});
+</script>
+
+<!-- Duplication Confirmation Modal -->
+<div class="modal fade" id="duplicateModal" tabindex="-1" role="dialog" aria-labelledby="duplicateModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="duplicateModalLabel">⚠️ Duplicate Withdrawal Entry Detected</h5>
+        <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>A withdrawal entry with the same details already exists:</p>
+        <ul style="margin: 15px 0; padding-left: 20px;">
+          <li><strong>Item:</strong> <span id="dupItem"></span></li>
+          <li><strong>Quantity:</strong> <span id="dupQuantity"></span></li>
+          <li><strong>Reason:</strong> <span id="dupReason"></span></li>
+        </ul>
+        <p><strong>Are you sure you want to add another withdrawal with the same details?</strong></p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="confirmDuplicateBtn">Yes, Add Anyway</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const form = document.querySelector('form');
+  const modal = new bootstrap.Modal(document.getElementById('duplicateModal'), { keyboard: false });
+  let allowSubmit = false;
+
+  form.addEventListener('submit', function(e) {
+    if (allowSubmit) {
+      allowSubmit = false;
+      return;
+    }
+
+    e.preventDefault();
+
+    // Get form values
+    const itemType = document.getElementById('item_type').value.trim();
+    const reason = document.getElementById('reason').value.trim();
+
+    if (!itemType || !reason) {
+      alert('Please select item type and reason.');
+      return;
+    }
+
+    // Get the first withdrawal with quantity entered
+    const withdrawInputs = document.querySelectorAll('.withdraw-input');
+    let itemId = null;
+    let quantity = null;
+    let itemName = null;
+
+    for (let input of withdrawInputs) {
+      const qty = parseFloat(input.value) || 0;
+      if (qty > 0) {
+        itemId = input.dataset.itemId;
+        quantity = qty;
+        const row = input.closest('tr');
+        itemName = row.querySelector('td:first-child').textContent.trim();
+        break;
+      }
+    }
+
+    if (!itemId || !quantity) {
+      alert('Please enter at least one withdrawal quantity.');
+      return;
+    }
+
+    // Check for duplicates
+    fetch('/api/check-withdrawal-duplicates/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+      },
+      body: JSON.stringify({
+        item_type: itemType,
+        item_id: itemId,
+        quantity: quantity,
+        reason: reason
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.duplicate) {
+        document.getElementById('dupItem').textContent = itemName;
+        document.getElementById('dupQuantity').textContent = quantity;
+        document.getElementById('dupReason').textContent = reason;
+        modal.show();
+      } else {
+        allowSubmit = true;
+        form.submit();
+      }
+    })
+    .catch(error => {
+      console.error('Error checking duplicates:', error);
+      allowSubmit = true;
+      form.submit();
+    });
+  });
+
+  document.getElementById('confirmDuplicateBtn').addEventListener('click', function() {
+    modal.hide();
+    allowSubmit = true;
+    form.submit();
+  });
 });
 </script>
 

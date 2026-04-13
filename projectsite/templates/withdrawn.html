@@ -27,6 +27,10 @@
                 </div>
               </div>
 
+              <button type="button" class="btn btn-success btn-rounded" data-toggle="modal" data-target="#withdrawalsReportModal">
+                <i class="la la-download mr-1"></i> Export Report
+              </button>
+
               <!-- Withdraw Item button -->
               <a href="{% url 'withdraw-item' %}" class="btn btn-success btn-rounded">Withdraw Item</a>
             </div>
@@ -492,6 +496,56 @@
   </div>
 </div>
 
+<!-- Generate Report Modal -->
+<div class="modal fade" id="withdrawalsReportModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Generate Withdrawals Report</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span>&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-2">
+          <label for="reportDateFilter">Month</label>
+          <input type="month" id="reportDateFilter" class="form-control" value="{% if request.GET.date_filter %}{{ request.GET.date_filter }}{% elif not request.GET.show_all %}{{ current_month_value }}{% endif %}">
+          <small class="form-text text-muted">Leave empty to use current month, or check 'Show all data'.</small>
+        </div>
+        <div class="form-group mb-2">
+          <label for="reportItemType">Item Type</label>
+          <select id="reportItemType" class="form-control">
+            <option value="">All Item Types</option>
+            <option value="PRODUCT" {% if request.GET.item_type == 'PRODUCT' %}selected{% endif %}>Product</option>
+            <option value="RAW_MATERIAL" {% if request.GET.item_type == 'RAW_MATERIAL' %}selected{% endif %}>Raw Material</option>
+          </select>
+        </div>
+        <div class="form-group mb-2">
+          <label for="reportReason">Reason</label>
+          <select id="reportReason" class="form-control">
+            <option value="">All Reasons</option>
+            {% for value, label in withdrawals.model.REASON_CHOICES %}
+              <option value="{{ value }}" {% if request.GET.reason == value %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group mb-2">
+          <label for="reportShowAll">
+            <input type="checkbox" id="reportShowAll" {% if request.GET.show_all %}checked{% endif %}>
+            Export All Data
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-success btn-rounded" onclick="exportWithdrawalsReport()">
+          <i class="la la-download mr-1"></i> Export CSV
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   // Check for success message after page reload
@@ -732,6 +786,31 @@ function toggleShowAll() {
     params.delete('date_filter');
   }
   window.location.href = window.location.pathname + '?' + params.toString();
+}
+
+function exportWithdrawalsReport() {
+  const params = new URLSearchParams();
+  const dateFilter = (document.getElementById('reportDateFilter') || {}).value || '';
+  const itemType = (document.getElementById('reportItemType') || {}).value || '';
+  const reason = (document.getElementById('reportReason') || {}).value || '';
+  const showAll = (document.getElementById('reportShowAll') || {}).checked;
+  
+  if (showAll) {
+    params.set('show_all', '1');
+  } else if (dateFilter) {
+    params.set('date_filter', dateFilter);
+  }
+  
+  if (itemType) {
+    params.set('item_type', itemType);
+  }
+  
+  if (reason) {
+    params.set('reason', reason);
+  }
+  
+  const url = '/withdrawals/export/' + (params.toString() ? ('?' + params.toString()) : '');
+  window.location.href = url;
 }
 
 </script>
