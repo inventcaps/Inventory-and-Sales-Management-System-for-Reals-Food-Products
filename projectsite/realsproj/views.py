@@ -2994,6 +2994,23 @@ class ProductInventoryList(ListView):
         for inv in inventory_list:
             if not hasattr(inv, 'reorder_status') or inv.reorder_status is None:
                 inv.reorder_status = inv.get_reorder_status()
+            
+            # Get packaging used from product batches
+            from .models import ProductBatches
+            batches = ProductBatches.objects.filter(
+                product=inv.product,
+                is_archived=False
+            ).select_related('packaging')
+            packaging_list = []
+            for batch in batches:
+                if batch.packaging:
+                    packaging_name = batch.packaging.name.title()
+                    if batch.packaging.size and batch.packaging.unit:
+                        unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
+                        packaging_name = f"{packaging_name} ({int(batch.packaging.size)}{unit_name})"
+                    if packaging_name not in packaging_list:
+                        packaging_list.append(packaging_name)
+            inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
         
         # Calculate total stock across all non-archived products
         total_stock = ProductInventory.objects.filter(
