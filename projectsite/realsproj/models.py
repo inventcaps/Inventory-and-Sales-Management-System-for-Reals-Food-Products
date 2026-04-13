@@ -1207,7 +1207,7 @@ class RawMaterials(models.Model):
     unit = models.ForeignKey('SizeUnits', models.DO_NOTHING)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    size = models.DecimalField(max_digits=10, decimal_places=2)
+    size = models.CharField(max_length=50)
     date_created = models.DateTimeField(default=timezone.now)
     is_archived = models.BooleanField(default=False)
     category = models.CharField(max_length=30)

@@ -100,7 +100,7 @@
                                             <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
                                         </td>
                                         <td>
-                                            {{ object.name }} ({{ object.size|floatformat:0 }} {{ object.unit.unit_name|default:object.unit }})
+                                            {{ object.name }} ({{ object.size }} {{ object.unit.unit_name|default:object.unit }})
                                         </td>
                                         <td>₱{{ object.price_per_unit }}</td>
                                         <td>{{ object.date_created|date:"Y-m-d g:i A" }}</td>

@@ -3007,7 +3007,7 @@ class ProductInventoryList(ListView):
                     packaging_name = batch.packaging.name.title()
                     if batch.packaging.size and batch.packaging.unit:
                         unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
-                        packaging_name = f"{packaging_name} ({int(batch.packaging.size)}{unit_name})"
+                        packaging_name = f"{packaging_name} ({batch.packaging.size}{unit_name})"
                     if packaging_name not in packaging_list:
                         packaging_list.append(packaging_name)
             inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
@@ -8446,7 +8446,7 @@ def check_rawmaterial_duplicates(request):
         return JsonResponse({'duplicate': False})
     
     try:
-        size = float(size)
+        size = str(size).strip()
         price_per_unit = float(price_per_unit)
     except (ValueError, TypeError):
         return JsonResponse({'duplicate': False})
@@ -8454,7 +8454,7 @@ def check_rawmaterial_duplicates(request):
     # Check for exact match (same name, size, unit, and price_per_unit)
     duplicate_exists = RawMaterials.objects.filter(
         name__iexact=name,
-        size=size,
+        size__iexact=size,
         unit__unit_name__iexact=unit,
         price_per_unit=price_per_unit,
         is_archived=False

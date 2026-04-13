@@ -35,17 +35,21 @@
                     <input type="text" name="name" class="form-control" value="{{ form.name.value|default:'' }}" placeholder="Enter Material" required>
                   </div>
 
-                  <!-- Size -->
-                  <div class="form-item">
-                    <label>Size</label>
-                    <input type="number" step="0.01" name="size" class="form-control" value="{{ form.size.value|default:'' }}" placeholder="Enter Size" required>
-                  </div>
-
                   <!-- Unit -->
                   <div class="form-item">
                     <label>Size Unit</label>
-                    <input type="text" name="unit" class="form-control" value="Grams" readonly required>
-                    <small class="text-muted">Fixed to Grams for packaging materials</small>
+                    <select name="unit" class="form-control" id="unitSelect" required>
+                      <option value="Grams" {% if form.unit.value|default:'Grams' == 'Grams' %}selected{% endif %}>Grams</option>
+                      <option value="Centimeters" {% if form.unit.value == 'Centimeters' %}selected{% endif %}>Centimeters</option>
+                    </select>
+                  </div>
+
+                  <!-- Size -->
+                  <div class="form-item">
+                    <label>Size</label>
+                    <input type="number" step="0.01" name="size_number" class="form-control" id="sizeNumber" value="{{ form.size.value|default:'' }}" placeholder="Enter Size" required>
+                    <input type="text" name="size_text" class="form-control" id="sizeText" value="{{ form.size.value|default:'' }}" placeholder="e.g. 12x14" pattern="^\d+(\.\d+)?x\d+(\.\d+)?$" style="display: none;">
+                    <input type="hidden" name="size" id="sizeHidden" value="{{ form.size.value|default:'' }}">
                   </div>
 
                   <!-- Price Per Unit -->
@@ -100,6 +104,28 @@
     const form = document.querySelector('form');
     if (!form) return;
 
+    // Handle unit selection change
+    const unitSelect = document.getElementById('unitSelect');
+    const sizeNumber = document.getElementById('sizeNumber');
+    const sizeText = document.getElementById('sizeText');
+    
+    unitSelect.addEventListener('change', function() {
+      if (this.value === 'Grams') {
+        sizeNumber.style.display = 'block';
+        sizeText.style.display = 'none';
+        sizeNumber.required = true;
+        sizeText.required = false;
+      } else if (this.value === 'Centimeters') {
+        sizeNumber.style.display = 'none';
+        sizeText.style.display = 'block';
+        sizeNumber.required = false;
+        sizeText.required = true;
+      }
+    });
+
+    // Initialize based on current selection
+    unitSelect.dispatchEvent(new Event('change'));
+
     form.addEventListener('submit', function(e) {
       if (allowFormSubmit) {
         allowFormSubmit = false;
@@ -110,15 +136,25 @@
 
       // Get form values
       const name = document.querySelector('input[name="name"]').value.trim();
-      const size = document.querySelector('input[name="size"]').value.trim();
-      const unit = document.querySelector('input[name="unit"]').value.trim();
+      const unit = document.querySelector('select[name="unit"]').value.trim();
       const pricePerUnit = document.querySelector('input[name="price_per_unit"]').value.trim();
+      
+      // Get size from the appropriate input
+      let size;
+      if (unit === 'Grams') {
+        size = sizeNumber.value.trim();
+      } else {
+        size = sizeText.value.trim();
+      }
 
       // Check if all required fields are filled
       if (!name || !size || !unit || !pricePerUnit) {
         alert('Please fill in all required fields.');
         return;
       }
+
+      // Copy the correct size value to the hidden field
+      document.getElementById('sizeHidden').value = size;
 
       // Check for duplicates via API
       const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;

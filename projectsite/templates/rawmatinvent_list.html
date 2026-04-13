@@ -78,7 +78,7 @@
                     {% for item in rawmatinvent %}
                     <tr>
                       <td>
-                        {{ item.material.name|title }} ({{ item.material.size|floatformat:0 }} {{ item.material.unit.unit_name|default:item.material.unit }})
+                        {{ item.material.name|title }} ({{ item.material.size }} {{ item.material.unit.unit_name|default:item.material.unit }})
                       </td>
                       <td>₱{{ item.material.price_per_unit|floatformat:2 }}</td>
                       <td>{{ item.total_stock|floatformat:0 }}</td>
