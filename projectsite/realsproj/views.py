@@ -2737,7 +2737,6 @@ class ProductBatchUpdateView(UpdateView):
         return response
 
     def form_invalid(self, form):
-        messages.error(self.request, "❌ Failed to update Product Batch. Please check the form.")
         return super().form_invalid(form)
 
 
@@ -5237,7 +5236,6 @@ class BulkProductBatchCreateView(View):
         form = BulkProductBatchForm(request.POST)
 
         if not form.is_valid():
-            messages.error(request, "❌ Please fix the errors below before submitting.")
             return render(request, self.template_name, {
                 'form': form,
                 'products': form.products
