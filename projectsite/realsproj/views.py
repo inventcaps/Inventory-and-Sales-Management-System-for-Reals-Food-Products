@@ -2752,26 +2752,11 @@ class ProductBatchDeleteView(DeleteView):
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        # Restore packaging material to inventory before deletion
-        batch = self.object
-        if batch.packaging_id:
-            try:
-                from .models import RawMaterialInventory, RawMaterials
-                raw_material = RawMaterials.objects.get(id=batch.packaging_id)
-                raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
-                
-                # Restore the quantity back to inventory
-                raw_material_inventory.total_stock += batch.quantity
-                raw_material_inventory.save()
-            except RawMaterials.DoesNotExist:
-                messages.error(self.request, f"⚠️ Packaging material not found. Could not restore inventory.")
-            except RawMaterialInventory.DoesNotExist:
-                messages.error(self.request, f"⚠️ Packaging inventory not found. Could not restore inventory.")
-        
+        # Trigger trg_handle_packaging_stock_batches_delete handles packaging stock restoration automatically
         return super().form_valid(form)
 
     def get_success_url(self):
-        messages.success(self.request, "🗑️ Product Batch deleted successfully. Packaging material restored to inventory.")
+        messages.success(self.request, "🗑️ Product Batch deleted successfully.")
         return super().get_success_url()
 
 
@@ -2834,35 +2819,12 @@ def product_batch_bulk_delete(request):
     try:
         ids = request.POST.get('ids', '').split(',')
         ids = [int(id.strip()) for id in ids if id.strip()]
-        
+
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
-        
-        # Get batches before deletion to restore raw material inventory
-        batches_to_delete = ProductBatches.objects.filter(id__in=ids)
-        
-        # Restore raw material inventory for each batch being deleted
-        from .models import RawMaterialInventory, RawMaterials
-        for batch in batches_to_delete:
-            # Check if batch has packaging information
-            if batch.packaging_id:
-                try:
-                    raw_material = RawMaterials.objects.get(id=batch.packaging_id)
-                    raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
-                    
-                    # Restore the quantity back to raw material inventory
-                    from decimal import Decimal
-                    qty_decimal = Decimal(str(batch.quantity))
-                    raw_material_inventory.total_stock += qty_decimal
-                    raw_material_inventory.save()
-                except RawMaterials.DoesNotExist:
-                    # Skip restoration if raw material not found
-                    pass
-                except RawMaterialInventory.DoesNotExist:
-                    # Skip restoration if inventory not found
-                    pass
-        
-        deleted_count = batches_to_delete.delete()[0]
+
+        # Trigger trg_handle_packaging_stock_batches_delete handles packaging stock restoration automatically
+        deleted_count = ProductBatches.objects.filter(id__in=ids).delete()[0]
         return JsonResponse({
             'success': True,
             'message': f'Successfully deleted {deleted_count} batch(es)'
@@ -5271,6 +5233,23 @@ class BulkProductBatchCreateView(View):
 
                     batch_code = f"{manufactured_date.strftime('%m%d%y')}{product_code}"
 
+                    # Validate packaging stock BEFORE creating batch (trigger will handle deduction)
+                    if packaging_id:
+                        try:
+                            from .models import RawMaterialInventory, RawMaterials
+                            raw_material = RawMaterials.objects.get(id=packaging_id)
+                            raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
+
+                            # Check if enough stock is available
+                            from decimal import Decimal
+                            qty_decimal = Decimal(str(qty))
+                            if raw_material_inventory.total_stock < qty_decimal:
+                                raise ValueError(f"Not enough stock for {raw_material.name}. Available: {raw_material_inventory.total_stock}, Required: {qty}")
+                        except RawMaterials.DoesNotExist:
+                            raise ValueError(f"Selected packaging material not found.")
+                        except RawMaterialInventory.DoesNotExist:
+                            raise ValueError(f"Packaging inventory not found for {raw_material.name}.")
+
                     ProductBatches.objects.create(
                         product=product,
                         quantity=qty,
@@ -5281,26 +5260,6 @@ class BulkProductBatchCreateView(View):
                         created_by_admin=auth_user,
                         packaging_id=packaging_id,  # Store the packaging ID
                     )
-                    
-                    # Deduct raw material inventory if packaging is selected
-                    if packaging_id:
-                        try:
-                            from .models import RawMaterialInventory, RawMaterials
-                            raw_material = RawMaterials.objects.get(id=packaging_id)
-                            raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
-                            
-                            # Check if enough stock is available
-                            from decimal import Decimal
-                            qty_decimal = Decimal(str(qty))
-                            if raw_material_inventory.total_stock >= qty_decimal:
-                                raw_material_inventory.total_stock -= qty_decimal
-                                raw_material_inventory.save()
-                            else:
-                                raise ValueError(f"Not enough stock for {raw_material.name}. Available: {raw_material_inventory.total_stock}, Required: {qty}")
-                        except RawMaterials.DoesNotExist:
-                            raise ValueError(f"Selected packaging material not found.")
-                        except RawMaterialInventory.DoesNotExist:
-                            raise ValueError(f"Packaging inventory not found for {raw_material.name}.")
                     
                     added_any = True
 
