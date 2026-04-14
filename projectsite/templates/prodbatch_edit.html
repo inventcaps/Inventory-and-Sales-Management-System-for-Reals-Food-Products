@@ -31,6 +31,14 @@
                   {% endfor %}
                 </div>
 
+                <div class="form-item" style="flex: 1 1 100%;">
+                  <label for="{{ form.packaging.id_for_label }}">{{ form.packaging.label }}</label>
+                  {% render_field form.packaging class="form-control" %}
+                  {% for error in form.packaging.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                  {% endfor %}
+                </div>
+
                 <div class="form-item">
                   <label for="{{ form.batch_code.id_for_label }}">{{ form.batch_code.label }}</label>
                   {% render_field form.batch_code class="form-control" %}

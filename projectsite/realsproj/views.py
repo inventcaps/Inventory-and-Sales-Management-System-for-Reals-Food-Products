@@ -39,12 +39,11 @@ from realsproj.forms import (
     SizesForm,
     SizeUnitsForm,
     UnitPricesForm,
-    SrpPricesForm, 
+    SrpPricesForm,
     NotificationsForm,
     BulkProductBatchForm,
     StockChangesForm,
     BulkRawMaterialBatchForm,
-    ProductRecipeForm,
     UnifiedWithdrawForm,
     CustomUserCreationForm,
     WithdrawEditForm
@@ -74,7 +73,6 @@ from realsproj.models import (
     SalesSummary,
     ExpensesSummary,
     Discounts,
-    ProductRecipes,
     UserActivity,
     PriceHistory
 )
@@ -548,10 +546,11 @@ class ProductsList(ListView):
             .order_by("-id")
         )
 
-        # Unified search field for Product Type, Variant, and Size
+        # Unified search: Code, Product Type, Variant, and Size
         search = self.request.GET.get("search", "").strip()
         if search:
             queryset = queryset.filter(
+                Q(product_code__icontains=search) |
                 Q(product_type__name__icontains=search) |
                 Q(variant__name__icontains=search) |
                 Q(size__size_label__icontains=search)
@@ -829,7 +828,7 @@ class ProductCreateView(CreateView):
             return redirect(self.request.path)  
 
         messages.success(self.request, "✅ Product added successfully.")
-        return redirect('recipe-list', product_id=self.object.id)
+        return redirect('products')
 
     def form_invalid(self, form):
         """Handle validation errors (e.g., duplicate barcode)"""
@@ -864,7 +863,6 @@ class ProductsUpdateView(UpdateView):
         context['size_units'] = SizeUnits.objects.all()
         context['unit_prices'] = UnitPrices.objects.all()
         context['srp_prices'] = SrpPrices.objects.all()
-        context['recipe_list_url'] = reverse_lazy('recipe-list', kwargs={'product_id': self.object.id})
         
         # Store the current page number
         referer = self.request.META.get('HTTP_REFERER', '')
@@ -1009,63 +1007,6 @@ class ProductsDeleteView(UserPassesTestMixin, DeleteView):
             return f"{reverse_lazy('products')}?page={page}"
         return super().get_success_url()
 
-class ProductRecipeListView(ListView):
-    model = ProductRecipes
-    template_name = "prodrecipe_list.html"
-    context_object_name = "recipes"
-
-    def get_queryset(self):
-        return ProductRecipes.objects.filter(product_id=self.kwargs['product_id']).select_related("material")
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context["product"] = Products.objects.get(pk=self.kwargs["product_id"])
-        return context
-
-class ProductRecipeBulkCreateView(View):
-    template_name = "prodrecipe_add.html"
-
-    def get(self, request, product_id):
-        product = Products.objects.get(pk=product_id)
-        RecipeFormSet = modelformset_factory(ProductRecipes, form=ProductRecipeForm, extra=1, can_delete=False)
-
-        formset = RecipeFormSet(queryset=ProductRecipes.objects.none())
-        return render(request, self.template_name, {"formset": formset, "product": product})
-
-    def post(self, request, product_id):
-        product = Products.objects.get(pk=product_id)
-        auth_user = AuthUser.objects.get(username=request.user.username)
-        RecipeFormSet = modelformset_factory(ProductRecipes, form=ProductRecipeForm, extra=0, can_delete=False)
-
-        formset = RecipeFormSet(request.POST)
-
-        if formset.is_valid():
-            instances = formset.save(commit=False)
-            for instance in instances:
-                instance.product = product
-                instance.created_by_admin = auth_user
-                instance.save()
-            if instances:
-                messages.success(request, "✅ Recipes added successfully.")
-            return redirect("recipe-list", product_id=product.id)
-
-        return render(request, self.template_name, {"formset": formset, "product": product})
-
-class ProductRecipeUpdateView(UpdateView):
-    model = ProductRecipes
-    form_class = ProductRecipeForm
-    template_name = "prodrecipe_edit.html"
-
-    def get_success_url(self):
-        messages.success(self.request, "✅ Recipe updated successfully.")
-        return reverse_lazy("recipe-list", kwargs={"product_id": self.object.product_id})
-
-class ProductRecipeDeleteView(DeleteView):
-    model = ProductRecipes
-
-    def get_success_url(self):
-        messages.success(self.request, "🗑️ Recipe deleted successfully.")
-        return reverse_lazy("recipe-list", kwargs={"product_id": self.object.product_id})
 
 class RawMaterialsList(ListView):
     model = RawMaterials
@@ -1099,7 +1040,13 @@ class RawMaterialsList(ListView):
             except ValueError:
                 pass  # Ignore invalid format
 
-        if category in {"PACKAGING", "RECIPE"}:
+        distinct_categories = (
+            RawMaterials.objects.filter(is_archived=False)
+            .values_list("category", flat=True)
+            .distinct()
+        )
+        valid_categories = {c.upper() for c in distinct_categories if c}
+        if category and category in valid_categories:
             queryset = queryset.filter(category__iexact=category)
 
         return queryset.order_by('-date_created')
@@ -1107,13 +1054,13 @@ class RawMaterialsList(ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         category = self.request.GET.get("category", "").strip().upper()
-        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
         distinct_categories = (
             RawMaterials.objects.filter(is_archived=False)
             .values_list('category', flat=True)
             .distinct()
         )
         context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
+        context['category_filter'] = category if category in context['category_choices'] else ""
         context['total_raw_materials'] = context['paginator'].count if 'paginator' in context else 0
         return context
 
@@ -1221,13 +1168,6 @@ class ArchivedPackagingMaterialsListView(ArchivedRawMaterialsListView):
         return (super().get_queryset()
                 .filter(category__iexact='PACKAGING'))
 
-
-class ArchivedRecipeMaterialsListView(ArchivedRawMaterialsListView):
-    template_name = 'archived_recipe.html'
-
-    def get_queryset(self):
-        return (super().get_queryset()
-                .filter(category__iexact='RECIPE'))
 
 class RawMaterialUnarchiveView(View):
     def post(self, request, pk):
@@ -1405,22 +1345,6 @@ class PackagingMaterialsUpdateView(CategoryRawMaterialsUpdateView):
     success_url = reverse_lazy('packaging-materials')
     category_value = 'PACKAGING'
 
-
-class RecipeMaterialsList(CategoryFilteredRawMaterialsList):
-    category_value = 'RECIPE'
-    template_name = 'recipe_list.html'
-
-
-class RecipeMaterialsCreateView(CategoryRawMaterialsCreateView):
-    template_name = 'recipe_add.html'
-    success_url = reverse_lazy('recipe-materials')
-    category_value = 'RECIPE'
-
-
-class RecipeMaterialsUpdateView(CategoryRawMaterialsUpdateView):
-    template_name = 'recipe_edit.html'
-    success_url = reverse_lazy('recipe-materials')
-    category_value = 'RECIPE'
 
 class HistoryLogList(ListView):
     model = HistoryLog
@@ -2053,6 +1977,7 @@ class SalesExpensesList(ListView):
                 'group_id': group_id,
                 'actual_group_id': actual_group_id,
                 'is_single': is_single,
+                'receipt_number': first_withdrawal.receipt_number,
                 'customer_name': first_withdrawal.customer_name,
                 'sales_channel': sales_channel_display,
                 'payment_status': first_withdrawal.payment_status,
@@ -2812,7 +2737,6 @@ class ProductBatchUpdateView(UpdateView):
         return response
 
     def form_invalid(self, form):
-        messages.error(self.request, "❌ Failed to update Product Batch. Please check the form.")
         return super().form_invalid(form)
 
 
@@ -2827,8 +2751,27 @@ class ProductBatchDeleteView(DeleteView):
             return redirect('product-batch')
         return super().dispatch(request, *args, **kwargs)
 
+    def form_valid(self, form):
+        # Restore packaging material to inventory before deletion
+        batch = self.object
+        if batch.packaging_id:
+            try:
+                from .models import RawMaterialInventory, RawMaterials
+                raw_material = RawMaterials.objects.get(id=batch.packaging_id)
+                raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
+                
+                # Restore the quantity back to inventory
+                raw_material_inventory.total_stock += batch.quantity
+                raw_material_inventory.save()
+            except RawMaterials.DoesNotExist:
+                messages.error(self.request, f"⚠️ Packaging material not found. Could not restore inventory.")
+            except RawMaterialInventory.DoesNotExist:
+                messages.error(self.request, f"⚠️ Packaging inventory not found. Could not restore inventory.")
+        
+        return super().form_valid(form)
+
     def get_success_url(self):
-        messages.success(self.request, "🗑️ Product Batch deleted successfully.")
+        messages.success(self.request, "🗑️ Product Batch deleted successfully. Packaging material restored to inventory.")
         return super().get_success_url()
 
 
@@ -2895,7 +2838,31 @@ def product_batch_bulk_delete(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        deleted_count = ProductBatches.objects.filter(id__in=ids).delete()[0]
+        # Get batches before deletion to restore raw material inventory
+        batches_to_delete = ProductBatches.objects.filter(id__in=ids)
+        
+        # Restore raw material inventory for each batch being deleted
+        from .models import RawMaterialInventory, RawMaterials
+        for batch in batches_to_delete:
+            # Check if batch has packaging information
+            if batch.packaging_id:
+                try:
+                    raw_material = RawMaterials.objects.get(id=batch.packaging_id)
+                    raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
+                    
+                    # Restore the quantity back to raw material inventory
+                    from decimal import Decimal
+                    qty_decimal = Decimal(str(batch.quantity))
+                    raw_material_inventory.total_stock += qty_decimal
+                    raw_material_inventory.save()
+                except RawMaterials.DoesNotExist:
+                    # Skip restoration if raw material not found
+                    pass
+                except RawMaterialInventory.DoesNotExist:
+                    # Skip restoration if inventory not found
+                    pass
+        
+        deleted_count = batches_to_delete.delete()[0]
         return JsonResponse({
             'success': True,
             'message': f'Successfully deleted {deleted_count} batch(es)'
@@ -3026,6 +2993,23 @@ class ProductInventoryList(ListView):
         for inv in inventory_list:
             if not hasattr(inv, 'reorder_status') or inv.reorder_status is None:
                 inv.reorder_status = inv.get_reorder_status()
+            
+            # Get packaging used from product batches
+            from .models import ProductBatches
+            batches = ProductBatches.objects.filter(
+                product=inv.product,
+                is_archived=False
+            ).select_related('packaging')
+            packaging_list = []
+            for batch in batches:
+                if batch.packaging:
+                    packaging_name = batch.packaging.name.title()
+                    if batch.packaging.size and batch.packaging.unit:
+                        unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
+                        packaging_name = f"{packaging_name} ({batch.packaging.size}{unit_name})"
+                    if packaging_name not in packaging_list:
+                        packaging_list.append(packaging_name)
+            inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
         
         # Calculate total stock across all non-archived products
         total_stock = ProductInventory.objects.filter(
@@ -3266,7 +3250,14 @@ class RawMaterialInventoryList(ListView):
                 Q(reorder_threshold__icontains=q)
             )
 
-        if category in {"PACKAGING", "RECIPE"}:
+        valid_cats = {
+            c.upper()
+            for c in RawMaterials.objects.filter(is_archived=False)
+            .values_list("category", flat=True)
+            .distinct()
+            if c
+        }
+        if category and category in valid_cats:
             queryset = queryset.filter(material__category__iexact=category)
 
         return queryset
@@ -3324,13 +3315,13 @@ class RawMaterialInventoryList(ListView):
         ).aggregate(total=Sum('total_stock'))['total'] or 0
         context['total_rawmat_stock'] = total_stock
         category = self.request.GET.get("category", "").strip().upper()
-        context['category_filter'] = category if category in {"PACKAGING", "RECIPE"} else ""
         distinct_categories = (
             RawMaterials.objects.filter(is_archived=False)
             .values_list('category', flat=True)
             .distinct()
         )
         context['category_choices'] = sorted({c.upper() for c in distinct_categories if c})
+        context['category_filter'] = category if category in context['category_choices'] else ""
         return context
 
 @require_GET
@@ -3351,7 +3342,14 @@ def export_rawmaterial_inventory(request):
             Q(reorder_threshold__icontains=q)
         )
 
-    if category in {"PACKAGING", "RECIPE"}:
+    valid_cats = {
+        c.upper()
+        for c in RawMaterials.objects.filter(is_archived=False)
+        .values_list("category", flat=True)
+        .distinct()
+        if c
+    }
+    if category and category in valid_cats:
         qs = qs.filter(material__category__iexact=category)
 
     if status == "on_stock":
@@ -5238,7 +5236,6 @@ class BulkProductBatchCreateView(View):
         form = BulkProductBatchForm(request.POST)
 
         if not form.is_valid():
-            messages.error(request, "❌ Please fix the errors below before submitting.")
             return render(request, self.template_name, {
                 'form': form,
                 'products': form.products
@@ -5262,9 +5259,11 @@ class BulkProductBatchCreateView(View):
 
                     manufactured_field_name = f'product_{product.id}_manufactured'
                     expiration_field_name = f'product_{product.id}_expiration'
+                    packaging_field_name = f'product_{product.id}_packaging'
 
                     manufactured_date = form.cleaned_data.get(manufactured_field_name) or default_manufactured
                     expiration_date = form.cleaned_data.get(expiration_field_name) or default_expiration
+                    packaging_id = form.cleaned_data.get(packaging_field_name)
 
                     product_code = (product.product_code or '').strip().upper()
                     if not product_code:
@@ -5280,7 +5279,29 @@ class BulkProductBatchCreateView(View):
                         expiration_date=expiration_date,
                         batch_code=batch_code,
                         created_by_admin=auth_user,
+                        packaging_id=packaging_id,  # Store the packaging ID
                     )
+                    
+                    # Deduct raw material inventory if packaging is selected
+                    if packaging_id:
+                        try:
+                            from .models import RawMaterialInventory, RawMaterials
+                            raw_material = RawMaterials.objects.get(id=packaging_id)
+                            raw_material_inventory = RawMaterialInventory.objects.get(material=raw_material)
+                            
+                            # Check if enough stock is available
+                            from decimal import Decimal
+                            qty_decimal = Decimal(str(qty))
+                            if raw_material_inventory.total_stock >= qty_decimal:
+                                raw_material_inventory.total_stock -= qty_decimal
+                                raw_material_inventory.save()
+                            else:
+                                raise ValueError(f"Not enough stock for {raw_material.name}. Available: {raw_material_inventory.total_stock}, Required: {qty}")
+                        except RawMaterials.DoesNotExist:
+                            raise ValueError(f"Selected packaging material not found.")
+                        except RawMaterialInventory.DoesNotExist:
+                            raise ValueError(f"Packaging inventory not found for {raw_material.name}.")
+                    
                     added_any = True
 
                 if not added_any:
@@ -5333,7 +5354,6 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
             for rawmaterial_info in form.rawmaterials:
                 rawmaterial = rawmaterial_info['rawmaterial']
                 qty = form.cleaned_data.get(f'rawmaterial_{rawmaterial.id}_qty')
-                exp_date = form.cleaned_data.get(f'rawmaterial_{rawmaterial.id}_exp')
 
                 if qty:
                     RawMaterialBatches.objects.create(
@@ -5341,7 +5361,6 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
                         quantity=qty,
                         batch_date=batch_date,
                         received_date=received_date,
-                        expiration_date=exp_date,
                         created_by_admin=auth_user
                     )
 
@@ -7221,22 +7240,38 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
             if current_month:
                 filters['date__month'] = current_month
 
-        withdrawals = Withdrawals.objects.filter(**filters).values('item_id', 'quantity', 'custom_price')
+        withdrawals = Withdrawals.objects.filter(**filters).values(
+            'item_id',
+            'quantity',
+            'custom_price',
+            'total_amount',
+            'final_price_per_unit',
+        )
 
         product_sales = {}
         for w in withdrawals:
             product_id = w['item_id']
-            quantity = w['quantity'] or 0
-            price = w['custom_price'] or 0
-            
+            quantity = Decimal(w['quantity'] or 0)
+            custom_price = w.get('custom_price')
+            total_amount = w.get('total_amount')
+            final_price_per_unit = w.get('final_price_per_unit')
+
+            revenue = Decimal('0')
+            if total_amount is not None:
+                revenue = Decimal(total_amount)
+            elif custom_price is not None:
+                revenue = Decimal(custom_price)
+            elif final_price_per_unit is not None:
+                revenue = quantity * Decimal(final_price_per_unit)
+
             if product_id not in product_sales:
                 product_sales[product_id] = {
-                    'total_quantity': 0,
-                    'total_revenue': 0
+                    'total_quantity': Decimal('0'),
+                    'total_revenue': Decimal('0')
                 }
-            
+
             product_sales[product_id]['total_quantity'] += quantity
-            product_sales[product_id]['total_revenue'] += quantity * price
+            product_sales[product_id]['total_revenue'] += revenue
 
         sold_products_list = []
         for product_id, sales_data in product_sales.items():
@@ -7252,7 +7287,7 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
                     'product__size__size_label': product.size.size_label if product.size else '',
                     'product__size_unit__unit_name': product.size_unit.unit_name,
                     'total_quantity': sales_data['total_quantity'],
-                    'total_revenue': sales_data['total_revenue']
+                    'total_revenue': sales_data['total_revenue'],
                 })
             except Products.DoesNotExist:
                 continue
@@ -7287,15 +7322,15 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
                     'product__variant__name': product.variant.name,
                     'product__size__size_label': product.size.size_label if product.size else '',
                     'product__size_unit__unit_name': product.size_unit.unit_name,
-                    'total_quantity': 0,
-                    'total_revenue': 0
+                    'total_quantity': Decimal('0'),
+                    'total_revenue': Decimal('0'),
                 })
         
         low_sellers = low_sellers_list[:10]
         total_quantity = sum(p['total_quantity'] for p in sold_products_list)
         total_revenue = sum(p['total_revenue'] for p in sold_products_list)
         total_products = len(sold_products_list)
-        average_revenue = total_revenue / total_products if total_products > 0 else 0
+        average_revenue = total_revenue / total_products if total_products > 0 else Decimal('0')
         available_years = Withdrawals.objects.filter(
             item_type='PRODUCT',
             reason='SOLD',
@@ -7381,18 +7416,38 @@ def export_bestseller_report(request):
         if current_month:
             filters['date__month'] = current_month
 
-    withdrawals = Withdrawals.objects.filter(**filters).values('item_id', 'quantity', 'custom_price')
+    withdrawals = Withdrawals.objects.filter(**filters).values(
+        'item_id',
+        'quantity',
+        'custom_price',
+        'total_amount',
+        'final_price_per_unit',
+    )
 
     # Aggregate by product
     product_sales = {}
     for w in withdrawals:
         pid = w['item_id']
-        qty = w['quantity'] or 0
-        price = w['custom_price'] or 0
+        qty = Decimal(w['quantity'] or 0)
+        custom_price = w.get('custom_price')
+        total_amount = w.get('total_amount')
+        final_price_per_unit = w.get('final_price_per_unit')
+
+        revenue = Decimal('0')
+        if total_amount is not None:
+            revenue = Decimal(total_amount)
+        elif custom_price is not None:
+            revenue = Decimal(custom_price)
+        elif final_price_per_unit is not None:
+            revenue = qty * Decimal(final_price_per_unit)
+
         if pid not in product_sales:
-            product_sales[pid] = {'total_quantity': 0, 'total_revenue': 0}
+            product_sales[pid] = {
+                'total_quantity': Decimal('0'),
+                'total_revenue': Decimal('0')
+            }
         product_sales[pid]['total_quantity'] += qty
-        product_sales[pid]['total_revenue'] += qty * price
+        product_sales[pid]['total_revenue'] += revenue
 
     # Build detailed list with product fields
     sold_products_list = []
@@ -7444,7 +7499,7 @@ def export_bestseller_report(request):
     total_quantity = sum(p['total_quantity'] for p in sold_products_list)
     total_revenue = sum(p['total_revenue'] for p in sold_products_list)
     total_products = len(sold_products_list)
-    average_revenue = (total_revenue / total_products) if total_products > 0 else 0
+    average_revenue = (total_revenue / total_products) if total_products > 0 else Decimal('0')
 
     # Prepare CSV response
     response = HttpResponse(content_type='text/csv')
@@ -8296,13 +8351,14 @@ def export_price_history(request):
 def check_product_batches(request):
     """API endpoint to check if products already have batches with the same quantity."""
     product_data = request.GET.get('product_data', '[]')
-    
+
     try:
         import json
         products_list = json.loads(product_data)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'duplicates': []})
-    
+
+    today = timezone.localdate()
     duplicates = []
     for item in products_list:
         try:
@@ -8313,19 +8369,20 @@ def check_product_batches(request):
                 continue
             
             product = Products.objects.get(id=product_id)
-            
+
             # Check if there's an existing batch with the same quantity
             batch_exists = ProductBatches.objects.filter(
                 product=product,
                 quantity=quantity,
-                is_archived=False
+                is_archived=False,
+                batch_date=today
             ).exists()
-            
+
             if batch_exists:
                 duplicates.append(f"{product.product_type.name} - {product.variant.name} ({product.size.size_label})")
         except (Products.DoesNotExist, ValueError, KeyError):
             pass
-    
+
     return JsonResponse({'duplicates': duplicates})
 
 
@@ -8339,7 +8396,8 @@ def check_rawmaterial_batches(request):
         materials_list = json.loads(material_data)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({'duplicates': []})
-    
+
+    today = timezone.localdate()
     duplicates = []
     for item in materials_list:
         try:
@@ -8350,19 +8408,20 @@ def check_rawmaterial_batches(request):
                 continue
             
             material = RawMaterials.objects.get(id=material_id)
-            
+
             # Check if there's an existing batch with the same quantity
             batch_exists = RawMaterialBatches.objects.filter(
                 material=material,
                 quantity=quantity,
-                is_archived=False
+                is_archived=False,
+                batch_date=today
             ).exists()
-            
+
             if batch_exists:
                 duplicates.append(f"{material.name}")
         except (RawMaterials.DoesNotExist, ValueError, KeyError):
             pass
-    
+
     return JsonResponse({'duplicates': duplicates})
 
 
@@ -8385,7 +8444,7 @@ def check_rawmaterial_duplicates(request):
         return JsonResponse({'duplicate': False})
     
     try:
-        size = float(size)
+        size = str(size).strip()
         price_per_unit = float(price_per_unit)
     except (ValueError, TypeError):
         return JsonResponse({'duplicate': False})
@@ -8393,7 +8452,7 @@ def check_rawmaterial_duplicates(request):
     # Check for exact match (same name, size, unit, and price_per_unit)
     duplicate_exists = RawMaterials.objects.filter(
         name__iexact=name,
-        size=size,
+        size__iexact=size,
         unit__unit_name__iexact=unit,
         price_per_unit=price_per_unit,
         is_archived=False
@@ -8496,13 +8555,15 @@ def check_withdrawal_duplicates(request):
     except (ValueError, TypeError):
         return JsonResponse({'duplicate': False})
     
+    today = timezone.localdate()
     # Check for exact match (same item_type, item_id, quantity, and reason)
     duplicate_exists = Withdrawals.objects.filter(
         item_type=item_type,
         item_id=item_id,
         quantity=quantity,
         reason=reason,
-        is_archived=False
+        is_archived=False,
+        date__date=today
     ).exists()
-    
+
     return JsonResponse({'duplicate': duplicate_exists})

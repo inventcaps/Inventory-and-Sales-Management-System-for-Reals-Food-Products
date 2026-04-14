@@ -22,7 +22,7 @@
             <select name="item_type" id="item_type" class="form-control" required>
               <option value="">Select Type</option>
               <option value="PRODUCT">Product</option>
-              <option value="RAW_MATERIAL">Raw Material</option>
+              <option value="RAW_MATERIAL">Packaging Material</option>
             </select>
           </div>
 
@@ -145,13 +145,13 @@
             </table>
           </div>
 
-          <!-- Raw materials table -->
+          <!-- Packaging materials table -->
           <div id="rawmaterials_table" class="mt-3" style="display:none;">
-            <h5>Raw Materials</h5>
+            <h5>Packaging Materials</h5>
             <table class="table table-bordered">
               <thead>
                 <tr>
-                  <th>Raw Material</th>
+                  <th>Packaging Material</th>
                   <th>Current Stock</th>
                   <th>Withdraw Quantity</th>
                 </tr>
@@ -229,7 +229,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const soldOption = reasonField.querySelector('option[value="SOLD"]');
     
     if (itemType === "RAW_MATERIAL") {
-      // Hide SOLD option for raw materials
+      // Hide SOLD option for packaging materials
       if (soldOption) {
         soldOption.style.display = "none";
         soldOption.disabled = true;

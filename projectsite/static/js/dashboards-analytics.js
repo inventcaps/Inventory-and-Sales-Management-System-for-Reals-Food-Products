@@ -155,6 +155,44 @@
 
       const yearSelect = document.querySelector("#yearFilter");
       const monthSelect = document.querySelector("#monthFilter");
+      const revenueYearSelect = document.querySelector("#revenueYearFilter");
+
+      const extractedYears = new Set();
+      data.months.forEach(m => {
+        if (m) extractedYears.add(m.slice(0, 4));
+      });
+      data.daily_dates.forEach(d => {
+        if (d) extractedYears.add(d.slice(0, 4));
+      });
+
+      const now = new Date();
+      const currentYearStr = now.getFullYear().toString();
+      extractedYears.add(currentYearStr);
+
+      const sortedYears = Array.from(extractedYears)
+        .filter(Boolean)
+        .sort((a, b) => parseInt(b, 10) - parseInt(a, 10));
+
+      const updateSelectOptions = (selectEl, preferred) => {
+        if (!selectEl) return;
+        const previous = preferred || selectEl.value;
+        selectEl.innerHTML = "";
+        sortedYears.forEach(year => {
+          const option = document.createElement("option");
+          option.value = year;
+          option.textContent = year;
+          selectEl.appendChild(option);
+        });
+        const fallback = sortedYears.includes(currentYearStr) ? currentYearStr : sortedYears[0];
+        if (sortedYears.includes(previous)) {
+          selectEl.value = previous;
+        } else if (fallback) {
+          selectEl.value = fallback;
+        }
+      };
+
+      updateSelectOptions(yearSelect);
+      updateSelectOptions(revenueYearSelect);
 
       function updateChart() {
         const selectedYear = yearSelect.value;
@@ -200,7 +238,6 @@
       yearSelect.addEventListener("change", updateChart);
       monthSelect.addEventListener("change", updateChart);
 
-      const now = new Date();
       const currentYear = now.getFullYear().toString();
       const currentMonth = String(now.getMonth() + 1).padStart(2, "0");
 
@@ -261,6 +298,8 @@
   document.addEventListener("DOMContentLoaded", function () {
   const yearSelect = document.querySelector("#revenueYearFilter");
   const monthSelect = document.querySelector("#revenueMonthFilter");
+  const now = new Date();
+  const defaultYear = now.getFullYear().toString();
 
   const themeColors = getThemeColors();
   const options = {
@@ -326,8 +365,17 @@
   revenueChart.render();
 
   function updateChart() {
-    const selectedYear = yearSelect.value;
-    const selectedMonth = monthSelect.value;
+    let selectedYear = yearSelect.value;
+    let selectedMonth = monthSelect.value || "all";
+
+    if (!selectedYear) {
+      if (yearSelect.options.length) {
+        selectedYear = yearSelect.options[0].value;
+        yearSelect.value = selectedYear;
+      } else {
+        selectedYear = defaultYear;
+      }
+    }
 
     fetch(`/api/revenue-change/?year=${selectedYear}&month=${selectedMonth}`)
       .then(res => res.json())
@@ -353,9 +401,8 @@
   yearSelect.addEventListener("change", updateChart);
   monthSelect.addEventListener("change", updateChart);
 
-  const now = new Date();
   const currentMonth = now.toISOString().slice(5, 7);
-  const currentYear = now.getFullYear().toString();
+  const currentYear = defaultYear;
 
   if ([...yearSelect.options].some(opt => opt.value === currentYear)) {
     yearSelect.value = currentYear;

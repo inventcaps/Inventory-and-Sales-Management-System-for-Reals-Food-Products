@@ -6,7 +6,7 @@ from calendar import monthrange
 
 from django.utils import timezone
 
-from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, ProductRecipes, Withdrawals
+from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, Withdrawals
 from django.contrib.auth.models import User
 from django.contrib.auth.forms import UserCreationForm, UserChangeForm
 from django.core.exceptions import ValidationError
@@ -217,16 +217,9 @@ class ProductsForm(forms.ModelForm):
         return cleaned_data
 
 
-class ProductRecipeForm(forms.ModelForm):
-    class Meta:
-        model = ProductRecipes
-        fields = ["material", "quantity_needed", "yield_factor"]
-
-
 class RawMaterialsForm(ModelForm):
     CATEGORY_CHOICES = (
         ("PACKAGING", "Packaging"),
-        ("RECIPE", "Recipe"),
     )
 
     category = forms.ChoiceField(choices=CATEGORY_CHOICES)
@@ -357,6 +350,7 @@ class ProductBatchForm(ModelForm):
         model = ProductBatches
         fields = [
             'product',
+            'packaging',
             'quantity',
             'batch_date',
             'manufactured_date',
@@ -365,6 +359,7 @@ class ProductBatchForm(ModelForm):
         ]
         widgets = {
             'product': forms.Select(attrs={'class': 'form-control'}),
+            'packaging': forms.Select(attrs={'class': 'form-control'}),
             'batch_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'manufactured_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
@@ -377,6 +372,58 @@ class ProductBatchForm(ModelForm):
         self.fields['product'].queryset = Products.objects.filter(is_archived=False)
         self.fields['batch_code'].required = False
         self.fields['batch_code'].disabled = True
+        
+        # Populate packaging field with formatted choices
+        raw_material_inventory = RawMaterialInventory.objects.select_related('material').filter(
+            material__is_archived=False
+        ).order_by('material__category', 'material__name')
+        
+        packaging_choices = [('', 'Select Packaging')] + [
+            (item.material.id, "{} ({}) {} - Stock: {}, Price: ₱{}".format(
+                item.material.name.title(),
+                item.material.size,
+                item.material.unit.unit_name if hasattr(item.material.unit, 'unit_name') else str(item.material.unit),
+                item.total_stock,
+                item.material.price_per_unit
+            ))
+            for item in raw_material_inventory
+        ]
+        self.fields['packaging'].widget = forms.Select(attrs={'class': 'form-control'})
+        self.fields['packaging'].choices = packaging_choices
+
+    def clean(self):
+        cleaned_data = super().clean()
+        quantity = cleaned_data.get('quantity')
+        packaging = cleaned_data.get('packaging')
+        manufactured_date = cleaned_data.get('manufactured_date')
+        expiration_date = cleaned_data.get('expiration_date')
+
+        # Validate packaging is required when quantity is entered
+        if quantity and float(quantity) > 0 and not packaging:
+            self.add_error('packaging', 'Packaging type is required when adding product quantity.')
+
+        # Validate quantity does not exceed packaging stock
+        if quantity and packaging:
+            try:
+                packaging_inventory = RawMaterialInventory.objects.select_related('material').get(material_id=packaging.id)
+                available_stock = float(packaging_inventory.total_stock)
+
+                # If editing, add back the current batch quantity to available stock
+                if self.instance.pk and self.instance.quantity:
+                    available_stock += float(self.instance.quantity)
+
+                if float(quantity) > available_stock:
+                    packaging_name = packaging_inventory.material.name.title()
+                    self.add_error('quantity', f'Quantity cannot exceed available stock for {packaging_name} ({available_stock}).')
+            except RawMaterialInventory.DoesNotExist:
+                self.add_error('packaging', 'Selected packaging inventory not found.')
+
+        # Validate expiration date is not before manufactured date
+        if manufactured_date and expiration_date:
+            if expiration_date < manufactured_date:
+                self.add_error('expiration_date', 'Expiration date cannot be before the manufactured date.')
+
+        return cleaned_data
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -401,13 +448,12 @@ class ProductInventoryForm(ModelForm):
 class RawMaterialBatchForm(ModelForm):
     class Meta:
         model = RawMaterialBatches
-        fields = ['material', 'quantity', 'batch_date', 'received_date', 'expiration_date']
+        fields = ['material', 'quantity', 'batch_date', 'received_date']
         widgets = {
             'material': forms.Select(attrs={'class': 'form-control'}),
             'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
             'batch_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'received_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
-            'expiration_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -734,9 +780,23 @@ class BulkProductBatchForm(forms.Form):
         widget=forms.DateInput(attrs={'type': 'date'})
     )
 
+    packaging = forms.ModelChoiceField(
+        queryset=RawMaterialInventory.objects.select_related('material').filter(
+            material__is_archived=False
+        ).order_by('material__category', 'material__name'),
+        required=False,
+        label="Packaging"
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.products = []
+        
+        # Get raw material inventory data for packaging options (only those with stock > 0)
+        self.raw_material_inventory = RawMaterialInventory.objects.select_related('material').filter(
+            material__is_archived=False,
+            total_stock__gt=0
+        ).order_by('material__category', 'material__name')
 
         # Filter out archived products
         for product in Products.objects.filter(is_archived=False).order_by('id'):
@@ -744,6 +804,7 @@ class BulkProductBatchForm(forms.Form):
             qty_field_name = f'product_{product.id}_qty'
             manufactured_field_name = f'product_{product.id}_manufactured'
             expiration_field_name = f'product_{product.id}_expiration'
+            packaging_field_name = f'product_{product.id}_packaging'
             is_yema = self._is_yema_product(product)
 
             # Quantity field
@@ -790,11 +851,34 @@ class BulkProductBatchForm(forms.Form):
                 widget=forms.DateInput(attrs=expiration_attrs)
             )
 
+            # Packaging dropdown field
+            packaging_choices = [('', 'Select Type')] + [
+                (item.material.id, "{} ({}) {} - Stock: {}, Price: ₱{}".format(
+                    item.material.name.title(),
+                    item.material.size,
+                    item.material.unit.unit_name if hasattr(item.material.unit, 'unit_name') else str(item.material.unit),
+                    item.total_stock,
+                    item.material.price_per_unit
+                ))
+                for item in self.raw_material_inventory
+            ]
+            
+            self.fields[packaging_field_name] = forms.ChoiceField(
+                choices=packaging_choices,
+                required=False,
+                widget=forms.Select(attrs={
+                    'class': 'form-control',
+                    'data-product-id': str(product.id),
+                    'data-field-type': 'packaging'
+                })
+            )
+
             self.products.append({
                 "product": product,
                 "qty_field": self[qty_field_name],
                 "manufactured_field": self[manufactured_field_name],
                 "expiration_field": self[expiration_field_name],
+                "packaging_field": self[packaging_field_name],
                 "is_yema": is_yema,
             })
 
@@ -839,11 +923,29 @@ class BulkProductBatchForm(forms.Form):
             qty_field_name = f'product_{product.id}_qty'
             manufactured_field_name = f'product_{product.id}_manufactured'
             expiration_field_name = f'product_{product.id}_expiration'
+            packaging_field_name = f'product_{product.id}_packaging'
             is_yema = product_info['is_yema']
 
             # Only validate if quantity is entered
             qty = cleaned_data.get(qty_field_name)
             if not qty or float(qty) <= 0:
+                continue
+            
+            # Validate packaging is required when quantity is entered
+            packaging = cleaned_data.get(packaging_field_name)
+            if not packaging:
+                self.add_error(packaging_field_name, 'Packaging type is required when adding product quantity.')
+                continue
+
+            # Validate quantity does not exceed packaging stock
+            try:
+                packaging_inventory = RawMaterialInventory.objects.select_related('material').get(material_id=int(packaging))
+                if float(qty) > float(packaging_inventory.total_stock):
+                    packaging_name = packaging_inventory.material.name.title()
+                    self.add_error(qty_field_name, f'Quantity cannot exceed available stock for {packaging_name} ({packaging_inventory.total_stock}).')
+                    continue
+            except RawMaterialInventory.DoesNotExist:
+                self.add_error(packaging_field_name, 'Selected packaging inventory not found.')
                 continue
 
             manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured or timezone.localdate()
@@ -883,7 +985,6 @@ class BulkProductBatchForm(forms.Form):
 class BulkRawMaterialBatchForm(forms.Form):
     CATEGORY_CHOICES = (
         ('PACKAGING', 'Packaging'),
-        ('RECIPE', 'Recipe'),
     )
 
     category = forms.ChoiceField(choices=CATEGORY_CHOICES, required=False)
@@ -904,7 +1005,6 @@ class BulkRawMaterialBatchForm(forms.Form):
 
         for rawmaterial in queryset.order_by('name'):
             qty_field_name = f'rawmaterial_{rawmaterial.id}_qty'
-            exp_field_name = f'rawmaterial_{rawmaterial.id}_exp'
 
             self.fields[qty_field_name] = forms.DecimalField(
                 required=False,
@@ -913,18 +1013,10 @@ class BulkRawMaterialBatchForm(forms.Form):
                 widget=forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01', 'placeholder': 'Enter Quantity'})
             )
 
-            self.fields[exp_field_name] = forms.DateField(
-                required=False,
-                widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control', 'placeholder': 'Select Expiration Date'})
-            )
-
             self.rawmaterials.append({
                 "rawmaterial": rawmaterial,
                 "qty_field": self[qty_field_name],
-                "exp_field": self[exp_field_name],
             })
-
-
 
 class StockChangesForm(ModelForm):
     class Meta:

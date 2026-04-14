@@ -67,7 +67,7 @@
                             <!-- Other Filters Row -->
                             <div class="d-flex align-items-center flex-wrap mb-3" style="gap:0.5rem;">
                                 <input type="text" name="search" class="form-control" style="width: 350px;"
-                                    placeholder="Search Product Type, Variant, or Size..." value="{{ request.GET.search }}">
+                                    placeholder="Search Code, Product Type, Variant, or Size..." value="{{ request.GET.search }}">
                                 <input type="month" name="date_created" class="form-control" style="width:180px;"
                                        placeholder="Filter by Month"
                                        value="{{ request.GET.date_created }}">
@@ -215,19 +215,6 @@
                     <div class="mb-3">
                         <strong>Barcode:</strong>
                         <p>{{ object.barcode|default:"No barcode available" }}</p>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <strong>Recipe:</strong>
-                        {% if object.recipes.all %}
-                            <ul class="list-unstyled">
-                                {% for recipe in object.recipes.all %}
-                                    <li>• {{ recipe.material.name }} - {{ recipe.quantity_needed }} {{ recipe.material.unit.unit_name }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            <p><em>No raw materials assigned</em></p>
-                        {% endif %}
                     </div>
                 </div>
                 <div class="modal-footer">
