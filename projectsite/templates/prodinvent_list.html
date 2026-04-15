@@ -84,7 +84,17 @@
                   <tr>
                     <td>{{ object.product.product_code }}</td>
                     <td>{{ object.product }}</td>
-                    <td>{{ object.packaging_used }}</td>
+                    <td>
+                      {% if object.packaging_stock_breakdown %}
+                        {% for packaging_info in object.packaging_stock_breakdown %}
+                          <div class="mb-1">
+                            <span class="badge bg-info text-white">{{ packaging_info }}</span>
+                          </div>
+                        {% endfor %}
+                      {% else %}
+                        <span class="text-muted">No packaging assigned</span>
+                      {% endif %}
+                    </td>
                     <td>{{ object.total_stock|floatformat:0 }}</td>
                     <td>
                       <span class="badge bg-info">{{ reorder_status.available_stock|floatformat:0 }}</span>

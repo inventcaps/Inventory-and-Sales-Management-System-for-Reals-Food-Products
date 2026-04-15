@@ -2994,22 +2994,38 @@ class ProductInventoryList(ListView):
             if not hasattr(inv, 'reorder_status') or inv.reorder_status is None:
                 inv.reorder_status = inv.get_reorder_status()
             
-            # Get packaging used from product batches
-            from .models import ProductBatches
+            # Get packaging information and stock from batches
             batches = ProductBatches.objects.filter(
                 product=inv.product,
                 is_archived=False
             ).select_related('packaging')
+            
+            packaging_stock = {}
             packaging_list = []
+            
             for batch in batches:
                 if batch.packaging:
                     packaging_name = batch.packaging.name.title()
                     if batch.packaging.size and batch.packaging.unit:
                         unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
-                        packaging_name = f"{packaging_name} ({batch.packaging.size}{unit_name})"
+                        packaging_name = f"{packaging_name} ({int(batch.packaging.size)}{unit_name})"
+                    
+                    # Accumulate stock per packaging type
+                    if packaging_name not in packaging_stock:
+                        packaging_stock[packaging_name] = 0
+                    packaging_stock[packaging_name] += batch.quantity
+                    
                     if packaging_name not in packaging_list:
                         packaging_list.append(packaging_name)
+            
+            # Create formatted packaging stock breakdown
+            packaging_breakdown = []
+            for packaging_name in packaging_list:
+                stock_qty = packaging_stock.get(packaging_name, 0)
+                packaging_breakdown.append(f"{packaging_name}: {stock_qty}")
+            
             inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
+            inv.packaging_stock_breakdown = packaging_breakdown
         
         # Calculate total stock across all non-archived products
         total_stock = ProductInventory.objects.filter(
