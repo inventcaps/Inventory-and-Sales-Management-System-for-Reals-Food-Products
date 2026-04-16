@@ -1509,6 +1509,16 @@ class Withdrawals(models.Model):
         blank=True,
         help_text="Total amount (quantity × final_price_per_unit)"
     )
+    
+    # Packaging selection field
+    packaging = models.ForeignKey(
+        'RawMaterials',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column="packaging_id",
+        help_text="Selected packaging type for this withdrawal (null = any packaging)"
+    )
 
     class Meta:
         managed = False  # existing table
