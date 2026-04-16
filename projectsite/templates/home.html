@@ -18,6 +18,54 @@
     {% if is_superuser %}
     <h4 class="page-title">Dashboard - Analytics</h4>
 
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;margin-top:16px;">
+      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="la la-box" style="font-size:1.4rem;color:#2563eb;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Products</div>
+            <div style="font-size:1.65rem;font-weight:700;line-height:1;">{{ total_products }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;gap:14px;">
+          <div style="width:44px;height:44px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+            <i class="la la-cubes" style="font-size:1.4rem;color:#16a34a;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Stock</div>
+            <div style="font-size:1.65rem;font-weight:700;line-height:1;">{{ total_stocks|floatformat:0 }}</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;justify-content:space-around;gap:8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="la la-exclamation-triangle" style="font-size:1.2rem;color:#d97706;"></i>
+            </div>
+            <div>
+              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Low Stock</div>
+              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div>
+            </div>
+          </div>
+          <div style="width:1px;height:36px;background:rgba(0,0,0,0.08);"></div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <i class="la la-times-circle" style="font-size:1.2rem;color:#dc2626;"></i>
+            </div>
+            <div>
+              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Out of Stock</div>
+              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Sales vs Expenses Chart -->
     <div class="row gy-4">
       <div class="col-12">
@@ -239,7 +287,7 @@
 {% block page_js %}
   {{ block.super }}
   {% if is_superuser %}
-    <script src="{% static 'js/dashboards-analytics.js' %}"></script>
+    <script src="{% static 'js/dashboards-analytics.js' %}?v=2"></script>
   {% else %}
     <script>
       window._inventoryData = {

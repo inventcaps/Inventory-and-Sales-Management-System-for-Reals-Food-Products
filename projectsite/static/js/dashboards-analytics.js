@@ -101,54 +101,42 @@
     .then(data => {
       const themeColors = getThemeColors();
       const options = { 
-        chart: { 
-          type: "line", 
+        chart: {
+          type: "bar",
           height: 350,
-          foreColor: themeColors.textColor
+          foreColor: themeColors.textColor,
+          toolbar: { show: false }
         },
         series: [],
-        xaxis: { 
-          categories: [],
-          labels: {
-            style: {
-              colors: themeColors.textColor
-            }
+        colors: ["#22c55e", "#ef4444"],
+        plotOptions: {
+          bar: {
+            horizontal: false,
+            columnWidth: "52%",
+            borderRadius: 4,
+            grouped: true
           }
+        },
+        dataLabels: { enabled: false },
+        xaxis: {
+          categories: [],
+          labels: { style: { colors: themeColors.textColor } }
         },
         yaxis: {
           labels: {
-            style: {
-              colors: themeColors.textColor
-            }
+            style: { colors: themeColors.textColor },
+            formatter: val => "₱" + val.toLocaleString()
           }
-        },
-        title: { 
-          text: "Sales vs Expenses",
-          style: {
-            color: themeColors.textColor
-          }
-        },
-        dataLabels: {
-          enabled: false 
-        },
-        markers: {
-          size: 5,
-          colors: ["#008FFB", "#00E396"], 
-          strokeColors: "#fff",
-          strokeWidth: 2,
-          hover: { size: 7 }
-        },
-        grid: {
-          borderColor: themeColors.gridColor
         },
         tooltip: {
-          theme: isDarkMode() ? 'dark' : 'light'
+          theme: isDarkMode() ? 'dark' : 'light',
+          y: { formatter: val => "₱" + val.toLocaleString() }
         },
         legend: {
-          labels: {
-            colors: themeColors.textColor
-          }
-        }
+          position: "top",
+          labels: { colors: themeColors.textColor }
+        },
+        grid: { borderColor: themeColors.gridColor }
       };
       salesExpensesChart = new ApexCharts(document.querySelector("#salesExpensesChart"), options);
       salesExpensesChart.render();
@@ -208,9 +196,7 @@
               { name: "Sales", data: filteredSales },
               { name: "Expenses", data: filteredExpenses }
             ],
-            xaxis: { categories: filteredMonths },
-            title: { text: `Monthly Sales vs Expenses - ${selectedYear}` },
-            chart: { type: "line" } 
+            xaxis: { categories: filteredMonths }
           });
         } else {
           const selected = `${selectedYear}-${selectedMonth}`;
@@ -228,9 +214,7 @@
               { name: "Sales", data: filteredSales },
               { name: "Expenses", data: filteredExpenses }
             ],
-            xaxis: { categories: dayLabels },
-            title: { text: `Daily Sales vs Expenses - ${selected}` },
-            chart: { type: "line" }
+            xaxis: { categories: dayLabels }
           });
         }
       }
