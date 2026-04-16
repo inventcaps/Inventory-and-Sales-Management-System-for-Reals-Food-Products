@@ -188,6 +188,40 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             item_type="PRODUCT", reason="SOLD"
         ).order_by('-date')[:6]
 
+        context['is_superuser'] = self.request.user.is_superuser
+
+        if not self.request.user.is_superuser:
+            import json
+            context['total_products'] = Products.objects.filter(is_archived=False).count()
+            all_inv = list(
+                ProductInventory.objects.select_related(
+                    'product', 'product__product_type', 'product__variant',
+                    'product__size', 'product__size_unit'
+                ).order_by('-total_stock')
+            )
+            context['low_stock_count'] = sum(
+                1 for inv in all_inv if 0 < inv.total_stock <= inv.restock_threshold
+            )
+            context['out_of_stock_count'] = sum(
+                1 for inv in all_inv if inv.total_stock <= 0
+            )
+            inv_labels, inv_stocks, inv_colors = [], [], []
+            for inv in all_inv[:15]:
+                label = str(inv.product)
+                if len(label) > 25:
+                    label = label[:22] + '...'
+                inv_labels.append(label)
+                inv_stocks.append(float(inv.total_stock))
+                if inv.total_stock <= 0:
+                    inv_colors.append('#ef4444')
+                elif inv.total_stock <= inv.restock_threshold:
+                    inv_colors.append('#f59e0b')
+                else:
+                    inv_colors.append('#22c55e')
+            context['inv_labels'] = json.dumps(inv_labels)
+            context['inv_stocks'] = json.dumps(inv_stocks)
+            context['inv_colors'] = json.dumps(inv_colors)
+
         return context
 
 
