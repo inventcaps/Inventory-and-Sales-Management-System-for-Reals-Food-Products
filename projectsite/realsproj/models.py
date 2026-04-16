@@ -1093,7 +1093,7 @@ class RawMaterialBatches(models.Model):
     batch_date = models.DateField(default=timezone.localdate)
     received_date = models.DateField(default=timezone.localdate)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
-    original_quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    original_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     expiration_date = models.DateField(blank=True, null=True)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
     is_archived = models.BooleanField(default=False)

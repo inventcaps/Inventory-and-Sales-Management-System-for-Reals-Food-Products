@@ -227,19 +227,30 @@ document.addEventListener("DOMContentLoaded", function() {
   function updateReasonOptions() {
     const itemType = typeSelect.value;
     const soldOption = reasonField.querySelector('option[value="SOLD"]');
+    const damagedOption = reasonField.querySelector('option[value="DAMAGED"]');
     
     if (itemType === "RAW_MATERIAL") {
+      // Auto-fill to DAMAGED and disable reason dropdown for packaging materials
+      reasonField.value = "DAMAGED";
+      reasonField.disabled = true;
+      
       // Hide SOLD option for packaging materials
       if (soldOption) {
         soldOption.style.display = "none";
         soldOption.disabled = true;
       }
-      // If SOLD was selected, reset to empty
-      if (reasonField.value === "SOLD") {
-        reasonField.value = "";
-        toggleSections();
-      }
+      
+      // Trigger sections update to hide sales fields
+      toggleSections();
     } else {
+      // Enable reason dropdown for products
+      reasonField.disabled = false;
+      
+      // If DAMAGED was auto-selected, reset to empty
+      if (reasonField.value === "DAMAGED") {
+        reasonField.value = "";
+      }
+      
       // Show SOLD option for products
       if (soldOption) {
         soldOption.style.display = "block";
