@@ -66,7 +66,7 @@
                     </th>
                     <th scope="col">Date</th>
                     <th scope="col">Material</th>
-                    <th scope="col">Quantity</th>
+                    <th scope="col">Quantity (Current / Original)</th>
                     <th scope="col">Received Date</th>
                     <th scope="col">Actions</th>
                   </tr>
@@ -78,8 +78,8 @@
                         <input type="checkbox" class="row-checkbox" value="{{ object.id }}" onchange="updateBulkButtons()">
                     </td>
                     <td>{{ object.batch_date|date:"Y-m-d" }}</td>
-                    <td>{{ object.material.name|title }} ({{ object.material.size|floatformat:0 }} {{ object.material.unit.unit_name|default:object.material.unit }})</td>
-                    <td>{{ object.quantity|floatformat:0 }}</td>
+                    <td>{{ object.material.name|title }} ({{ object.material.size }} {{ object.material.unit.unit_name|default:object.material.unit }})</td>
+                    <td style="text-align: center;">{{ object.quantity|floatformat:0 }} / {{ object.original_quantity|floatformat:0 }}</td>
                     <td>{{ object.received_date|date:"Y-m-d" }}</td>
                     <td>
                       <a href="{% url 'rawmaterial-batch-edit' object.id %}" style="color: blue;" title="Edit">
@@ -128,7 +128,9 @@
       </div>
       <div class="modal-body">
         Are you sure you want to archive the packaging batch:
-        <strong>{{ object.material.name|title }} ({{ object.material.size|floatformat:0 }} {{ object.material.unit.unit_name|default:object.material.unit }})</strong> ({{ object.batch_date|date:"Y-m-d" }})?
+        <strong>{{ object.material.name|title }} ({{ object.material.size }} {{ object.material.unit.unit_name|default:object.material.unit }})</strong> ({{ object.batch_date|date:"Y-m-d" }})?
+        <br><br>
+        <small>Quantity: {{ object.quantity|floatformat:0 }} / {{ object.original_quantity|floatformat:0 }}</small>
       </div>
       <div class="modal-footer">
         <form method="post" action="{% url 'rawmaterial-batch-archive' object.id %}" onsubmit="handleArchiveSubmit(event, '{{ object.material }} ({{ object.batch_date|date:'Y-m-d' }})')">
@@ -150,7 +152,9 @@
       </div>
       <div class="modal-body">
         Are you sure you want to delete the packaging batch:
-        <strong>{{ object.material.name|title }} ({{ object.material.size|floatformat:0 }} {{ object.material.unit.unit_name|default:object.material.unit }})</strong> ({{ object.batch_date|date:"Y-m-d" }})?
+        <strong>{{ object.material.name|title }} ({{ object.material.size }} {{ object.material.unit.unit_name|default:object.material.unit }})</strong> ({{ object.batch_date|date:"Y-m-d" }})?
+        <br><br>
+        <small>Quantity: {{ object.quantity|floatformat:0 }} / {{ object.original_quantity|floatformat:0 }}</small>
       </div>
       <div class="modal-footer">
         <form method="post" action="{% url 'rawmaterial-batch-delete' object.id %}" onsubmit="handleDeleteSubmit(event, '{{ object.material }} ({{ object.batch_date|date:'Y-m-d' }})')">

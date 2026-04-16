@@ -1093,6 +1093,7 @@ class RawMaterialBatches(models.Model):
     batch_date = models.DateField(default=timezone.localdate)
     received_date = models.DateField(default=timezone.localdate)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    original_quantity = models.DecimalField(max_digits=10, decimal_places=2)
     expiration_date = models.DateField(blank=True, null=True)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
     is_archived = models.BooleanField(default=False)
@@ -1117,6 +1118,8 @@ class RawMaterialInventory(models.Model):
         Calculate available stock by subtracting expiring stock from total stock.
         Available Stock = Total Stock - Expiring Soon
         
+        For packaging materials (which don't expire), returns total_stock directly.
+        
         Args:
             days_ahead: Number of days to look ahead for expiration (default: 7 days)
         
@@ -1124,6 +1127,12 @@ class RawMaterialInventory(models.Model):
             Decimal: Available stock quantity
         """
         from django.utils import timezone
+        
+        # Check if this is a packaging material (which doesn't expire)
+        # Packaging materials have no expiration, so return total_stock directly
+        if self.material.category.upper() == 'PACKAGING':
+            return Decimal(self.total_stock)
+        
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
