@@ -103,19 +103,45 @@
                 <tr>
                   <th>Product</th>
                   <th>Current Stock</th>
+                  <th>Packaging Type</th>
                   <th>Withdraw Quantity</th>
                   <th class="discount-col" style="display:none;">Discount (%)</th>
                 </tr>
               </thead>
               <tbody>
+            <div class="alert alert-info">
+              <i class="la la-info-circle"></i>
+              <strong>Packaging-Specific FIFO:</strong> When you select a specific packaging type, the system will withdraw from the oldest batches of that packaging type first. If no packaging is selected, it will use standard FIFO across all packaging types.
+            </div>
                 {% for product in products %}
                 <tr>
                   <td>
                     {{ product.product_type.name }} - {{ product.variant.name }} - 
                     {{ product.size.size_label }} {{ product.size_unit.unit_name }}
+                    {% if product.productinventory.packaging_used %}
+                      <br><small class="text-muted">Available in: {{ product.productinventory.packaging_used }}</small>
+                    {% endif %}
                   </td>
                   <td class="stock-cell" data-stock="{{ product.productinventory.total_stock }}">
                     {{ product.productinventory.total_stock|floatformat:0 }}
+                    {% if product.productinventory.packaging_stock_breakdown %}
+                      <br><small class="text-muted">
+                        {% for packaging_info in product.productinventory.packaging_stock_breakdown %}
+                          {{ packaging_info }}<br>
+                        {% endfor %}
+                      </small>
+                    {% endif %}
+                  </td>
+                  <td>
+                    <select name="packaging_{{ product.id }}" class="form-control packaging-select" data-product-id="{{ product.id }}">
+                      <option value="">Any Packaging</option>
+                      {% for packaging in product.packaging_options %}
+                        <option value="{{ packaging.id }}">
+                          {{ packaging.name }} ({{ packaging.quantity|floatformat:0 }} units)
+                        </option>
+                      {% endfor %}
+                    </select>
+                    <small class="form-text text-muted">Select specific packaging or leave empty for any</small>
                   </td>
                   <td>
                     <input type="number" step="0.01" name="product_{{ product.id }}" 
@@ -143,6 +169,10 @@
                 {% endfor %}
               </tbody>
             </table>
+            <!-- <div class="alert alert-info">
+              <i class="la la-info-circle"></i>
+              <strong>Packaging-Specific FIFO:</strong> When you select a specific packaging type, the system will withdraw from the oldest batches of that packaging type first. If no packaging is selected, it will use standard FIFO across all packaging types.
+            </div> -->
           </div>
 
           <!-- Packaging materials table -->

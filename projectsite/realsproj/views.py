@@ -4048,11 +4048,49 @@ class WithdrawItemView(View):
             "unit", "rawmaterialinventory"
         )
         discounts = Discounts.objects.all()
+        
+        # Get packaging materials (category = PACKAGING)
+        packaging_materials = RawMaterials.objects.filter(
+            category='PACKAGING',
+            is_archived=False
+        ).select_related('unit', 'rawmaterialinventory')
+        
+        # Build packaging information for each product and attach to product object
+        for product in products:
+            # Get batches with packaging information
+            batches = ProductBatches.objects.filter(
+                product=product,
+                is_archived=False,
+                packaging__isnull=False
+            ).select_related('packaging', 'packaging__unit', 'packaging__rawmaterialinventory')
+            
+            # Group by packaging type and sum quantities
+            packaging_stock = {}
+            for batch in batches:
+                packaging = batch.packaging
+                if packaging:
+                    packaging_name = f"{packaging.name}"
+                    if packaging.size and packaging.unit:
+                        unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
+                        packaging_name = f"{packaging_name} ({int(packaging.size)}{unit_name})"
+                    
+                    if packaging_name not in packaging_stock:
+                        packaging_stock[packaging_name] = {
+                            'id': packaging.id,
+                            'name': packaging_name,
+                            'quantity': 0,
+                            'available_stock': packaging.rawmaterialinventory.total_stock if hasattr(packaging, 'rawmaterialinventory') else 0
+                        }
+                    packaging_stock[packaging_name]['quantity'] += batch.quantity
+            
+            # Sort packaging types by name and attach to product
+            product.packaging_options = sorted(packaging_stock.values(), key=lambda x: x['name'])
 
         return render(request, self.template_name, {
             "products": products,
             "rawmaterials": rawmaterials,
-            "discounts": discounts
+            "discounts": discounts,
+            "packaging_materials": packaging_materials
         })
 
     def post(self, request):
@@ -4163,9 +4201,20 @@ class WithdrawItemView(View):
                             total_amount = total
 
                        
+                        # Get selected packaging type from form
+                        packaging_id = request.POST.get(f"packaging_{product_id}")
+                        selected_packaging = None
+                        if packaging_id:
+                            try:
+                                selected_packaging = RawMaterials.objects.get(id=packaging_id)
+                            except RawMaterials.DoesNotExist:
+                                messages.error(request, f"Invalid packaging type selected for {product}")
+                                continue
+
                         if reason == "REPLACEMENT_FOR_RETURNED":
                             print(f"DEBUG: About to create withdrawal for product {product.id}, quantity {quantity}")
                             print(f"DEBUG: Current stock before deduction: {inv.total_stock}")
+                            print(f"DEBUG: Selected packaging: {selected_packaging}")
                         
                         withdrawal = Withdrawals.objects.create(
                             item_id=product.id,
@@ -4183,7 +4232,8 @@ class WithdrawItemView(View):
                             payment_status=payment_status if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else 'PAID',
                             paid_amount=paid_amount if payment_status == 'PARTIAL' else None,
                             order_group_id=order_group_id,
- 
+                            packaging=selected_packaging,
+
                             actual_unit_price=actual_unit_price,
                             actual_discount_percent=actual_discount_percent,
                             actual_discount_amount=actual_discount_amount,
