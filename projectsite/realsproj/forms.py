@@ -758,9 +758,10 @@ class BulkProductBatchForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.products = []
         
-        # Get raw material inventory data for packaging options
+        # Get raw material inventory data for packaging options (only those with stock > 0)
         self.raw_material_inventory = RawMaterialInventory.objects.select_related('material').filter(
-            material__is_archived=False
+            material__is_archived=False,
+            total_stock__gt=0
         ).order_by('material__category', 'material__name')
 
         # Filter out archived products
@@ -900,6 +901,17 @@ class BulkProductBatchForm(forms.Form):
             packaging = cleaned_data.get(packaging_field_name)
             if not packaging:
                 self.add_error(packaging_field_name, 'Packaging type is required when adding product quantity.')
+                continue
+
+            # Validate quantity does not exceed packaging stock
+            try:
+                packaging_inventory = RawMaterialInventory.objects.select_related('material').get(material_id=int(packaging))
+                if float(qty) > float(packaging_inventory.total_stock):
+                    packaging_name = packaging_inventory.material.name.title()
+                    self.add_error(qty_field_name, f'Quantity cannot exceed available stock for {packaging_name} ({packaging_inventory.total_stock}).')
+                    continue
+            except RawMaterialInventory.DoesNotExist:
+                self.add_error(packaging_field_name, 'Selected packaging inventory not found.')
                 continue
 
             manufactured_value = cleaned_data.get(manufactured_field_name) or default_manufactured or timezone.localdate()
