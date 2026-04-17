@@ -189,7 +189,7 @@
               <tbody>
                 {% for material in rawmaterials %}
                 <tr>
-                  <td>{{ material.name }} ({{ material.unit.unit_name }})</td>
+                  <td>{{ material.name }} ({{ material.size }} {{ material.unit.unit_name }})</td>
                   <td class="stock-cell" data-stock="{{ material.rawmaterialinventory.total_stock }}">
                     {{ material.rawmaterialinventory.total_stock|floatformat:0 }}
                   </td>

@@ -922,6 +922,7 @@ class ProductBatches(models.Model):
     batch_date = models.DateField(default=timezone.localdate)
     product = models.ForeignKey('Products', models.DO_NOTHING)
     quantity = models.IntegerField()
+    original_quantity = models.IntegerField(blank=True, null=True)
     manufactured_date = models.DateField(default=timezone.localdate)
     created_by_admin = models.ForeignKey('AuthUser', models.DO_NOTHING)
     is_archived = models.BooleanField(default=False)
@@ -1226,7 +1227,7 @@ class RawMaterials(models.Model):
         db_table = 'raw_materials'
 
     def __str__(self):
-        return f"{self.name} ({self.unit}) - ₱{self.price_per_unit}"
+        return f"{self.name} ({self.size}{self.unit.unit_name})"
 
 
 class Sales(models.Model):

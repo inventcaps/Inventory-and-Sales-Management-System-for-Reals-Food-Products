@@ -69,7 +69,8 @@
                                         <th scope="col">LOT Code</th>
                                         <th scope="col">Date</th>
                                         <th scope="col">Product</th>
-                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Packaging</th>
+                                        <th scope="col">Quantity (Current / Original)</th>
                                         <th scope="col">Manufactured Date</th>
                                         <th scope="col">Expiration Date</th>
                                         <th scope="col">Actions</th>
@@ -84,7 +85,8 @@
                                         <td>{{ object.batch_code|default:"—" }}</td>
                                         <td>{{ object.batch_date|date:"Y-m-d" }}</td>
                                         <td>{{ object.product }}</td>
-                                        <td>{{ object.quantity }}</td>
+                                        <td>{{ object.packaging|default:"—" }}</td>
+                                        <td style="text-align: center;">{{ object.quantity|floatformat:0 }} / {{ object.original_quantity|floatformat:0|default:"—" }}</td>
                                         <td>{{ object.manufactured_date|date:"Y-m-d" }}</td>
                                         <td>{{ object.expiration_date|date:"Y-m-d" }}</td>
                                         <td>

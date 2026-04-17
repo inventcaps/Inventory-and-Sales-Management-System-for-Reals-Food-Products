@@ -2687,6 +2687,8 @@ class ProductBatchCreateView(CreateView):
     def form_valid(self, form):
         auth_user = AuthUser.objects.get(id=self.request.user.id)
         form.instance.created_by_admin = auth_user
+        # Set original_quantity to track initial quantity before withdrawals
+        form.instance.original_quantity = form.instance.quantity
         response = super().form_valid(form)
         
         # Update ProductInventory total_stock with sum of all non-archived, non-expired batches
@@ -4072,7 +4074,7 @@ class WithdrawItemView(View):
                     packaging_name = f"{packaging.name}"
                     if packaging.size and packaging.unit:
                         unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
-                        packaging_name = f"{packaging_name} ({int(packaging.size)}{unit_name})"
+                        packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
                     
                     if packaging_name not in packaging_stock:
                         packaging_stock[packaging_name] = {
