@@ -1612,6 +1612,39 @@ class Withdrawals(models.Model):
         return qs
 
 
+class FinancialLoss(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    withdrawal = models.ForeignKey(
+        Withdrawals,
+        on_delete=models.CASCADE,
+        db_column="withdrawal_id"
+    )
+    item_type = models.CharField(max_length=50)
+    item_id = models.BigIntegerField()
+    item_name = models.CharField(max_length=255, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    loss_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reason = models.CharField(max_length=50)
+    loss_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by_admin = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        db_column="created_by_admin_id",
+        null=True,
+        blank=True
+    )
+    is_archived = models.BooleanField(default=False)
+
+    class Meta:
+        managed = False
+        db_table = 'financial_loss'
+
+    def __str__(self):
+        return f"{self.item_name} - ₱{self.loss_amount} ({self.reason})"
+
+
 class User2FASettings(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='twofa_settings')
     is_enabled = models.BooleanField(default=False)

@@ -2687,26 +2687,10 @@ class ProductBatchCreateView(CreateView):
     def form_valid(self, form):
         auth_user = AuthUser.objects.get(id=self.request.user.id)
         form.instance.created_by_admin = auth_user
-        # Set original_quantity to track initial quantity before withdrawals
-        form.instance.original_quantity = form.instance.quantity
         response = super().form_valid(form)
         
-        # Update ProductInventory total_stock with sum of all non-archived, non-expired batches
-        product = form.instance.product
-        total_qty = ProductBatches.objects.filter(
-            product=product,
-            is_archived=False,
-            is_expired=False
-        ).aggregate(total=Sum('quantity'))['total'] or Decimal(0)
-        
-        try:
-            inv = ProductInventory.objects.get(product=product)
-            inv.total_stock = total_qty
-            inv.save()
-            messages.success(self.request, f"✅ Product Batch created successfully. Total stock updated to {total_qty}.")
-        except ProductInventory.DoesNotExist:
-            messages.warning(self.request, "⚠️ Product Batch created but inventory record not found.")
-        
+        # Note: Product inventory and original_quantity are updated by database triggers
+        messages.success(self.request, "✅ Product Batch created successfully.")
         return response
 
 class ProductBatchUpdateView(UpdateView):
@@ -2720,22 +2704,8 @@ class ProductBatchUpdateView(UpdateView):
         form.instance.created_by_admin = auth_user
         response = super().form_valid(form)
         
-        # Update ProductInventory total_stock with sum of all non-archived, non-expired batches
-        product = form.instance.product
-        total_qty = ProductBatches.objects.filter(
-            product=product,
-            is_archived=False,
-            is_expired=False
-        ).aggregate(total=Sum('quantity'))['total'] or Decimal(0)
-        
-        try:
-            inv = ProductInventory.objects.get(product=product)
-            inv.total_stock = total_qty
-            inv.save()
-            messages.success(self.request, "✅ Product Batch updated successfully. Total stock synced.")
-        except ProductInventory.DoesNotExist:
-            messages.warning(self.request, "⚠️ Product Batch updated but inventory record not found.")
-        
+        # Note: Product inventory is updated by database trigger log_product_batches_update
+        messages.success(self.request, "✅ Product Batch updated successfully.")
         return response
 
     def form_invalid(self, form):
@@ -4100,6 +4070,10 @@ class WithdrawItemView(View):
         item_type = request.POST.get("item_type")
         reason = request.POST.get("reason")
         sales_channel = request.POST.get("sales_channel")
+        
+        # Auto-set reason to DAMAGED for RAW_MATERIAL (packaging) withdrawals
+        if item_type == "RAW_MATERIAL":
+            reason = "DAMAGED"
         price_input = request.POST.get("price_input")
         customer_name = request.POST.get("customer_name")
         payment_status = request.POST.get("payment_status", "PAID")
