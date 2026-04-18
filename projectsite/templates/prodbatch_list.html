@@ -238,13 +238,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Check for success message after page reload
-  const batchSuccess = sessionStorage.getItem('batchSuccess');
-  if (batchSuccess) {
-    showToast(batchSuccess, 'success');
-    sessionStorage.removeItem('batchSuccess');
-  }
-  
   const searchInput = document.getElementById('batchSearchInput');
   const dateFilter = document.getElementById('dateFilter');
   const tableBody = document.getElementById('batchTableBody');
@@ -507,9 +500,6 @@ function handleArchiveSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('batchSuccess', `Batch "${batchName}" archived successfully!`);
-            // Reload page immediately
             window.location.reload();
         } else {
             showToast('Failed to archive batch. Please try again.', 'error');
@@ -539,9 +529,6 @@ function handleDeleteSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('batchSuccess', `Batch "${batchName}" deleted successfully!`);
-            // Reload page immediately
             window.location.reload();
         } else {
             showToast('Failed to delete batch. Please try again.', 'error');

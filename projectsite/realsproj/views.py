@@ -3025,7 +3025,13 @@ class RawMaterialBatchCreateView(CreateView):
     model = RawMaterialBatches
     form_class = RawMaterialBatchForm
     template_name = 'rawmatbatch_add.html'
-    success_url = reverse_lazy('rawmaterial-batch')  
+    success_url = reverse_lazy('rawmaterial-batch')
+
+    def form_valid(self, form):
+        auth_user = AuthUser.objects.get(id=self.request.user.id)
+        form.instance.created_by_admin = auth_user
+        messages.success(self.request, "✅ Packaging batch created successfully.")
+        return super().form_valid(form)  
 
 class RawMaterialBatchUpdateView(UpdateView):
     model = RawMaterialBatches
@@ -3036,6 +3042,7 @@ class RawMaterialBatchUpdateView(UpdateView):
     def form_valid(self, form):
         auth_user = AuthUser.objects.get(id=self.request.user.id)
         form.instance.created_by_admin = auth_user
+        messages.success(self.request, "✅ Packaging batch updated successfully.")
         return super().form_valid(form)
     
 class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
@@ -3047,6 +3054,10 @@ class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
             messages.error(request, "❌ You don't have permission to delete product batches.")
             return redirect('rawmaterial-batch')
         return super().dispatch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        messages.success(request, "✅ Packaging batch deleted successfully.")
+        return super().delete(request, *args, **kwargs)
 
 
 class RawMaterialBatchArchiveView(View):

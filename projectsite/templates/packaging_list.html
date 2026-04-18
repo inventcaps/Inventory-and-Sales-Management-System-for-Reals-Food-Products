@@ -239,12 +239,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  const materialSuccess = sessionStorage.getItem('materialSuccess');
-  if (materialSuccess) {
-    showToast(materialSuccess, 'success');
-    sessionStorage.removeItem('materialSuccess');
-  }
-  
   const searchInput = document.getElementById('searchInput');
   const dateFilter = document.getElementById('dateFilter');
   const tableBody = document.getElementById('rawMaterialsTable');
@@ -482,7 +476,6 @@ function handleArchiveSubmit(event, materialName) {
     })
     .then(response => {
         if (response.ok) {
-            sessionStorage.setItem('materialSuccess', `Packaging material "${materialName}" archived successfully!`);
             window.location.reload();
         } else {
             showToast('Failed to archive packaging material. Please try again.', 'error');
@@ -509,7 +502,6 @@ function handleDeleteSubmit(event, materialName) {
     })
     .then(response => {
         if (response.ok) {
-            sessionStorage.setItem('materialSuccess', `Packaging material "${materialName}" deleted successfully!`);
             window.location.reload();
         } else {
             showToast('Failed to delete packaging material. Please try again.', 'error');
