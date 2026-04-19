@@ -2933,31 +2933,56 @@ class ProductInventoryList(ListView):
                 product=inv.product,
                 is_archived=False
             ).select_related('packaging')
-            
+
             packaging_stock = {}
+            packaging_expiring = {}
             packaging_list = []
-            
+
+            from django.utils import timezone
+            today = timezone.localdate()
+            expiration_cutoff = today + timezone.timedelta(days=7)
+
             for batch in batches:
                 if batch.packaging:
                     packaging_name = batch.packaging.name.title()
                     if batch.packaging.size and batch.packaging.unit:
                         unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
                         packaging_name = f"{packaging_name} ({batch.packaging.size} {unit_name})"
-                    
-                    # Accumulate stock per packaging type
-                    if packaging_name not in packaging_stock:
-                        packaging_stock[packaging_name] = 0
-                    packaging_stock[packaging_name] += batch.quantity
-                    
-                    if packaging_name not in packaging_list:
-                        packaging_list.append(packaging_name)
-            
-            # Create formatted packaging stock breakdown
+
+                    # Include expiration date in key to keep batches separate
+                    exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
+                    packaging_key = f"{packaging_name}|{exp_date_str}|{batch.id}"
+
+                    # Track total stock per packaging + expiration date combination
+                    if packaging_key not in packaging_stock:
+                        packaging_stock[packaging_key] = 0
+                    packaging_stock[packaging_key] += batch.quantity
+
+                    # Track expiring stock per packaging + expiration date combination
+                    if (batch.expiration_date and
+                        batch.expiration_date <= expiration_cutoff and
+                        batch.expiration_date >= today and
+                        batch.quantity > 0):
+                        if packaging_key not in packaging_expiring:
+                            packaging_expiring[packaging_key] = 0
+                        packaging_expiring[packaging_key] += batch.quantity
+
+                    if packaging_key not in packaging_list:
+                        packaging_list.append(packaging_key)
+
+            # Create formatted packaging stock breakdown with expiration status
             packaging_breakdown = []
-            for packaging_name in packaging_list:
-                stock_qty = packaging_stock.get(packaging_name, 0)
-                packaging_breakdown.append(f"{packaging_name}: {stock_qty}")
-            
+            for packaging_key in packaging_list:
+                stock_qty = packaging_stock.get(packaging_key, 0)
+                expiring_qty = packaging_expiring.get(packaging_key, 0)
+                packaging_name, exp_date_str, batch_id = packaging_key.split('|')
+                packaging_breakdown.append({
+                    'name': packaging_name,
+                    'stock': stock_qty,
+                    'expiring': expiring_qty,
+                    'expiration_date': exp_date_str
+                })
+
             inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
             inv.packaging_stock_breakdown = packaging_breakdown
         
@@ -3056,8 +3081,23 @@ class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
         return super().dispatch(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
+        batch = self.get_object()
+        material = batch.material
+        quantity = batch.quantity
+        
+        # Delete the batch first
+        result = super().delete(request, *args, **kwargs)
+        
+        # Update the inventory total_stock
+        try:
+            inventory = RawMaterialInventory.objects.get(material=material)
+            inventory.total_stock = max(0, inventory.total_stock - quantity)
+            inventory.save()
+        except RawMaterialInventory.DoesNotExist:
+            pass
+        
         messages.success(request, "✅ Packaging batch deleted successfully.")
-        return super().delete(request, *args, **kwargs)
+        return result
 
 
 class RawMaterialBatchArchiveView(View):
@@ -3135,13 +3175,32 @@ class RawMaterialBatchBulkRestoreView(View):
 class RawMaterialBatchBulkDeleteView(View):
     def post(self, request):
         import json
+        from collections import defaultdict
+        from decimal import Decimal
         try:
             batch_ids = json.loads(request.POST.get('batch_ids', '[]'))
             if not batch_ids:
                 return JsonResponse({'success': False, 'message': 'No batches selected'})
             
+            # Get batches before deletion to update inventory
+            batches = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True)
+            
+            # Group quantities by material for inventory update
+            material_quantities = defaultdict(Decimal)
+            for batch in batches:
+                material_quantities[batch.material_id] += batch.quantity
+            
             # Delete selected batches
-            count, _ = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True).delete()
+            count, _ = batches.delete()
+            
+            # Update inventory for each affected material
+            for material_id, quantity in material_quantities.items():
+                try:
+                    inventory = RawMaterialInventory.objects.get(material_id=material_id)
+                    inventory.total_stock = max(0, inventory.total_stock - quantity)
+                    inventory.save()
+                except RawMaterialInventory.DoesNotExist:
+                    pass
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
@@ -3164,7 +3223,28 @@ def rawmaterial_batch_bulk_delete(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        deleted_count = RawMaterialBatches.objects.filter(id__in=ids).delete()[0]
+        # Get batches before deletion to update inventory
+        batches = RawMaterialBatches.objects.filter(id__in=ids)
+        
+        # Group quantities by material for inventory update
+        from collections import defaultdict
+        from decimal import Decimal
+        material_quantities = defaultdict(Decimal)
+        for batch in batches:
+            material_quantities[batch.material_id] += batch.quantity
+        
+        # Delete the batches
+        deleted_count = batches.delete()[0]
+        
+        # Update inventory for each affected material
+        for material_id, quantity in material_quantities.items():
+            try:
+                inventory = RawMaterialInventory.objects.get(material_id=material_id)
+                inventory.total_stock = max(0, inventory.total_stock - quantity)
+                inventory.save()
+            except RawMaterialInventory.DoesNotExist:
+                pass
+        
         return JsonResponse({
             'success': True,
             'message': f'Successfully deleted {deleted_count} batch(es)'
@@ -4039,6 +4119,10 @@ class WithdrawItemView(View):
         ).select_related('unit', 'rawmaterialinventory')
         
         # Build packaging information for each product and attach to product object
+        from django.utils import timezone
+        today = timezone.localdate()
+        expiration_cutoff = today + timezone.timedelta(days=7)
+
         for product in products:
             # Get batches with packaging information
             batches = ProductBatches.objects.filter(
@@ -4046,9 +4130,9 @@ class WithdrawItemView(View):
                 is_archived=False,
                 packaging__isnull=False
             ).select_related('packaging', 'packaging__unit', 'packaging__rawmaterialinventory')
-            
-            # Group by packaging type and sum quantities
-            packaging_stock = {}
+
+            # Create individual batch options instead of grouping by packaging
+            packaging_options = []
             for batch in batches:
                 packaging = batch.packaging
                 if packaging:
@@ -4056,18 +4140,31 @@ class WithdrawItemView(View):
                     if packaging.size and packaging.unit:
                         unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
                         packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
-                    
-                    if packaging_name not in packaging_stock:
-                        packaging_stock[packaging_name] = {
-                            'id': packaging.id,
-                            'name': packaging_name,
-                            'quantity': 0,
-                            'available_stock': packaging.rawmaterialinventory.total_stock if hasattr(packaging, 'rawmaterialinventory') else 0
-                        }
-                    packaging_stock[packaging_name]['quantity'] += batch.quantity
-            
-            # Sort packaging types by name and attach to product
-            product.packaging_options = sorted(packaging_stock.values(), key=lambda x: x['name'])
+
+                    # Calculate expiring stock for this batch
+                    expiring_qty = 0
+                    if (batch.expiration_date and
+                        batch.expiration_date <= expiration_cutoff and
+                        batch.expiration_date >= today and
+                        batch.quantity > 0):
+                        expiring_qty = batch.quantity
+
+                    # Add batch as individual option
+                    exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
+                    mfg_date_str = batch.batch_date.strftime('%Y-%m-%d') if batch.batch_date else 'No Date'
+
+                    packaging_options.append({
+                        'id': batch.id,  # Use batch ID instead of packaging ID
+                        'name': packaging_name,
+                        'quantity': batch.quantity,
+                        'expiring': expiring_qty,
+                        'expiration_date': exp_date_str,
+                        'manufactured_date': mfg_date_str,
+                        'packaging_id': packaging.id  # Keep packaging ID for reference
+                    })
+
+            # Sort by expiration date (oldest first) then by packaging name
+            product.packaging_options = sorted(packaging_options, key=lambda x: (x['expiration_date'], x['name']))
 
         return render(request, self.template_name, {
             "products": products,
@@ -4188,21 +4285,25 @@ class WithdrawItemView(View):
                             total_amount = total
 
                        
-                        # Get selected packaging type from form
-                        packaging_id = request.POST.get(f"packaging_{product_id}")
+                        # Get selected batch from form (changed from packaging to batch)
+                        batch_id = request.POST.get(f"batch_{product_id}")
+                        selected_batch = None
                         selected_packaging = None
-                        if packaging_id:
+
+                        if batch_id:
                             try:
-                                selected_packaging = RawMaterials.objects.get(id=packaging_id)
-                            except RawMaterials.DoesNotExist:
-                                messages.error(request, f"Invalid packaging type selected for {product}")
+                                selected_batch = ProductBatches.objects.get(id=batch_id, product=product, is_archived=False)
+                                selected_packaging = selected_batch.packaging
+                            except ProductBatches.DoesNotExist:
+                                messages.error(request, f"Invalid batch selected for {product}")
                                 continue
 
                         if reason == "REPLACEMENT_FOR_RETURNED":
                             print(f"DEBUG: About to create withdrawal for product {product.id}, quantity {quantity}")
                             print(f"DEBUG: Current stock before deduction: {inv.total_stock}")
+                            print(f"DEBUG: Selected batch: {selected_batch}")
                             print(f"DEBUG: Selected packaging: {selected_packaging}")
-                        
+
                         withdrawal = Withdrawals.objects.create(
                             item_id=product.id,
                             item_type="PRODUCT",
@@ -4220,6 +4321,7 @@ class WithdrawItemView(View):
                             paid_amount=paid_amount if payment_status == 'PARTIAL' else None,
                             order_group_id=order_group_id,
                             packaging=selected_packaging,
+                            batch=selected_batch,
 
                             actual_unit_price=actual_unit_price,
                             actual_discount_percent=actual_discount_percent,
@@ -4230,7 +4332,7 @@ class WithdrawItemView(View):
 
                         if reason == "REPLACEMENT_FOR_RETURNED":
                             print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
-                        
+
                         count += 1
                     except Exception as e:
                         import traceback

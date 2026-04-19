@@ -86,9 +86,20 @@
                     <td>{{ object.product }}</td>
                     <td>
                       {% if object.packaging_stock_breakdown %}
-                        {% for packaging_info in object.packaging_stock_breakdown %}
+                        {% for packaging in object.packaging_stock_breakdown %}
                           <div class="mb-1">
-                            <span class="badge bg-info text-white">{{ packaging_info }}</span>
+                            {% if packaging.expiring > 0 %}
+                              <span class="badge bg-warning text-dark">
+                                {{ packaging.name }}: {{ packaging.stock|floatformat:0 }}
+                                <small class="ml-1">(Exp: {{ packaging.expiration_date }})</small>
+                                <i class="la la-exclamation-triangle ml-1" title="{{ packaging.expiring|floatformat:0 }} expiring soon"></i>
+                              </span>
+                            {% else %}
+                              <span class="badge bg-info text-white">
+                                {{ packaging.name }}: {{ packaging.stock|floatformat:0 }}
+                                <small class="ml-1">(Exp: {{ packaging.expiration_date }})</small>
+                              </span>
+                            {% endif %}
                           </div>
                         {% endfor %}
                       {% else %}

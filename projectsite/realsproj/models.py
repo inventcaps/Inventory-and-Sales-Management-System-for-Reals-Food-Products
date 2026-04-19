@@ -1530,6 +1530,16 @@ class Withdrawals(models.Model):
         help_text="Selected packaging type for this withdrawal (null = any packaging)"
     )
 
+    # Batch selection field for precise batch tracking
+    batch = models.ForeignKey(
+        'ProductBatches',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column="batch_id",
+        help_text="Selected specific batch for this withdrawal (null = FIFO across all batches)"
+    )
+
     class Meta:
         managed = False  # existing table
         db_table = 'withdrawals'
