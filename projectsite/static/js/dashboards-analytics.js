@@ -366,17 +366,17 @@
       .then(data => {
         const labels = data.labels;
         const revenues = data.revenues;
-
         const formattedLabels = selectedMonth !== "all"
           ? labels.map(d => `${parseInt(d.split("-")[2], 10)}`)
-          : labels.map(d => d); 
+          : labels.map(d => d);
+        const monthNames = ["","January","February","March","April","May","June","July","August","September","October","November","December"];
         revenueChart.updateOptions({
           series: [{ name: "Sales", data: revenues }],
           xaxis: { categories: formattedLabels },
           title: {
             text: selectedMonth === "all"
-              ? `Monthly Sales - ${selectedYear}`
-              : `Daily Sales - ${selectedYear}-${selectedMonth}`
+              ? `Monthly Overview - ${selectedYear}`
+              : `${monthNames[parseInt(selectedMonth, 10)]} ${selectedYear}`
           }
         });
       });
@@ -385,17 +385,12 @@
   yearSelect.addEventListener("change", updateChart);
   monthSelect.addEventListener("change", updateChart);
 
-  const currentMonth = now.toISOString().slice(5, 7);
   const currentYear = defaultYear;
 
   if ([...yearSelect.options].some(opt => opt.value === currentYear)) {
     yearSelect.value = currentYear;
   }
-  if ([...monthSelect.options].some(opt => opt.value === currentMonth)) {
-    monthSelect.value = currentMonth;
-  } else {
-    monthSelect.value = "all";
-  }
+  monthSelect.value = "all";
 
   updateChart();
 });

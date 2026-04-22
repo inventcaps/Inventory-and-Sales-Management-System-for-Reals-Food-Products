@@ -180,24 +180,46 @@ class HomePageView(LoginRequiredMixin, TemplateView):
 
         context['total_revenue'] = total_sales - total_expenses
 
-        context['total_stocks'] = ProductInventory.objects.aggregate(
-            total=Sum('total_stock')
-        )['total'] or 0
-
         context['recent_sales'] = Withdrawals.objects.filter(
             item_type="PRODUCT", reason="SOLD"
         ).order_by('-date')[:6]
 
         context['is_superuser'] = self.request.user.is_superuser
 
+        if self.request.user.is_superuser:
+            now = timezone.now()
+            cy, cm = now.year, now.month
+            py, pm = (cy - 1, 12) if cm == 1 else (cy, cm - 1)
+
+            def _s(y, m):
+                return float(Sales.objects.filter(date__year=y, date__month=m).aggregate(t=Sum('amount'))['t'] or 0)
+
+            def _e(y, m):
+                return float(Expenses.objects.filter(date__year=y, date__month=m).aggregate(t=Sum('amount'))['t'] or 0)
+
+            cur_sales, prev_sales = _s(cy, cm), _s(py, pm)
+            cur_profit = cur_sales - _e(cy, cm)
+            prev_profit = prev_sales - _e(py, pm)
+
+            def _badge(cur, prev):
+                if prev == 0:
+                    return None
+                pct = round((cur - prev) / abs(prev) * 100, 1)
+                prefix = '+' if pct >= 0 else ''
+                return {'text': f'{prefix}{pct}%', 'up': pct >= 0}
+
+            context['profit_badge'] = _badge(cur_profit, prev_profit)
+            context['revenue_badge'] = _badge(cur_sales, prev_sales)
+
         import json
         context['total_products'] = Products.objects.filter(is_archived=False).count()
         all_inv = list(
-            ProductInventory.objects.select_related(
+            ProductInventory.objects.filter(product__is_archived=False).select_related(
                 'product', 'product__product_type', 'product__variant',
                 'product__size', 'product__size_unit'
             ).order_by('-total_stock')
         )
+        context['total_stocks'] = sum(inv.total_stock for inv in all_inv)
         context['low_stock_count'] = sum(
             1 for inv in all_inv if 0 < inv.total_stock <= inv.restock_threshold
         )

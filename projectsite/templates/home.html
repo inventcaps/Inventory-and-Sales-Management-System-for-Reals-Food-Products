@@ -71,7 +71,15 @@
       <div class="col-12">
         <div class="card h-100">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Profit</h5>
+            <div class="d-flex align-items-center gap-3">
+              <h5 class="mb-0">Profit</h5>
+              {% if profit_badge %}
+                <span style="font-size:0.82rem;font-weight:700;padding:3px 12px;border-radius:20px;background:{% if profit_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if profit_badge.up %}#16a34a{% else %}#dc2626{% endif %};">
+                  {% if profit_badge.up %}▲{% else %}▼{% endif %} {{ profit_badge.text }}
+                </span>
+                <span style="font-size:0.72rem;color:#9ca3af;">vs last month</span>
+              {% endif %}
+            </div>
             <div class="d-flex gap-2">
               <select id="yearFilter" class="form-select form-select-sm" style="width: 100px;"></select>
 
@@ -104,9 +112,15 @@
       <div class="col-12">
         <div class="card h-100">
           <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Revenue</h5>
-
-            <!-- Filters -->
+            <div class="d-flex align-items-center gap-3">
+              <h5 class="mb-0">Revenue</h5>
+              {% if revenue_badge %}
+                <span style="font-size:0.82rem;font-weight:700;padding:3px 12px;border-radius:20px;background:{% if revenue_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if revenue_badge.up %}#16a34a{% else %}#dc2626{% endif %};">
+                  {% if revenue_badge.up %}▲{% else %}▼{% endif %} {{ revenue_badge.text }}
+                </span>
+                <span style="font-size:0.72rem;color:#9ca3af;">vs last month</span>
+              {% endif %}
+            </div>
             <div class="d-flex gap-2">
               <select id="revenueYearFilter" class="form-select form-select-sm" style="width: 100px;"></select>
 
@@ -287,7 +301,7 @@
 {% block page_js %}
   {{ block.super }}
   {% if is_superuser %}
-    <script src="{% static 'js/dashboards-analytics.js' %}?v=2"></script>
+    <script src="{% static 'js/dashboards-analytics.js' %}?v=4"></script>
   {% else %}
     <script>
       window._inventoryData = {

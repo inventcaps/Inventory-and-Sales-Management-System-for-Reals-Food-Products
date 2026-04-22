@@ -577,14 +577,18 @@
 let currentUserId = null;
 let currentUsername = null;
 let currentIsSuperuser = null;
+let approveModalInstance = null;
 
 // Show Approve Modal
 function showApproveModal(userId, username) {
     currentUserId = userId;
     currentUsername = username;
     document.getElementById('approveModalMessage').textContent = `Are you sure you want to approve ${username}?`;
-    const modal = new bootstrap.Modal(document.getElementById('approveModal'));
-    modal.show();
+    const btn = document.getElementById('confirmApproveBtn');
+    btn.disabled = false;
+    btn.textContent = 'Approve';
+    approveModalInstance = new bootstrap.Modal(document.getElementById('approveModal'));
+    approveModalInstance.show();
 }
 
 // Show Reject Modal
@@ -635,6 +639,9 @@ function showDeleteModal(userId, username) {
 
 // Approve User
 function approveUser() {
+    const btn = document.getElementById('confirmApproveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Approving...';
     fetch(`/user/${currentUserId}/approve/`, {
         method: 'POST',
         headers: {
@@ -644,12 +651,21 @@ function approveUser() {
     })
     .then(response => response.json())
     .then(data => {
-        bootstrap.Modal.getInstance(document.getElementById('approveModal')).hide();
+        if (approveModalInstance) {
+            approveModalInstance.hide();
+            approveModalInstance = null;
+        }
         if (data.success) {
             location.reload();
         } else {
+            btn.disabled = false;
+            btn.textContent = 'Approve';
             alert('Error: ' + data.message);
         }
+    })
+    .catch(() => {
+        btn.disabled = false;
+        btn.textContent = 'Approve';
     });
 }
 
