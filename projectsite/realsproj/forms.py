@@ -391,6 +391,40 @@ class ProductBatchForm(ModelForm):
         self.fields['packaging'].widget = forms.Select(attrs={'class': 'form-control'})
         self.fields['packaging'].choices = packaging_choices
 
+    def clean(self):
+        cleaned_data = super().clean()
+        quantity = cleaned_data.get('quantity')
+        packaging = cleaned_data.get('packaging')
+        manufactured_date = cleaned_data.get('manufactured_date')
+        expiration_date = cleaned_data.get('expiration_date')
+
+        # Validate packaging is required when quantity is entered
+        if quantity and float(quantity) > 0 and not packaging:
+            self.add_error('packaging', 'Packaging type is required when adding product quantity.')
+
+        # Validate quantity does not exceed packaging stock
+        if quantity and packaging:
+            try:
+                packaging_inventory = RawMaterialInventory.objects.select_related('material').get(material_id=packaging.id)
+                available_stock = float(packaging_inventory.total_stock)
+
+                # If editing, add back the current batch quantity to available stock
+                if self.instance.pk and self.instance.quantity:
+                    available_stock += float(self.instance.quantity)
+
+                if float(quantity) > available_stock:
+                    packaging_name = packaging_inventory.material.name.title()
+                    self.add_error('quantity', f'Quantity cannot exceed available stock for {packaging_name} ({available_stock}).')
+            except RawMaterialInventory.DoesNotExist:
+                self.add_error('packaging', 'Selected packaging inventory not found.')
+
+        # Validate expiration date is not before manufactured date
+        if manufactured_date and expiration_date:
+            if expiration_date < manufactured_date:
+                self.add_error('expiration_date', 'Expiration date cannot be before the manufactured date.')
+
+        return cleaned_data
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         manufactured_date = instance.manufactured_date or timezone.localdate()

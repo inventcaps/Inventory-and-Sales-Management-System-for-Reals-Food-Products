@@ -69,7 +69,8 @@
                                         <th scope="col">LOT Code</th>
                                         <th scope="col">Date</th>
                                         <th scope="col">Product</th>
-                                        <th scope="col">Quantity</th>
+                                        <th scope="col">Packaging</th>
+                                        <th scope="col">Quantity (Current / Original)</th>
                                         <th scope="col">Manufactured Date</th>
                                         <th scope="col">Expiration Date</th>
                                         <th scope="col">Actions</th>
@@ -84,7 +85,8 @@
                                         <td>{{ object.batch_code|default:"—" }}</td>
                                         <td>{{ object.batch_date|date:"Y-m-d" }}</td>
                                         <td>{{ object.product }}</td>
-                                        <td>{{ object.quantity }}</td>
+                                        <td>{{ object.packaging|default:"—" }}</td>
+                                        <td style="text-align: center;">{{ object.quantity|floatformat:0 }} / {{ object.original_quantity|floatformat:0|default:"—" }}</td>
                                         <td>{{ object.manufactured_date|date:"Y-m-d" }}</td>
                                         <td>{{ object.expiration_date|date:"Y-m-d" }}</td>
                                         <td>
@@ -236,13 +238,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // Check for success message after page reload
-  const batchSuccess = sessionStorage.getItem('batchSuccess');
-  if (batchSuccess) {
-    showToast(batchSuccess, 'success');
-    sessionStorage.removeItem('batchSuccess');
-  }
-  
   const searchInput = document.getElementById('batchSearchInput');
   const dateFilter = document.getElementById('dateFilter');
   const tableBody = document.getElementById('batchTableBody');
@@ -505,9 +500,6 @@ function handleArchiveSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('batchSuccess', `Batch "${batchName}" archived successfully!`);
-            // Reload page immediately
             window.location.reload();
         } else {
             showToast('Failed to archive batch. Please try again.', 'error');
@@ -537,9 +529,6 @@ function handleDeleteSubmit(event, batchName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('batchSuccess', `Batch "${batchName}" deleted successfully!`);
-            // Reload page immediately
             window.location.reload();
         } else {
             showToast('Failed to delete batch. Please try again.', 'error');

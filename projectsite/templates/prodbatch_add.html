@@ -42,10 +42,46 @@
               <tr data-product-id="{{ p.product.id }}" data-product-name="{{ p.product }}">
                 <td>{{ p.product }}</td>
                 <td>{{ p.product.productinventory.total_stock|floatformat:0 }}</td>
-                <td>{{ p.packaging_field }}</td>
-                <td>{{ p.qty_field }}</td>
-                <td>{{ p.manufactured_field }}</td>
-                <td>{{ p.expiration_field }}</td>
+                <td>
+                  {{ p.packaging_field }}
+                  {% if p.packaging_field.errors %}
+                    <div class="text-danger small mt-1">
+                      {% for error in p.packaging_field.errors %}
+                        {{ error }}<br>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td>
+                  {{ p.qty_field }}
+                  {% if p.qty_field.errors %}
+                    <div class="text-danger small mt-1">
+                      {% for error in p.qty_field.errors %}
+                        {{ error }}<br>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td>
+                  {{ p.manufactured_field }}
+                  {% if p.manufactured_field.errors %}
+                    <div class="text-danger small mt-1">
+                      {% for error in p.manufactured_field.errors %}
+                        {{ error }}<br>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
+                <td>
+                  {{ p.expiration_field }}
+                  {% if p.expiration_field.errors %}
+                    <div class="text-danger small mt-1">
+                      {% for error in p.expiration_field.errors %}
+                        {{ error }}<br>
+                      {% endfor %}
+                    </div>
+                  {% endif %}
+                </td>
               </tr>
               {% endfor %}
             </tbody>

@@ -254,13 +254,6 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    // Check for success message after page reload
-    const archiveSuccess = sessionStorage.getItem('archiveSuccess');
-    if (archiveSuccess) {
-        showToast(archiveSuccess, 'success');
-        sessionStorage.removeItem('archiveSuccess');
-    }
-    
     const form = document.getElementById("filterForm");
     const barcodeInput = document.getElementById("barcode-search");
     const barcodeStatus = document.getElementById("barcode-status");
@@ -522,9 +515,6 @@ function handleArchiveSubmit(event, productName) {
     })
     .then(response => {
         if (response.ok) {
-            // Store success message in sessionStorage
-            sessionStorage.setItem('archiveSuccess', `Product "${productName}" archived successfully!`);
-            // Reload page immediately
             window.location.reload();
         } else {
             showToast('Failed to archive product. Please try again.', 'error');

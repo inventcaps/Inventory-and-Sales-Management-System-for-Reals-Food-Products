@@ -41,37 +41,23 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <div class="card-title">Product Types</div>
-                            <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addProductTypeModal">
-                                Add Product Type
-                            </button>
                         </div>
                         <div class="card-body">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        <th width="150">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for type in product_types %}
                                     <tr>
                                         <td>{{ type.name }}</td>
-                                        <td>
-                                            <a href="#" data-toggle="modal" data-target="#editProductTypeModal{{ type.id }}" class="text-primary" title="Edit">
-                                                <i class="la la-edit la-lg"></i>
-                                            </a>
-                                            {% if user.is_superuser %}
-                                            <a href="#" data-toggle="modal" data-target="#deleteProductTypeModal{{ type.id }}" class="text-danger ml-3" title="Delete">
-                                                <i class="la la-trash la-lg"></i>
-                                            </a>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="2" class="text-center">No product types found.</td></tr>
+                                    <tr><td class="text-center">No product types found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -86,37 +72,23 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <div class="card-title">Product Variants</div>
-                            <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addProductVariantModal">
-                                Add Product Variant
-                            </button>
                         </div>
                         <div class="card-body">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Name</th>
-                                        <th width="150">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for variant in product_variants %}
                                     <tr>
                                         <td>{{ variant.name }}</td>
-                                        <td>
-                                            <a href="#" data-toggle="modal" data-target="#editProductVariantModal{{ variant.id }}" class="text-primary" title="Edit">
-                                                <i class="la la-edit la-lg"></i>
-                                            </a>
-                                            {% if user.is_superuser %}
-                                            <a href="#" data-toggle="modal" data-target="#deleteProductVariantModal{{ variant.id }}" class="text-danger ml-3" title="Delete">
-                                                <i class="la la-trash la-lg"></i>
-                                            </a>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="2" class="text-center">No product variants found.</td></tr>
+                                    <tr><td class="text-center">No product variants found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -131,37 +103,23 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <div class="card-title">Sizes</div>
-                            <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSizeModal">
-                                Add Size
-                            </button>
                         </div>
                         <div class="card-body">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Size Label</th>
-                                        <th width="150">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for size in sizes %}
                                     <tr>
                                         <td>{{ size.size_label }}</td>
-                                        <td>
-                                            <a href="#" data-toggle="modal" data-target="#editSizeModal{{ size.id }}" class="text-primary" title="Edit">
-                                                <i class="la la-edit la-lg"></i>
-                                            </a>
-                                            {% if user.is_superuser %}
-                                            <a href="#" data-toggle="modal" data-target="#deleteSizeModal{{ size.id }}" class="text-danger ml-3" title="Delete">
-                                                <i class="la la-trash la-lg"></i>
-                                            </a>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="2" class="text-center">No sizes found.</td></tr>
+                                    <tr><td class="text-center">No sizes found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -176,37 +134,23 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <div class="card-title">Size Units</div>
-                            <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSizeUnitModal">
-                                Add Size Unit
-                            </button>
                         </div>
                         <div class="card-body">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Unit Name</th>
-                                        <th width="150">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for unit in size_units %}
                                     <tr>
                                         <td>{{ unit.unit_name }}</td>
-                                        <td>
-                                            <a href="#" data-toggle="modal" data-target="#editSizeUnitModal{{ unit.id }}" class="text-primary" title="Edit">
-                                                <i class="la la-edit la-lg"></i>
-                                            </a>
-                                            {% if user.is_superuser %}
-                                            <a href="#" data-toggle="modal" data-target="#deleteSizeUnitModal{{ unit.id }}" class="text-danger ml-3" title="Delete">
-                                                <i class="la la-trash la-lg"></i>
-                                            </a>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="2" class="text-center">No size units found.</td></tr>
+                                    <tr><td class="text-center">No size units found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -221,37 +165,23 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <div class="card-title">Unit Prices</div>
-                            <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addUnitPriceModal">
-                                Add Unit Price
-                            </button>
                         </div>
                         <div class="card-body">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Price</th>
-                                        <th width="150">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for price in unit_prices %}
                                     <tr>
                                         <td>₱{{ price.unit_price }}</td>
-                                        <td>
-                                            <a href="#" data-toggle="modal" data-target="#editUnitPriceModal{{ price.id }}" class="text-primary" title="Edit">
-                                                <i class="la la-edit la-lg"></i>
-                                            </a>
-                                            {% if user.is_superuser %}
-                                            <a href="#" data-toggle="modal" data-target="#deleteUnitPriceModal{{ price.id }}" class="text-danger ml-3" title="Delete">
-                                                <i class="la la-trash la-lg"></i>
-                                            </a>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="2" class="text-center">No unit prices found.</td></tr>
+                                    <tr><td class="text-center">No unit prices found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
@@ -266,37 +196,23 @@
             <div class="row">
                 <div class="col-md-12">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <div class="card-title">SRP Prices</div>
-                            <button class="btn btn-success btn-sm" data-toggle="modal" data-target="#addSrpPriceModal">
-                                Add SRP Price
-                            </button>
                         </div>
                         <div class="card-body">
                             <table class="table table-striped">
                                 <thead>
                                     <tr>
                                         <th>Price</th>
-                                        <th width="150">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {% for price in srp_prices %}
                                     <tr>
                                         <td>₱{{ price.srp_price }}</td>
-                                        <td>
-                                            <a href="#" data-toggle="modal" data-target="#editSrpPriceModal{{ price.id }}" class="text-primary" title="Edit">
-                                                <i class="la la-edit la-lg"></i>
-                                            </a>
-                                            {% if user.is_superuser %}
-                                            <a href="#" data-toggle="modal" data-target="#deleteSrpPriceModal{{ price.id }}" class="text-danger ml-3" title="Delete">
-                                                <i class="la la-trash la-lg"></i>
-                                            </a>
-                                            {% endif %}
-                                        </td>
                                     </tr>
                                     {% empty %}
-                                    <tr><td colspan="2" class="text-center">No SRP prices found.</td></tr>
+                                    <tr><td class="text-center">No SRP prices found.</td></tr>
                                     {% endfor %}
                                 </tbody>
                             </table>

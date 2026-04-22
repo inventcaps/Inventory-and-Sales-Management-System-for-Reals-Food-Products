@@ -50,7 +50,7 @@
                     <tbody>
                       {% for r in raw_materials %}
                       <tr data-material-id="{{ r.rawmaterial.id }}" data-material-name="{{ r.rawmaterial }}">
-                        <td>{{ r.rawmaterial.name|title }} ({{ r.rawmaterial.size|floatformat:0 }}{{ r.rawmaterial.unit.unit_name|default:r.rawmaterial.unit }}) - ₱{{ r.rawmaterial.price_per_unit|floatformat:2 }}</td>
+                        <td>{{ r.rawmaterial.name|title }} ({{ r.rawmaterial.size }}{{ r.rawmaterial.unit.unit_name|default:r.rawmaterial.unit }}) - ₱{{ r.rawmaterial.price_per_unit|floatformat:2 }}</td>
                         <td>{{ r.rawmaterial.rawmaterialinventory.total_stock|floatformat:0 }}</td>
                         <td>{{ r.qty_field }}</td>
                       </tr>

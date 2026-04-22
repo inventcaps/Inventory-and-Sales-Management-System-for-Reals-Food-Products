@@ -922,6 +922,7 @@ class ProductBatches(models.Model):
     batch_date = models.DateField(default=timezone.localdate)
     product = models.ForeignKey('Products', models.DO_NOTHING)
     quantity = models.IntegerField()
+    original_quantity = models.IntegerField(blank=True, null=True)
     manufactured_date = models.DateField(default=timezone.localdate)
     created_by_admin = models.ForeignKey('AuthUser', models.DO_NOTHING)
     is_archived = models.BooleanField(default=False)
@@ -1093,6 +1094,7 @@ class RawMaterialBatches(models.Model):
     batch_date = models.DateField(default=timezone.localdate)
     received_date = models.DateField(default=timezone.localdate)
     quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    original_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     expiration_date = models.DateField(blank=True, null=True)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
     is_archived = models.BooleanField(default=False)
@@ -1117,6 +1119,8 @@ class RawMaterialInventory(models.Model):
         Calculate available stock by subtracting expiring stock from total stock.
         Available Stock = Total Stock - Expiring Soon
         
+        For packaging materials (which don't expire), returns total_stock directly.
+        
         Args:
             days_ahead: Number of days to look ahead for expiration (default: 7 days)
         
@@ -1124,6 +1128,12 @@ class RawMaterialInventory(models.Model):
             Decimal: Available stock quantity
         """
         from django.utils import timezone
+        
+        # Check if this is a packaging material (which doesn't expire)
+        # Packaging materials have no expiration, so return total_stock directly
+        if self.material.category.upper() == 'PACKAGING':
+            return Decimal(self.total_stock)
+        
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
@@ -1207,7 +1217,7 @@ class RawMaterials(models.Model):
     unit = models.ForeignKey('SizeUnits', models.DO_NOTHING)
     price_per_unit = models.DecimalField(max_digits=10, decimal_places=2)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    size = models.DecimalField(max_digits=10, decimal_places=2)
+    size = models.CharField(max_length=50)
     date_created = models.DateTimeField(default=timezone.now)
     is_archived = models.BooleanField(default=False)
     category = models.CharField(max_length=30)
@@ -1217,7 +1227,7 @@ class RawMaterials(models.Model):
         db_table = 'raw_materials'
 
     def __str__(self):
-        return f"{self.name} ({self.unit}) - ₱{self.price_per_unit}"
+        return f"{self.name} ({self.size}{self.unit.unit_name})"
 
 
 class Sales(models.Model):
@@ -1509,6 +1519,26 @@ class Withdrawals(models.Model):
         blank=True,
         help_text="Total amount (quantity × final_price_per_unit)"
     )
+    
+    # Packaging selection field
+    packaging = models.ForeignKey(
+        'RawMaterials',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column="packaging_id",
+        help_text="Selected packaging type for this withdrawal (null = any packaging)"
+    )
+
+    # Batch selection field for precise batch tracking
+    batch = models.ForeignKey(
+        'ProductBatches',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_column="batch_id",
+        help_text="Selected specific batch for this withdrawal (null = FIFO across all batches)"
+    )
 
     class Meta:
         managed = False  # existing table
@@ -1590,6 +1620,39 @@ class Withdrawals(models.Model):
                 Q(receipt_number__icontains=query)
             )
         return qs
+
+
+class FinancialLoss(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    withdrawal = models.ForeignKey(
+        Withdrawals,
+        on_delete=models.CASCADE,
+        db_column="withdrawal_id"
+    )
+    item_type = models.CharField(max_length=50)
+    item_id = models.BigIntegerField()
+    item_name = models.CharField(max_length=255, null=True, blank=True)
+    quantity = models.DecimalField(max_digits=10, decimal_places=2)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    loss_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    reason = models.CharField(max_length=50)
+    loss_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by_admin = models.ForeignKey(
+        User,
+        on_delete=models.DO_NOTHING,
+        db_column="created_by_admin_id",
+        null=True,
+        blank=True
+    )
+    is_archived = models.BooleanField(default=False)
+
+    class Meta:
+        managed = False
+        db_table = 'financial_loss'
+
+    def __str__(self):
+        return f"{self.item_name} - ₱{self.loss_amount} ({self.reason})"
 
 
 class User2FASettings(models.Model):
