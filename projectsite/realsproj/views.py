@@ -6014,6 +6014,7 @@ Real's Food Products Security Team'''
             fail_silently=True,
         )
     except Exception as e:
+        pass
 
 def login_view(request):
     if request.method == 'POST':
@@ -6140,7 +6141,6 @@ def login_view(request):
         ).count()
         
         if recent_failed_attempts >= max_attempts:
-            # Get the time of the last failed attempt (reuse the same query)
             last_attempt = LoginAttempt.objects.filter(
                 ip_address=ip_address,
                 success=False,
@@ -6168,12 +6168,11 @@ def login_view(request):
                 from django.utils import timezone
                 from django.core.mail import send_mail
                 from django.conf import settings
-                
+
                 device_fingerprint = get_device_fingerprint(request)
                 device_info = get_device_info(request)
                 ip_address = get_client_ip(request)
                 
-                # Check if this is a trusted device (for ALL users, not just 2FA enabled)
                 trusted_device = TrustedDevice.objects.filter(
                     user=user,
                     device_fingerprint=device_fingerprint,
@@ -6181,7 +6180,6 @@ def login_view(request):
                 ).first()
                                 
                 if trusted_device:
-                    # Trusted device - login directly
                     trusted_device.last_used = timezone.now()
                     trusted_device.save()
                     
@@ -6197,12 +6195,11 @@ def login_view(request):
                         is_trusted_device=True
                     )
                     
-                    # Send login notification asynchronously to avoid blocking login
                     try:
                         from threading import Thread
                         Thread(target=send_login_notification, args=(user, device_info, ip_address, False)).start()
                     except Exception:
-                        pass  # Don't block login if notification fails
+                        pass  
                     
                     login(request, user)
                     
@@ -6215,17 +6212,15 @@ def login_view(request):
                     messages.success(request, f" Welcome back! Logged in from trusted device.")
                     return redirect('home')
                 else:
-                    # New device - require OTP for account confirmation
                     otp_code = str(random.randint(100000, 999999))
                     
                     UserOTP.objects.create(
                         user=user,
                         otp_code=otp_code,
-                        expires_at=timezone.now() + timedelta(minutes=10),  # Extended to 10 minutes
+                        expires_at=timezone.now() + timedelta(minutes=10),
                         ip_address=ip_address
                     )
                     
-                    # Send OTP email asynchronously to avoid blocking login
                     def send_otp_email():
                         try:
                             send_mail(
@@ -6251,7 +6246,6 @@ Real's Food Products Security Team''',
                         except Exception as e:
                             print(f"[OTP EMAIL ERROR] Failed to send OTP email: {e}")
                     
-                    # Send email in background thread
                     try:
                         from threading import Thread
                         Thread(target=send_otp_email).start()
@@ -6279,7 +6273,6 @@ Real's Food Products Security Team''',
                     messages.info(request, f" Account confirmation required! OTP sent to {masked_email}")
                     return render(request, '2fa_verify.html', {'user_email': masked_email})
             else:
-                 # Record failed attempt for inactive account
                 device_info = get_device_info(request)
                 LoginAttempt.objects.create(
                     user=user,
@@ -6295,7 +6288,6 @@ Real's Food Products Security Team''',
                 messages.error(request, "❌ Your account is inactive. Please contact the administrator.")
                 return render(request, 'login.html')
         else:
-            # Record failed login attempt
             device_info = get_device_info(request)
             LoginAttempt.objects.create(
                 user=None,
@@ -6309,7 +6301,6 @@ Real's Food Products Security Team''',
                 is_trusted_device=False
             )
             
-            # Check how many attempts remain (based on IP address only)
             attempts_count = LoginAttempt.objects.filter(
                 ip_address=ip_address,
                 success=False,
@@ -6317,14 +6308,182 @@ Real's Food Products Security Team''',
             ).count()
             
             attempts_remaining = max_attempts - attempts_count
-            
+
             if attempts_remaining > 0:
-                messages.error(request, f"❌ Invalid username or password. {attempts_remaining} attempt(s) remaining.")
+                messages.error(request, f"Invalid username or password. {attempts_remaining} attempt(s) remaining.")
             else:
-                messages.error(request, f"🔒 Too many failed login attempts. Please wait again after 5 minutes.")
-            
+                messages.error(request, f"Too many failed login attempts. Please wait again after 5 minutes.")
+
             return render(request, 'login.html')
     return render(request, 'login.html')
+
+def register(request):
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            from django.core.mail import send_mail
+            from django.conf import settings
+            try:
+                send_mail(
+                    subject='Registration Pending Approval - Real\'s Food Products',
+                    message=f'Hello {user.username},\n\nThank you for registering. Your account is pending approval.\n\nReal\'s Food Products Team',
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+            messages.success(request, 'Your account has been created! Please wait for admin approval before logging in.')
+            return redirect('login')
+    else:
+        form = CustomUserCreationForm()
+    return render(request, 'registration/register.html', {'form': form})
+
+@login_required
+def user_management(request):
+    if not request.user.is_superuser:
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('home')
+    from django.db.models import Q
+    from django.core.paginator import Paginator
+    pending_users = User.objects.filter(is_active=False).exclude(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
+    ).order_by('-date_joined')
+    active_users_queryset = User.objects.filter(is_active=True).exclude(
+        Q(username__startswith='rejected_user_') | Q(username__startswith='deleted_user_') | Q(username__startswith='inactive_user_')
+    ).order_by('-date_joined')
+    active_paginator = Paginator(active_users_queryset, 5)
+    active_users = active_paginator.get_page(request.GET.get('page', 1))
+    inactive_users_raw = User.objects.filter(username__startswith='inactive_user_').order_by('-date_joined')
+    inactive_users = []
+    for user in inactive_users_raw:
+        if user.first_name and 'ORIGINAL_USERNAME:' in user.first_name:
+            parts = user.first_name.split('|')
+            user.display_username = parts[0].replace('ORIGINAL_USERNAME:', '')
+        else:
+            user.display_username = f"User ID {user.id}"
+        if user.last_name and 'ORIGINAL_EMAIL:' in user.last_name:
+            parts = user.last_name.split('|')
+            user.display_email = parts[0].replace('ORIGINAL_EMAIL:', '')
+        else:
+            user.display_email = user.email
+        inactive_users.append(user)
+    rejected_users = User.objects.filter(username__startswith='rejected_user_').order_by('-date_joined')
+    deleted_users_queryset = User.objects.filter(username__startswith='deleted_user_').order_by('-date_joined')
+    deleted_paginator = Paginator(deleted_users_queryset, 5)
+    deleted_users = deleted_paginator.get_page(request.GET.get('page', 1))
+    return render(request, 'user_management.html', {
+        'pending_users': pending_users,
+        'active_users': active_users,
+        'inactive_users': inactive_users,
+        'rejected_users': rejected_users,
+        'deleted_users': deleted_users,
+    })
+
+@login_required
+@require_http_methods(["POST"])
+def approve_user(request, user_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    try:
+        user = User.objects.get(id=user_id, is_active=False)
+        username = user.username
+        user_email = user.email
+        user.is_active = True
+        user.save()
+        from django.core.mail import send_mail
+        from django.conf import settings
+        try:
+            send_mail(
+                subject='Account Approved - Real\'s Food Products',
+                message=f'Hello {username},\n\nYour account has been approved. You can now log in.\n\nReal\'s Food Products Team',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user_email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+        return JsonResponse({'success': True, 'message': f'User {username} approved successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found or already active'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def reject_user(request, user_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id, is_active=False)
+        username = user.username
+        user_email = user.email
+        from django.core.mail import send_mail
+        from django.conf import settings
+        try:
+            send_mail(
+                subject='Account Registration Rejected - Real\'s Food Products',
+                message=f'Hello {username},\n\nYour registration request has been rejected.\n\nReal\'s Food Products Team',
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user_email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.email = f"rejected_{user.id}_{timestamp}@deleted.local"
+        user.username = f"rejected_user_{user.id}_{timestamp}"
+        user.first_name = "Rejected"
+        user.last_name = "User"
+        user.set_unusable_password()
+        user.is_active = False
+        user.save()
+        return JsonResponse({'success': True, 'message': f'User {username} rejected successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found or already active'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+def send_role_change_email_async(username, email, new_role):
+    from django.core.mail import send_mail
+    from django.conf import settings
+    try:
+        send_mail(
+            subject=f'Role Change: {new_role} - Real\'s Food Products',
+            message=f'Hello {username},\n\nYour role has been changed to {new_role}. Please log out and log back in.\n\nReal\'s Food Products Team',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        print(f"[ROLE CHANGE ERROR] Failed to send email: {e}")
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_user_role(request, user_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    try:
+        user = User.objects.get(id=user_id)
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'message': 'Cannot modify your own role'})
+        if user.is_superuser:
+            user.is_superuser = False
+            new_role = 'Staff'
+        else:
+            user.is_superuser = True
+            new_role = 'Administrator'
+        user.save()
+        email_thread = threading.Thread(target=send_role_change_email_async, args=(user.username, user.email, new_role))
+        email_thread.daemon = True
+        email_thread.start()
+        return JsonResponse({'success': True, 'message': f'User {user.username} is now a {new_role}.', 'new_role': new_role})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
 
 @login_required
 @require_http_methods(["POST"])
@@ -6396,80 +6555,420 @@ def create_admin_user(request):
             'success': True,
             'message': f'{role_name} account "{username}" created successfully and is immediately active.'
         })
-    
+
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
+
+def send_deactivation_email_async(username, email):
+    from django.core.mail import send_mail
+    from django.conf import settings
+    try:
+        send_mail(
+            subject='Account Deactivated - Real\'s Food Products',
+            message=f'Hello {username},\n\nYour account has been deactivated.\n\nReal\'s Food Products Team',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        print(f"[DEACTIVATION EMAIL ERROR] {e}")
+
+def send_reactivation_email_async(username, email):
+    from django.core.mail import send_mail
+    from django.conf import settings
+    try:
+        send_mail(
+            subject='Account Reactivated - Real\'s Food Products',
+            message=f'Hello {username},\n\nYour account has been reactivated. You can now log in.\n\nReal\'s Food Products Team',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        print(f"[REACTIVATION EMAIL ERROR] {e}")
+
+@login_required
+@require_http_methods(["POST"])
+def deactivate_user(request, user_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id, is_active=True)
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'message': 'Cannot deactivate your own account'})
+        username = user.username
+        email = user.email
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.is_active = False
+        user.first_name = f"ORIGINAL_USERNAME:{username}"
+        user.last_name = f"ORIGINAL_EMAIL:{email}"
+        user.email = f"inactive_{user.id}_{timestamp}@inactive.local"
+        user.username = f"inactive_user_{user.id}_{timestamp}"
+        user.save()
+        t = threading.Thread(target=send_deactivation_email_async, args=(username, email))
+        t.daemon = True
+        t.start()
+        return JsonResponse({'success': True, 'message': f'User {username} deactivated successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found or already inactive'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def reactivate_user(request, user_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    try:
+        user = User.objects.get(id=user_id)
+        original_username = None
+        original_email = None
+        if user.first_name and 'ORIGINAL_USERNAME:' in user.first_name:
+            original_username = user.first_name.replace('ORIGINAL_USERNAME:', '').split('|')[0]
+        if user.last_name and 'ORIGINAL_EMAIL:' in user.last_name:
+            original_email = user.last_name.replace('ORIGINAL_EMAIL:', '').split('|')[0]
+        if original_username:
+            user.username = original_username
+        if original_email:
+            user.email = original_email
+        user.first_name = ''
+        user.last_name = ''
+        user.is_active = True
+        user.save()
+        if original_email:
+            t = threading.Thread(target=send_reactivation_email_async, args=(original_username or user.username, original_email))
+            t.daemon = True
+            t.start()
+        return JsonResponse({'success': True, 'message': 'User reactivated successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+@require_http_methods(["POST"])
+def delete_user(request, user_id):
+    if not request.user.is_superuser:
+        return JsonResponse({'success': False, 'message': 'Permission denied'})
+    try:
+        from datetime import datetime
+        user = User.objects.get(id=user_id)
+        if user.id == request.user.id:
+            return JsonResponse({'success': False, 'message': 'Cannot delete your own account'})
+        username = user.username
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        user.is_active = False
+        user.email = f"deleted_{user.id}_{timestamp}@deleted.local"
+        user.username = f"deleted_user_{user.id}_{timestamp}"
+        user.first_name = "Deleted"
+        user.last_name = "User"
+        user.set_unusable_password()
+        user.save()
+        return JsonResponse({'success': True, 'message': f'User {username} deleted successfully'})
+    except User.DoesNotExist:
+        return JsonResponse({'success': False, 'message': 'User not found'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)})
+
+@login_required
+def edit_profile(request):
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        user = request.user
+        if email and email != user.email:
+            if User.objects.filter(email=email).exclude(id=user.id).exists():
+                messages.error(request, 'This email is already in use.')
+                return redirect('edit_profile')
+            user.email = email
+        if first_name:
+            user.first_name = first_name
+        if last_name:
+            user.last_name = last_name
+        user.save()
+        messages.success(request, 'Profile updated successfully.')
+        return redirect('profile')
+    return render(request, 'edit_profile.html')
+
+@login_required
+def export_sales(request):
+    import csv
+    from django.http import HttpResponse
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Amount', 'Notes'])
+    try:
+        sales = Sales.objects.all().order_by('-date')
+        for sale in sales:
+            writer.writerow([getattr(sale, 'date', ''), getattr(sale, 'amount', ''), getattr(sale, 'notes', '')])
+    except Exception:
+        writer.writerow(['No data available'])
+    return response
+
+@login_required
+def export_product_inventory(request):
+    import csv
+    from django.http import HttpResponse
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="product_inventory.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Product', 'Total Stock', 'Restock Threshold', 'Status'])
+    for inv in ProductInventory.objects.select_related('product').all():
+        if inv.total_stock <= 0:
+            status = 'Out of Stock'
+        elif inv.total_stock <= inv.restock_threshold:
+            status = 'Low Stock'
+        else:
+            status = 'In Stock'
+        writer.writerow([str(inv.product), inv.total_stock, inv.restock_threshold, status])
+    return response
+
+@login_required
+def export_expenses(request):
+    import csv
+    from django.http import HttpResponse
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="expenses_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Amount', 'Notes'])
+    try:
+        expenses = Expenses.objects.all().order_by('-date')
+        for expense in expenses:
+            writer.writerow([getattr(expense, 'date', ''), getattr(expense, 'amount', ''), getattr(expense, 'notes', '')])
+    except Exception:
+        writer.writerow(['No data available'])
+    return response
+
+class UserActivityList(LoginRequiredMixin, ListView):
+    template_name = 'user_activity.html'
+    context_object_name = 'login_attempts'
+    paginate_by = 20
+
+    def get_queryset(self):
+        from realsproj.models import LoginAttempt
+        if not self.request.user.is_superuser:
+            return LoginAttempt.objects.filter(user=self.request.user).order_by('-timestamp')
+        return LoginAttempt.objects.all().select_related('user').order_by('-timestamp')
+
+    def get(self, request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, "You don't have permission to access this page.")
+            return redirect('home')
+        return super().get(request, *args, **kwargs)
+
+def check_account_status(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'is_active': False, 'deactivated': True})
+    if not request.user.is_active:
+        return JsonResponse({'is_active': False, 'deactivated': True})
+    deactivated_flag = request.session.get('account_deactivated', False)
+    return JsonResponse({'is_active': True, 'deactivated': deactivated_flag})
+
+def clear_deactivation_flag(request):
+    if request.method == 'POST':
+        request.session.pop('account_deactivated', None)
+        return JsonResponse({'success': True})
+    return JsonResponse({'success': False})
+
+@login_required
+def database_backup(request):
+    if not request.user.is_superuser:
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('home')
+    return render(request, 'database_backup.html')
+
+class BestSellerProductsView(LoginRequiredMixin, TemplateView):
+    template_name = 'bestseller_products.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        from django.db.models import Sum, Count
+        sales_by_item = Withdrawals.objects.filter(
+            item_type='PRODUCT',
+            reason='SOLD'
+        ).values('item_id').annotate(
+            total_quantity=Sum('quantity'),
+            total_transactions=Count('id')
+        ).order_by('-total_quantity')[:20]
+
+        bestsellers = []
+        for entry in sales_by_item:
+            try:
+                product = Products.objects.select_related(
+                    'product_type', 'variant', 'size', 'size_unit'
+                ).get(id=entry['item_id'])
+                bestsellers.append({
+                    'product_name': str(product),
+                    'product_type': product.product_type.name if product.product_type else '',
+                    'variant': product.variant.name if product.variant else '',
+                    'size': str(product.size) if product.size else '',
+                    'total_quantity': entry['total_quantity'],
+                    'total_transactions': entry['total_transactions'],
+                })
+            except Products.DoesNotExist:
+                bestsellers.append({
+                    'product_name': f'Unknown Product (ID {entry["item_id"]})',
+                    'product_type': '',
+                    'variant': '',
+                    'size': '',
+                    'total_quantity': entry['total_quantity'],
+                    'total_transactions': entry['total_transactions'],
+                })
+        context['bestsellers'] = bestsellers
+        return context
+
+@login_required
+def export_bestseller_report(request):
+    import csv
+    from django.http import HttpResponse
+    from django.db.models import Sum, Count
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="bestseller_report.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Product', 'Product Type', 'Variant', 'Total Sold', 'Transactions'])
+    sales_by_item = Withdrawals.objects.filter(
+        item_type='PRODUCT',
+        reason='SOLD'
+    ).values('item_id').annotate(
+        total_quantity=Sum('quantity'),
+        total_transactions=Count('id')
+    ).order_by('-total_quantity')[:50]
+    for entry in sales_by_item:
+        try:
+            product = Products.objects.select_related('product_type', 'variant').get(id=entry['item_id'])
+            product_name = str(product)
+            product_type = product.product_type.name if product.product_type else ''
+            variant = product.variant.name if product.variant else ''
+        except Products.DoesNotExist:
+            product_name = f'Unknown (ID {entry["item_id"]})'
+            product_type = ''
+            variant = ''
+        writer.writerow([
+            product_name,
+            product_type,
+            variant,
+            entry.get('total_quantity', 0),
+            entry.get('total_transactions', 0),
+        ])
+    return response
+
+@login_required
+def financial_loss(request):
+    if not request.user.is_superuser:
+        messages.error(request, "You don't have permission to access this page.")
+        return redirect('home')
+    loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
+    withdrawals = Withdrawals.objects.filter(
+        item_type='PRODUCT',
+        reason__in=loss_reasons
+    ).order_by('-date')
+    total_loss = 0
+    losses = []
+    for w in withdrawals:
+        try:
+            product = Products.objects.get(id=w.item_id)
+            price = float(product.unit_price or 0) if hasattr(product, 'unit_price') and product.unit_price else 0
+            loss_value = float(w.quantity or 0) * price
+            total_loss += loss_value
+            losses.append({'withdrawal': w, 'product_name': str(product), 'loss_value': loss_value})
+        except Exception:
+            losses.append({'withdrawal': w, 'product_name': f'Unknown (ID {w.item_id})', 'loss_value': 0})
+    return render(request, 'financial_loss.html', {
+        'losses': losses,
+        'total_loss': total_loss,
+    })
+
+@login_required
+def financial_loss_export(request):
+    import csv
+    from django.http import HttpResponse
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="financial_loss.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Date', 'Product', 'Quantity', 'Reason'])
+    loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
+    withdrawals = Withdrawals.objects.filter(
+        item_type='PRODUCT',
+        reason__in=loss_reasons
+    ).order_by('-date')
+    for w in withdrawals:
+        try:
+            product = Products.objects.get(id=w.item_id)
+            product_name = str(product)
+        except Products.DoesNotExist:
+            product_name = f'Unknown (ID {w.item_id})'
+        writer.writerow([w.date, product_name, w.quantity, w.reason])
+    return response
+
+@login_required
+def setup_2fa(request):
+    from realsproj.models import User2FASettings
+    if request.method == 'POST':
+        action = request.POST.get('action', '')
+        if action == 'enable':
+            settings_obj, _ = User2FASettings.objects.get_or_create(user=request.user)
+            settings_obj.is_enabled = True
+            settings_obj.save()
+            messages.success(request, 'Two-Factor Authentication has been enabled.')
+        elif action == 'disable':
+            try:
+                settings_obj = User2FASettings.objects.get(user=request.user)
+                settings_obj.is_enabled = False
+                settings_obj.save()
+                messages.success(request, 'Two-Factor Authentication has been disabled.')
+            except User2FASettings.DoesNotExist:
+                pass
+        return redirect('profile')
+    try:
+        twofa_settings = User2FASettings.objects.get(user=request.user)
+    except User2FASettings.DoesNotExist:
+        twofa_settings = None
+    return render(request, '2fa_setup.html', {
+        'user_email': request.user.email,
+        'twofa_settings': twofa_settings,
+    })
 
 def send_login_notification(user, device_info, ip_address, is_new_device=False):
     """Send email notification about login"""
     from django.core.mail import send_mail
     from django.conf import settings
     from django.utils import timezone
-    
+
     if is_new_device:
-        subject = '🔐 New Device Verified - Real\'s Food Products'
-        message = f'''Hello {user.username},
-
-A new device has been verified for your account.
-
-Device: {device_info['device_name']}
-IP Address: {ip_address}
-Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-This device is now trusted and will not require OTP for future logins.
-
-If this wasn't you, please secure your account immediately.
-
-Real's Food Products Security Team'''
+        subject = 'New Device Verified - Real\'s Food Products'
+        message = (
+            f'Hello {user.username},\n\n'
+            f'A new device has been verified for your account.\n\n'
+            f'Device: {device_info["device_name"]}\n'
+            f'IP Address: {ip_address}\n'
+            f'Time: {timezone.now().strftime("%B %d, %Y at %I:%M %p")}\n\n'
+            f'This device is now trusted.\n\n'
+            f'Real\'s Food Products Security Team'
+        )
     else:
-        subject = '✅ Login Notification - Real\'s Food Products'
-        message = f'''Hello {user.username},
-
-You recently logged in to your account.
-
-Device: {device_info['device_name']}
-IP Address: {ip_address}
-Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-This login was from a trusted device.
-
-If this wasn't you, please secure your account immediately.
-
-Real's Food Products Security Team'''
-    
-                message=f'''Hello {request.user.username},
-
-You are enabling Two-Factor Authentication for your account.
-
-Your verification code is: {verification_code}
-
-This code will expire in 5 minutes.
-
-If you did not request this, please ignore this email.
-
-Real's Food Products Security Team''',
-                from_email=django_settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[email_to],
-                fail_silently=False,
-            )
-            print(f"[2FA SETUP] Verification code sent to {email_to}")
-            messages.success(request, f"📧 Verification code sent to {mask_email(email_to)}. Please check your email.")
-        except Exception as e:
-            print(f"[2FA SETUP ERROR] Failed to send verification email: {e}")
-            messages.error(request, "❌ Failed to send verification email. Please try again.")
-        
-        return redirect('profile')
-    
-    # GET request - show setup form
+        subject = 'Login Notification - Real\'s Food Products'
+        message = (
+            f'Hello {user.username},\n\n'
+            f'You recently logged in to your account.\n\n'
+            f'Device: {device_info["device_name"]}\n'
+            f'IP Address: {ip_address}\n'
+            f'Time: {timezone.now().strftime("%B %d, %Y at %I:%M %p")}\n\n'
+            f'This login was from a trusted device.\n\n'
+            f'Real\'s Food Products Security Team'
+        )
     try:
-        twofa_settings = User2FASettings.objects.get(user=request.user)
-    except User2FASettings.DoesNotExist:
-        twofa_settings = None
-    
-    return render(request, '2fa_setup.html', {
-        'user_email': request.user.email,
-        'twofa_settings': twofa_settings
-    })
+        send_mail(
+            subject=subject,
+            message=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+    except Exception as e:
+        pass
 
 @login_required
 def disable_2fa(request):
