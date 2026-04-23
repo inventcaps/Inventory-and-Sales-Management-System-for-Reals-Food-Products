@@ -6918,25 +6918,157 @@ def financial_loss(request):
     if not request.user.is_superuser:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
+    
+    from django.core.paginator import Paginator
+    from datetime import datetime
+    import calendar
+    
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
-    withdrawals = Withdrawals.objects.filter(
+    
+    # Get current month value for default filter
+    current_month = datetime.now().strftime('%Y-%m')
+    current_month_value = current_month
+    
+    # Product withdrawals with loss reasons
+    product_withdrawals_qs = Withdrawals.objects.filter(
         item_type='PRODUCT',
-        reason__in=loss_reasons
+        reason__in=loss_reasons,
+        is_archived=False
     ).order_by('-date')
-    total_loss = 0
-    losses = []
-    for w in withdrawals:
+    
+    # Apply product date filter
+    product_date_filter = request.GET.get('product_date_filter')
+    product_show_all = request.GET.get('product_show_all')
+    
+    if product_show_all:
+        # Show all data
+        pass
+    elif product_date_filter:
+        # Filter by selected month
+        product_withdrawals_qs = product_withdrawals_qs.filter(date__startswith=product_date_filter)
+    else:
+        # Default to current month
+        product_withdrawals_qs = product_withdrawals_qs.filter(date__startswith=current_month)
+    
+    # Calculate product loss and prepare withdrawal data
+    product_loss = 0
+    product_withdrawals_data = []
+    for w in product_withdrawals_qs:
         try:
             product = Products.objects.get(id=w.item_id)
-            price = float(product.unit_price or 0) if hasattr(product, 'unit_price') and product.unit_price else 0
-            loss_value = float(w.quantity or 0) * price
-            total_loss += loss_value
-            losses.append({'withdrawal': w, 'product_name': str(product), 'loss_value': loss_value})
-        except Exception:
-            losses.append({'withdrawal': w, 'product_name': f'Unknown (ID {w.item_id})', 'loss_value': 0})
+            unit_price = 0
+            if hasattr(product, 'unit_price') and product.unit_price:
+                unit_price = float(product.unit_price.unit_price) if hasattr(product.unit_price, 'unit_price') else float(product.unit_price)
+            elif hasattr(product, 'srp_price') and product.srp_price:
+                unit_price = float(product.srp_price.srp_price) if hasattr(product.srp_price, 'srp_price') else float(product.srp_price)
+            
+            loss_amount = float(w.quantity or 0) * unit_price
+            product_loss += loss_amount
+            
+            product_withdrawals_data.append({
+                'date': w.date,
+                'product_name': str(product),
+                'quantity': w.quantity,
+                'unit_price': unit_price,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display if hasattr(w, 'get_reason_display') else w.reason,
+                'loss_amount': loss_amount,
+            })
+        except Products.DoesNotExist:
+            product_withdrawals_data.append({
+                'date': w.date,
+                'product_name': f'Unknown (ID {w.item_id})',
+                'quantity': w.quantity,
+                'unit_price': 0,
+                'reason': w.reason,
+                'get_reason_display': w.reason,
+                'loss_amount': 0,
+            })
+    
+    # Raw material withdrawals with loss reasons
+    raw_material_withdrawals_qs = Withdrawals.objects.filter(
+        item_type='RAW_MATERIAL',
+        reason__in=loss_reasons,
+        is_archived=False
+    ).order_by('-date')
+    
+    # Apply raw material date filter
+    raw_material_date_filter = request.GET.get('raw_material_date_filter')
+    raw_material_show_all = request.GET.get('raw_material_show_all')
+    
+    if raw_material_show_all:
+        # Show all data
+        pass
+    elif raw_material_date_filter:
+        # Filter by selected month
+        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__startswith=raw_material_date_filter)
+    else:
+        # Default to current month
+        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__startswith=current_month)
+    
+    # Calculate raw material loss and prepare withdrawal data
+    raw_material_loss = 0
+    raw_material_withdrawals_data = []
+    for w in raw_material_withdrawals_qs:
+        try:
+            material = RawMaterial.objects.get(id=w.item_id)
+            price_per_unit = 0
+            if hasattr(material, 'price_per_unit') and material.price_per_unit:
+                price_per_unit = float(material.price_per_unit)
+            
+            loss_amount = float(w.quantity or 0) * price_per_unit
+            raw_material_loss += loss_amount
+            
+            unit_name = ''
+            if hasattr(material, 'unit') and material.unit:
+                unit_name = material.unit.unit_name if hasattr(material.unit, 'unit_name') else str(material.unit)
+            
+            raw_material_withdrawals_data.append({
+                'date': w.date,
+                'material_name': str(material),
+                'quantity': w.quantity,
+                'unit_name': unit_name,
+                'price_per_unit': price_per_unit,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display if hasattr(w, 'get_reason_display') else w.reason,
+                'loss_amount': loss_amount,
+            })
+        except RawMaterial.DoesNotExist:
+            raw_material_withdrawals_data.append({
+                'date': w.date,
+                'material_name': f'Unknown (ID {w.item_id})',
+                'quantity': w.quantity,
+                'unit_name': '',
+                'price_per_unit': 0,
+                'reason': w.reason,
+                'get_reason_display': w.reason,
+                'loss_amount': 0,
+            })
+    
+    # Paginate product withdrawals
+    product_paginator = Paginator(product_withdrawals_data, 10)
+    product_page_number = request.GET.get('product_page', 1)
+    product_page_obj = product_paginator.get_page(product_page_number)
+    product_is_paginated = product_paginator.num_pages > 1
+    
+    # Paginate raw material withdrawals
+    raw_material_paginator = Paginator(raw_material_withdrawals_data, 10)
+    raw_material_page_number = request.GET.get('raw_material_page', 1)
+    raw_material_page_obj = raw_material_paginator.get_page(raw_material_page_number)
+    raw_material_is_paginated = raw_material_paginator.num_pages > 1
+    
     return render(request, 'financial_loss.html', {
-        'losses': losses,
-        'total_loss': total_loss,
+        'product_loss': product_loss,
+        'raw_material_loss': raw_material_loss,
+        'product_withdrawals': product_page_obj,
+        'raw_material_withdrawals': raw_material_page_obj,
+        'product_paginator': product_paginator,
+        'raw_material_paginator': raw_material_paginator,
+        'product_page_obj': product_page_obj,
+        'raw_material_page_obj': raw_material_page_obj,
+        'product_is_paginated': product_is_paginated,
+        'raw_material_is_paginated': raw_material_is_paginated,
+        'current_month_value': current_month_value,
     })
 
 @login_required
