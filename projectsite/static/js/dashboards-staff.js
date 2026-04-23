@@ -78,13 +78,13 @@ document.addEventListener('DOMContentLoaded', function () {
     dataLabels: {
       enabled: true,
       formatter: function (val) { return val > 0 ? val : 'Out'; },
-      style: { fontSize: '10px', fontWeight: 600 },
+      style: { fontSize: '13px', fontWeight: 700 },
       offsetY: -2
     },
     xaxis: {
       categories: d.labels,
       labels: {
-        style: { colors: t.text, fontSize: '10px' },
+        style: { colors: t.text, fontSize: '12px', fontWeight: 600 },
         rotate: -42,
         hideOverlappingLabels: true,
         trim: true,
@@ -92,8 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     yaxis: {
-      title: { text: 'Units', style: { color: t.text } },
-      labels: { style: { colors: t.text, fontSize: '10px' } }
+      title: { text: 'Units', style: { color: t.text, fontSize: '13px', fontWeight: 700 } },
+      labels: { style: { colors: t.text, fontSize: '12px', fontWeight: 600 } }
     },
     grid: { borderColor: t.grid },
     tooltip: {

@@ -239,29 +239,31 @@
           </div>
         </div>
       </div>
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;justify-content:space-around;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i class="la la-exclamation-triangle" style="font-size:1.2rem;color:#d97706;"></i>
+      <a href="{% url 'product-inventory' %}" style="text-decoration:none;color:inherit;">
+        <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.13)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.08)';this.style.transform='none'">
+          <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;justify-content:space-around;gap:8px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:40px;height:40px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="la la-exclamation-triangle" style="font-size:1.2rem;color:#d97706;"></i>
+              </div>
+              <div>
+                <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Low Stock</div>
+                <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div>
+              </div>
             </div>
-            <div>
-              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Low Stock</div>
-              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div>
-            </div>
-          </div>
-          <div style="width:1px;height:36px;background:rgba(0,0,0,0.08);"></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i class="la la-times-circle" style="font-size:1.2rem;color:#dc2626;"></i>
-            </div>
-            <div>
-              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Out of Stock</div>
-              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div>
+            <div style="width:1px;height:36px;background:rgba(0,0,0,0.08);"></div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <i class="la la-times-circle" style="font-size:1.2rem;color:#dc2626;"></i>
+              </div>
+              <div>
+                <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Out of Stock</div>
+                <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </a>
     </div>
 
     <!-- Row 2: Inventory Overview (full width) -->
