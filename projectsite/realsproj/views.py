@@ -198,18 +198,27 @@ class HomePageView(LoginRequiredMixin, TemplateView):
                 return float(Expenses.objects.filter(date__year=y, date__month=m).aggregate(t=Sum('amount'))['t'] or 0)
 
             cur_sales, prev_sales = _s(cy, cm), _s(py, pm)
-            cur_profit = cur_sales - _e(cy, cm)
-            prev_profit = prev_sales - _e(py, pm)
+            cur_exp, prev_exp = _e(cy, cm), _e(py, pm)
+            cur_profit = cur_sales - cur_exp
+            prev_profit = prev_sales - prev_exp
 
-            def _badge(cur, prev):
-                if prev == 0:
+            def _badge(cur, prev, invert=False):
+                if prev <= 0:
                     return None
-                pct = round((cur - prev) / abs(prev) * 100, 1)
+                pct = round((cur - prev) / prev * 100, 1)
                 prefix = '+' if pct >= 0 else ''
-                return {'text': f'{prefix}{pct}%', 'up': pct >= 0}
+                up = (pct >= 0) if not invert else (pct < 0)
+                return {'text': f'{prefix}{pct}%', 'up': up}
 
             context['profit_badge'] = _badge(cur_profit, prev_profit)
             context['revenue_badge'] = _badge(cur_sales, prev_sales)
+            context['expenses_badge'] = _badge(cur_exp, prev_exp, invert=True)
+            context['cur_sales'] = cur_sales
+            context['prev_sales'] = prev_sales
+            context['cur_profit'] = cur_profit
+            context['prev_profit'] = prev_profit
+            context['cur_expenses'] = cur_exp
+            context['prev_expenses'] = prev_exp
 
         import json
         context['total_products'] = Products.objects.filter(is_archived=False).count()
@@ -6743,21 +6752,40 @@ def export_expenses(request):
     return response
 
 class UserActivityList(LoginRequiredMixin, ListView):
-    template_name = 'user_activity.html'
-    context_object_name = 'login_attempts'
+    template_name = 'user_activity_list.html'
+    context_object_name = 'users'
     paginate_by = 20
-
-    def get_queryset(self):
-        from realsproj.models import LoginAttempt
-        if not self.request.user.is_superuser:
-            return LoginAttempt.objects.filter(user=self.request.user).order_by('-timestamp')
-        return LoginAttempt.objects.all().select_related('user').order_by('-timestamp')
 
     def get(self, request, *args, **kwargs):
         if not request.user.is_superuser:
             messages.error(request, "You don't have permission to access this page.")
             return redirect('home')
         return super().get(request, *args, **kwargs)
+
+    def get_queryset(self):
+        from realsproj.models import UserActivity
+        from django.db.models import Q
+        qs = User.objects.prefetch_related('useractivity').filter(is_active=True).order_by('-last_login')
+        q = self.request.GET.get('q', '').strip()
+        if q:
+            qs = qs.filter(Q(username__icontains=q) | Q(email__icontains=q))
+        status = self.request.GET.get('status', '')
+        if status == 'active':
+            from django.utils import timezone
+            from datetime import timedelta
+            cutoff = timezone.now() - timedelta(minutes=5)
+            ids = UserActivity.objects.filter(active=True, last_activity__gte=cutoff).values_list('user_id', flat=True)
+            qs = qs.filter(id__in=ids)
+        elif status == 'inactive':
+            from django.utils import timezone
+            from datetime import timedelta
+            cutoff = timezone.now() - timedelta(minutes=5)
+            ids = UserActivity.objects.filter(active=True).exclude(last_activity__gte=cutoff).values_list('user_id', flat=True)
+            qs = qs.filter(id__in=ids)
+        elif status == 'logged_out':
+            ids = UserActivity.objects.filter(active=False).values_list('user_id', flat=True)
+            qs = qs.filter(id__in=ids)
+        return qs
 
 def check_account_status(request):
     if not request.user.is_authenticated:

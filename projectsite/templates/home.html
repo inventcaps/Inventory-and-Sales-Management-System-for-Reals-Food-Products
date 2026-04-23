@@ -16,173 +16,197 @@
 <div class="content">
   <div class="container-fluid">
     {% if is_superuser %}
-    <h4 class="page-title">Dashboard - Analytics</h4>
-
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;margin-top:16px;">
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;gap:14px;">
-          <div style="width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="la la-box" style="font-size:1.4rem;color:#2563eb;"></i>
-          </div>
-          <div>
-            <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Products</div>
-            <div style="font-size:1.65rem;font-weight:700;line-height:1;">{{ total_products }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;gap:14px;">
-          <div style="width:44px;height:44px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="la la-cubes" style="font-size:1.4rem;color:#16a34a;"></i>
-          </div>
-          <div>
-            <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Stock</div>
-            <div style="font-size:1.65rem;font-weight:700;line-height:1;">{{ total_stocks|floatformat:0 }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;justify-content:space-around;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i class="la la-exclamation-triangle" style="font-size:1.2rem;color:#d97706;"></i>
-            </div>
-            <div>
-              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Low Stock</div>
-              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div>
-            </div>
-          </div>
-          <div style="width:1px;height:36px;background:rgba(0,0,0,0.08);"></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i class="la la-times-circle" style="font-size:1.2rem;color:#dc2626;"></i>
-            </div>
-            <div>
-              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Out of Stock</div>
-              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div class="d-flex align-items-baseline gap-2 mt-1 mb-1">
+      <h4 class="mb-0" style="font-weight:700;">Dashboard</h4>
     </div>
 
-    <!-- Sales vs Expenses Chart -->
-    <div class="row gy-4">
-      <div class="col-12">
-        <div class="card h-100">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-              <h5 class="mb-0">Profit</h5>
-              {% if profit_badge %}
-                <span style="font-size:0.82rem;font-weight:700;padding:3px 12px;border-radius:20px;background:{% if profit_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if profit_badge.up %}#16a34a{% else %}#dc2626{% endif %};">
-                  {% if profit_badge.up %}▲{% else %}▼{% endif %} {{ profit_badge.text }}
-                </span>
-                <span style="font-size:0.72rem;color:#9ca3af;">vs last month</span>
-              {% endif %}
-            </div>
-            <div class="d-flex gap-2">
-              <select id="yearFilter" class="form-select form-select-sm" style="width: 100px;"></select>
-
-              <select id="monthFilter" class="form-select form-select-sm" style="width: 100px;">
-                <option value="all">All Months</option>
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
+    <!-- KPI Cards -->
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:16px 0 28px;">
+      {% comment "Revenue/Profit/Expenses KPI cards — disabled, metrics shown in chart strips instead" %}
+      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-chart-bar" style="font-size:1.1rem;color:#2563eb;"></i></div>
+            <span style="font-size:0.66rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Revenue</span>
           </div>
-          <div class="card-body d-flex justify-content-center">
-            <div id="salesExpensesChart" style="height: 350px; width: 90%; max-width: 900px;"></div>
-          </div>
+          <div style="font-size:1.3rem;font-weight:700;line-height:1.1;margin-bottom:7px;">₱{{ cur_sales|floatformat:2 }}</div>
+          {% if revenue_badge %}<div style="display:flex;align-items:center;gap:5px;"><span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:{% if revenue_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if revenue_badge.up %}#16a34a{% else %}#dc2626{% endif %};">{% if revenue_badge.up %}▲{% else %}▼{% endif %} {{ revenue_badge.text }}</span><span style="font-size:0.67rem;color:#9ca3af;">vs last mo.</span></div>
+          {% else %}<span style="font-size:0.67rem;color:#9ca3af;">No prior data</span>{% endif %}
         </div>
       </div>
-    </div>
-
-    <!-- Revenue Change Chart -->
-    <div class="row gy-4 pt-4">
-      <div class="col-12">
-        <div class="card h-100">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-              <h5 class="mb-0">Revenue</h5>
-              {% if revenue_badge %}
-                <span style="font-size:0.82rem;font-weight:700;padding:3px 12px;border-radius:20px;background:{% if revenue_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if revenue_badge.up %}#16a34a{% else %}#dc2626{% endif %};">
-                  {% if revenue_badge.up %}▲{% else %}▼{% endif %} {{ revenue_badge.text }}
-                </span>
-                <span style="font-size:0.72rem;color:#9ca3af;">vs last month</span>
-              {% endif %}
-            </div>
-            <div class="d-flex gap-2">
-              <select id="revenueYearFilter" class="form-select form-select-sm" style="width: 100px;"></select>
-
-              <select id="revenueMonthFilter" class="form-select form-select-sm" style="width: 130px;">
-                <option value="all">All Months</option>
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
+      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-dollar-sign" style="font-size:1.1rem;color:#16a34a;"></i></div>
+            <span style="font-size:0.66rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Profit</span>
           </div>
-          <div class="card-body" style="padding: 20px;">
-            <div style="overflow-x:auto; white-space:nowrap;">
-              <div id="revenueChangeChart" style="min-width:1200px; padding: 0 20px;"></div>
-            </div>
-          </div>
+          <div style="font-size:1.3rem;font-weight:700;line-height:1.1;margin-bottom:7px;{% if cur_profit < 0 %}color:#dc2626;{% endif %}">₱{{ cur_profit|floatformat:2 }}</div>
+          {% if profit_badge %}<div style="display:flex;align-items:center;gap:5px;"><span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:{% if profit_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if profit_badge.up %}#16a34a{% else %}#dc2626{% endif %};">{% if profit_badge.up %}▲{% else %}▼{% endif %} {{ profit_badge.text }}</span><span style="font-size:0.67rem;color:#9ca3af;">vs last mo.</span></div>
+          {% else %}<span style="font-size:0.67rem;color:#9ca3af;">No prior data</span>{% endif %}
         </div>
       </div>
-    </div>
-
-  <!-- Best Seller + Recent Sales -->
-  <div class="row gy-4 pt-4">
-    <div class="col-6">
-      <a href="{% url 'best-seller-products' %}" style="text-decoration: none; color: inherit;">
-        <div class="card h-100" style="cursor: pointer;">
-          <div class="card-header">
-            <h5 class="mb-0">Best Seller Products</h5>
+      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:18px 20px;">
+          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
+            <div style="width:34px;height:34px;border-radius:9px;background:#fff7ed;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-file-invoice" style="font-size:1.1rem;color:#ea580c;"></i></div>
+            <span style="font-size:0.66rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Expenses</span>
           </div>
-          <div class="card-body d-flex justify-content-center">
-            <div id="bestSellerChart" class="w-100" style="height: 100%; min-height: 300px;"></div>
+          <div style="font-size:1.3rem;font-weight:700;line-height:1.1;margin-bottom:7px;">₱{{ cur_expenses|floatformat:2 }}</div>
+          {% if expenses_badge %}<div style="display:flex;align-items:center;gap:5px;"><span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:{% if expenses_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if expenses_badge.up %}#16a34a{% else %}#dc2626{% endif %};">{% if expenses_badge.up %}▼{% else %}▲{% endif %} {{ expenses_badge.text }}</span><span style="font-size:0.67rem;color:#9ca3af;">vs last mo.</span></div>
+          {% else %}<span style="font-size:0.67rem;color:#9ca3af;">No prior data</span>{% endif %}
+        </div>
+      </div>
+      {% endcomment %}
+      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+        <div class="card-body" style="padding:20px 24px;">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <div style="width:38px;height:38px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-box" style="font-size:1.25rem;color:#2563eb;"></i></div>
+            <span style="font-size:0.78rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Products</span>
+          </div>
+          <div style="font-size:1.75rem;font-weight:800;line-height:1.1;margin-bottom:8px;">{{ total_products }}</div>
+          <span style="font-size:0.8rem;color:#6b7280;font-weight:600;">{{ total_stocks|floatformat:0 }} units in stock</span>
+        </div>
+      </div>
+      <a href="{% url 'product-inventory' %}" style="text-decoration:none;color:inherit;">
+        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.13)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.08)';this.style.transform='none'">
+          <div class="card-body" style="padding:20px 24px;">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+              <div style="width:38px;height:38px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-bell" style="font-size:1.25rem;color:#d97706;"></i></div>
+              <span style="font-size:0.78rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Stock Alerts</span>
+            </div>
+            <div style="display:flex;gap:22px;align-items:flex-end;">
+              <div><div style="font-size:1.75rem;font-weight:800;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div><div style="font-size:0.78rem;color:#6b7280;font-weight:600;margin-top:4px;">Low Stock</div></div>
+              <div style="width:1px;height:34px;background:#e5e7eb;"></div>
+              <div><div style="font-size:1.75rem;font-weight:800;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div><div style="font-size:0.78rem;color:#6b7280;font-weight:600;margin-top:4px;">Out of Stock</div></div>
+            </div>
           </div>
         </div>
       </a>
     </div>
 
-
-      <div class="col-6">
-        <a href="{% url 'salesexpenses' %}" style="text-decoration: none; color: inherit;">
-          <div class="card h-100" style="cursor: pointer;">
-            <div class="card-header">
-              <h5 class="mb-0">Recent Sales</h5>
+    <!-- Row 2: Sales vs Expenses Chart -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
+            <div>
+              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Sales vs Expenses</h6>
+              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Monthly profit breakdown</p>
             </div>
-            <div class="card-body">
-              <ul class="list-group">
-                {% for w in recent_sales|slice:":5" %}
-                  <li class="list-group-item d-flex justify-content-between align-items-center">
-                    {{ w.get_item_display }} - Qty: {{ w.quantity }}
-                    <span class="badge bg-success">₱{{ w.compute_revenue|floatformat:2 }}</span>
-                  </li>
-                {% empty %}
-                  <li class="list-group-item">No recent sales yet.</li>
-                {% endfor %}
-              </ul>
+            <div class="d-flex gap-2">
+              <select id="yearFilter" class="form-select form-select-sm" style="width:100px;"></select>
+              <select id="monthFilter" class="form-select form-select-sm" style="width:110px;">
+                <option value="all">All Months</option>
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body" style="padding:20px;">
+            <div style="display:flex;gap:28px;margin-bottom:14px;padding:10px 16px;background:#f9fafb;border-radius:10px;">
+              <div id="profitContainer">
+                <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Profit</div>
+                <div id="profitSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+              </div>
+              <div id="summaryDivider" style="width:1px;background:#e5e7eb;"></div>
+              <div id="expensesContainer">
+                <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Expenses</div>
+                <div id="expensesSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+              </div>
+            </div>
+            <div id="salesExpensesChart" style="height:350px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 3: Revenue Trend Chart -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
+            <div>
+              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Revenue Trend</h6>
+              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Monthly or daily sales overview</p>
+            </div>
+            <div class="d-flex gap-2">
+              <select id="revenueYearFilter" class="form-select form-select-sm" style="width:100px;"></select>
+              <select id="revenueMonthFilter" class="form-select form-select-sm" style="width:130px;">
+                <option value="all">All Months</option>
+                <option value="01">January</option>
+                <option value="02">February</option>
+                <option value="03">March</option>
+                <option value="04">April</option>
+                <option value="05">May</option>
+                <option value="06">June</option>
+                <option value="07">July</option>
+                <option value="08">August</option>
+                <option value="09">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body" style="padding:20px;">
+            <div style="display:flex;gap:28px;margin-bottom:14px;padding:10px 16px;background:#f9fafb;border-radius:10px;">
+              <div>
+                <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Revenue</div>
+                <div id="revenueSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <div id="revenueChangeChart" style="min-width:400px;height:350px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Best Sellers + Recent Sales -->
+    <div class="row g-4" style="margin-top:8px;">
+      <div class="col-lg-6">
+        <a href="{% url 'best-seller-products' %}" style="text-decoration:none;color:inherit;">
+          <div class="card h-100" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
+            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
+              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Best Sellers</h6>
+              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Top products this month</p>
+            </div>
+            <div class="card-body d-flex align-items-center justify-content-center" style="padding:20px;">
+              <div id="bestSellerChart" class="w-100" style="height:320px;"></div>
+            </div>
+          </div>
+        </a>
+      </div>
+      <div class="col-lg-6">
+        <a href="{% url 'salesexpenses' %}" style="text-decoration:none;color:inherit;">
+          <div class="card h-100" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
+            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
+              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Recent Sales</h6>
+              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Latest recorded transactions</p>
+            </div>
+            <div class="card-body" style="padding:12px 20px;">
+              {% for w in recent_sales|slice:":6" %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
+                  <span style="font-size:0.85rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
+                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:12px;">
+                    <span style="font-size:0.75rem;color:#9ca3af;">×{{ w.quantity }}</span>
+                    <span style="font-size:0.78rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:20px;">₱{{ w.compute_revenue|floatformat:2 }}</span>
+                  </div>
+                </div>
+              {% empty %}
+                <div style="display:flex;align-items:center;justify-content:center;height:100px;color:#9ca3af;font-size:0.85rem;">No recent sales yet.</div>
+              {% endfor %}
             </div>
           </div>
         </a>
@@ -301,7 +325,7 @@
 {% block page_js %}
   {{ block.super }}
   {% if is_superuser %}
-    <script src="{% static 'js/dashboards-analytics.js' %}?v=4"></script>
+    <script src="{% static 'js/dashboards-analytics.js' %}?v=6"></script>
   {% else %}
     <script>
       window._inventoryData = {

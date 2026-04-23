@@ -30,6 +30,12 @@
   let salesExpensesChart = null;
   let bestSellerChart = null;
   let revenueChart = null;
+  let allMonthlyData = null;
+
+  const fmtPeso = v => '₱' + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+  const summaryHtml = (cur, prev, hasPrev) => hasPrev
+    ? `${fmtPeso(cur)} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ${fmtPeso(prev)} <span style="color:#b0b8c1;font-weight:400;">last month</span>`
+    : `${fmtPeso(cur)} <span style="color:#b0b8c1;font-weight:400;">year total</span>`;
 
   // Function to update all charts with new theme colors
   const updateChartsTheme = () => {
@@ -100,12 +106,35 @@
     .then(res => res.json())
     .then(data => {
       const themeColors = getThemeColors();
+      const hiddenSeries = new Set();
+
+      function syncSummaryVisibility() {
+        const salesHidden = hiddenSeries.has(0);
+        const expensesHidden = hiddenSeries.has(1);
+        const profitEl = document.getElementById('profitContainer');
+        const expEl = document.getElementById('expensesContainer');
+        const divEl = document.getElementById('summaryDivider');
+        if (profitEl) profitEl.style.display = salesHidden ? 'none' : '';
+        if (expEl) expEl.style.display = expensesHidden ? 'none' : '';
+        if (divEl) divEl.style.display = (salesHidden || expensesHidden) ? 'none' : '';
+      }
+
       const options = { 
         chart: {
           type: "bar",
           height: 350,
           foreColor: themeColors.textColor,
-          toolbar: { show: false }
+          toolbar: { show: false },
+          events: {
+            legendClick: function(chartContext, seriesIndex) {
+              if (hiddenSeries.has(seriesIndex)) {
+                hiddenSeries.delete(seriesIndex);
+              } else {
+                hiddenSeries.add(seriesIndex);
+              }
+              syncSummaryVisibility();
+            }
+          }
         },
         series: [],
         colors: ["#22c55e", "#ef4444"],
@@ -140,6 +169,7 @@
       };
       salesExpensesChart = new ApexCharts(document.querySelector("#salesExpensesChart"), options);
       salesExpensesChart.render();
+      allMonthlyData = data;
 
       const yearSelect = document.querySelector("#yearFilter");
       const monthSelect = document.querySelector("#monthFilter");
@@ -198,6 +228,13 @@
             ],
             xaxis: { categories: filteredMonths }
           });
+
+          const tS = filteredSales.reduce((a, b) => a + b, 0);
+          const tE = filteredExpenses.reduce((a, b) => a + b, 0);
+          const el1 = document.getElementById('profitSummary');
+          const el2 = document.getElementById('expensesSummary');
+          if (el1) el1.innerHTML = summaryHtml(tS - tE, 0, false);
+          if (el2) el2.innerHTML = summaryHtml(tE, 0, false);
         } else {
           const selected = `${selectedYear}-${selectedMonth}`;
           const filteredDates = data.daily_dates.filter(d => d.startsWith(selected));
@@ -216,6 +253,20 @@
             ],
             xaxis: { categories: dayLabels }
           });
+
+          const mIdx = data.months.indexOf(selected);
+          const curS = mIdx >= 0 ? data.sales[mIdx] : filteredSales.reduce((a, b) => a + b, 0);
+          const curE = mIdx >= 0 ? data.expenses[mIdx] : filteredExpenses.reduce((a, b) => a + b, 0);
+          let pm = parseInt(selectedMonth) - 1, py = parseInt(selectedYear);
+          if (pm === 0) { pm = 12; py--; }
+          const prevKey = `${py}-${String(pm).padStart(2, '0')}`;
+          const pIdx = data.months.indexOf(prevKey);
+          const pS = pIdx >= 0 ? data.sales[pIdx] : 0;
+          const pE = pIdx >= 0 ? data.expenses[pIdx] : 0;
+          const el1 = document.getElementById('profitSummary');
+          const el2 = document.getElementById('expensesSummary');
+          if (el1) el1.innerHTML = summaryHtml(curS - curE, pS - pE, true);
+          if (el2) el2.innerHTML = summaryHtml(curE, pE, true);
         }
       }
 
@@ -379,6 +430,21 @@
               : `${monthNames[parseInt(selectedMonth, 10)]} ${selectedYear}`
           }
         });
+
+        const totalRev = revenues.reduce((a, b) => a + b, 0);
+        const el = document.getElementById('revenueSummary');
+        if (el) {
+          if (selectedMonth !== "all" && allMonthlyData) {
+            let pm = parseInt(selectedMonth) - 1, py = parseInt(selectedYear);
+            if (pm === 0) { pm = 12; py--; }
+            const prevKey = `${py}-${String(pm).padStart(2, '0')}`;
+            const pIdx = allMonthlyData.months.indexOf(prevKey);
+            const prevRev = pIdx >= 0 ? allMonthlyData.sales[pIdx] : 0;
+            el.innerHTML = summaryHtml(totalRev, prevRev, true);
+          } else {
+            el.innerHTML = summaryHtml(totalRev, 0, false);
+          }
+        }
       });
   }
 
