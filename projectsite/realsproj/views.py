@@ -2766,8 +2766,23 @@ class ProductBatchUpdateView(UpdateView):
     success_url = reverse_lazy('product-batch')
 
     def form_valid(self, form):
+        # Capture old values before the save
+        old_obj = self.get_object()
+        old_quantity = old_obj.quantity
+        old_original_quantity = old_obj.original_quantity
+
         auth_user = AuthUser.objects.get(id=self.request.user.id)
         form.instance.created_by_admin = auth_user
+
+        # Update original_quantity to reflect the manual edit
+        new_quantity = form.cleaned_data['quantity']
+        if old_original_quantity is None or old_quantity >= old_original_quantity:
+            # No prior deductions (or already-broken state): original matches new quantity
+            form.instance.original_quantity = new_quantity
+        else:
+            # Partially deducted: adjust original by the same delta to preserve deducted amount
+            form.instance.original_quantity = old_original_quantity + (new_quantity - old_quantity)
+
         response = super().form_valid(form)
         
         # Note: Product inventory is updated by database trigger log_product_batches_update
@@ -3131,8 +3146,23 @@ class RawMaterialBatchUpdateView(UpdateView):
     success_url = reverse_lazy('rawmaterial-batch')
 
     def form_valid(self, form):
+        # Capture old values before the save
+        old_obj = self.get_object()
+        old_quantity = old_obj.quantity
+        old_original_quantity = old_obj.original_quantity
+
         auth_user = AuthUser.objects.get(id=self.request.user.id)
         form.instance.created_by_admin = auth_user
+
+        # Update original_quantity to reflect the manual edit
+        new_quantity = form.cleaned_data['quantity']
+        if old_original_quantity is None or old_quantity >= old_original_quantity:
+            # No prior deductions (or already-broken state): original matches new quantity
+            form.instance.original_quantity = new_quantity
+        else:
+            # Partially deducted: adjust original by the same delta to preserve deducted amount
+            form.instance.original_quantity = old_original_quantity + (new_quantity - old_quantity)
+
         messages.success(self.request, "✅ Packaging batch updated successfully.")
         return super().form_valid(form)
     
