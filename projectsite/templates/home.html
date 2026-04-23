@@ -264,58 +264,63 @@
       </div>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:14px;height:calc(100vh - 140px);">
-
-      <div style="display:flex;gap:14px;height:320px;flex-shrink:0;">
-        <div style="flex:1;min-width:0;">
-          <div class="card" style="height:100%;border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-            <div class="card-header" style="padding:13px 18px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.05);border-radius:12px 12px 0 0;">
-              <h6 class="mb-0" style="font-weight:600;font-size:0.88rem;">Recent Sales</h6>
+    <!-- Row 2: Inventory Overview (full width) -->
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <div class="card-header" style="padding:16px 20px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);border-radius:14px 14px 0 0;display:flex;align-items:center;justify-content:space-between;">
+            <div>
+              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Inventory Overview</h6>
+              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Stock levels across all products</p>
             </div>
-            <div class="card-body" style="padding:8px 14px;overflow-y:auto;height:calc(320px - 47px);">
-              {% if recent_sales %}
-              <ul class="list-unstyled mb-0">
-                {% for w in recent_sales %}
-                <li style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
-                  <span style="font-size:0.83rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
-                  <span style="font-size:0.78rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 10px;border-radius:20px;white-space:nowrap;margin-left:10px;">× {{ w.quantity }}</span>
-                </li>
-                {% endfor %}
-              </ul>
-              {% else %}
-              <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.85rem;">No recent sales.</div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div class="card" style="height:100%;border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-            <div class="card-header" style="padding:13px 18px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.05);border-radius:12px 12px 0 0;">
-              <h6 class="mb-0" style="font-weight:600;font-size:0.88rem;">Best Selling Products</h6>
-            </div>
-            <div class="card-body" style="padding:10px 12px;overflow:hidden;height:calc(320px - 47px);">
-              <div id="bestSellerChart" style="height:100%;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="flex:1;min-height:0;">
-        <div class="card h-100" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <div class="card-header" style="padding:13px 18px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.05);border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;">
-            <h6 class="mb-0" style="font-weight:600;font-size:0.88rem;">Inventory Overview</h6>
             <div style="display:flex;gap:8px;">
               <span style="font-size:0.68rem;font-weight:600;color:#fff;background:#22c55e;padding:2px 10px;border-radius:20px;">Healthy</span>
               <span style="font-size:0.68rem;font-weight:600;color:#fff;background:#f59e0b;padding:2px 10px;border-radius:20px;">Low</span>
               <span style="font-size:0.68rem;font-weight:600;color:#fff;background:#ef4444;padding:2px 10px;border-radius:20px;">Out</span>
             </div>
           </div>
-          <div class="card-body" style="padding:10px 12px;overflow:hidden;">
-            <div id="inventoryChart" style="height:100%;"></div>
+          <div class="card-body" style="padding:20px;">
+            <div id="inventoryChart" style="height:380px;"></div>
           </div>
         </div>
       </div>
+    </div>
 
+    <!-- Row 3: Best-Selling Products + Recent Sales (side-by-side) -->
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="card h-100" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <div class="card-header" style="padding:16px 20px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);border-radius:14px 14px 0 0;">
+            <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Best Sellers</h6>
+            <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Top products this month</p>
+          </div>
+          <div class="card-body d-flex align-items-center justify-content-center" style="padding:20px;">
+            <div id="bestSellerChart" class="w-100" style="height:320px;"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card h-100" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
+          <div class="card-header" style="padding:16px 20px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);border-radius:14px 14px 0 0;">
+            <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Recent Sales</h6>
+            <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Latest recorded transactions</p>
+          </div>
+          <div class="card-body" style="padding:12px 20px;">
+            {% if recent_sales %}
+            <ul class="list-unstyled mb-0">
+              {% for w in recent_sales %}
+              <li style="display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
+                <span style="font-size:0.85rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
+                <span style="font-size:0.78rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:20px;white-space:nowrap;margin-left:10px;">× {{ w.quantity }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <div style="display:flex;align-items:center;justify-content:center;height:100px;color:#9ca3af;font-size:0.85rem;">No recent sales.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
     </div>
     {% endif %}
   </div>
