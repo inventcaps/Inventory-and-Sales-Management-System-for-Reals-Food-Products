@@ -475,18 +475,25 @@ def monthly_report(request):
     return render(request, "reports/monthly_report.html", {
         "report": report,
         "summary": summary,
+        "title": "Monthly Report",
     })
 
+@require_GET
 @login_required
 def monthly_report_export(request):
+    import csv
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
     if not request.user.is_superuser:
         messages.error(request, "❌ You don't have permission to export financial reports.")
         return redirect('home')
-    response = HttpResponse(content_type="text/csv")
-    response["Content-Disposition"] = 'attachment; filename="financial_report.csv"'
-    response.write(u'\ufeff'.encode('utf8'))
-    writer = csv.writer(response)
-    writer.writerow(["Month", "Revenue", "Financial Loss", "Expenses", "Profit", "Revenue Change", "Profit Change", "Trend"])
+
+    format_type = request.GET.get('format', 'csv').lower()
+
     sales = (
         Sales.objects.annotate(month=TruncMonth("date"))
         .values("month")
@@ -561,42 +568,106 @@ def monthly_report_export(request):
             "profit": profit,
         })
 
+    # Calculate changes and trends
     for i in range(len(report)):
         if i > 0: 
             older = report[i - 1]
             rc = report[i]["revenue"] - older["revenue"]
             pc = report[i]["profit"] - older["profit"]
 
-            rev_change = f"↑ ₱{rc:,.2f}" if rc > 0 else f"↓ ₱{abs(rc):,.2f}" if rc < 0 else "₱0.00"
-            prof_change = f"↑ ₱{pc:,.2f}" if pc > 0 else f"↓ ₱{abs(pc):,.2f}" if pc < 0 else "₱0.00"
+            report[i]["revenue_change"] = rc
+            report[i]["profit_change"] = pc
 
             if rc > 0 and pc > 0:
-                trend = "Revenue & Profit Increased"
+                report[i]["trend"] = "Revenue & Profit Increased"
             elif rc > 0 and pc < 0:
-                trend = "Revenue Increased, Profit Decreased"
+                report[i]["trend"] = "Revenue Increased, Profit Decreased"
             elif rc < 0 and pc > 0:
-                trend = "Revenue Decreased, Profit Increased"
+                report[i]["trend"] = "Revenue Decreased, Profit Increased"
             elif rc == 0 and pc == 0:
-                trend = "No Change"
+                report[i]["trend"] = "No Change"
             else:
-                trend = "Revenue & Profit Decreased"
+                report[i]["trend"] = "Revenue & Profit Decreased"
         else:
-            rev_change = "-"
-            prof_change = "-"
-            trend = "-"
+            report[i]["revenue_change"] = None
+            report[i]["profit_change"] = None
+            report[i]["trend"] = "-"
 
-        writer.writerow([
-            report[i]["month"].strftime("%B %Y"),
-            f"₱{report[i]['revenue']:,.2f}",
-            f"₱{report[i]['financial_loss']:,.2f}",
-            f"₱{report[i]['expenses']:,.2f}",
-            f"₱{report[i]['profit']:,.2f}",
-            rev_change,
-            prof_change,
-            trend,
-        ])
+    try:
+        # Export based on format
+        if format_type == 'pdf':
+            # Calculate summary data
+            total_revenue = sum(row["revenue"] for row in report)
+            total_financial_loss = sum(row["financial_loss"] for row in report)
+            total_profit = sum(row["profit"] for row in report)
+            average_profit = total_profit / len(report) if report else Decimal(0)
 
-    return response
+            # Prepare context for template
+            context = {
+                'report': report,
+                'summary': {
+                    'total_revenue': total_revenue,
+                    'total_financial_loss': total_financial_loss,
+                    'total_profit': total_profit,
+                    'average_profit': average_profit,
+                },
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,
+            }
+
+            # Render HTML template
+            html = render_to_string('exports/monthly_report_pdf.html', context)
+
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="monthly_report.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+
+        else:  # CSV format
+            response = HttpResponse(content_type="text/csv")
+            response["Content-Disposition"] = 'attachment; filename="financial_report.csv"'
+            response.write(u'\ufeff'.encode('utf8'))
+            writer = csv.writer(response)
+            writer.writerow(["Month", "Revenue", "Financial Loss", "Expenses", "Profit", "Revenue Change", "Profit Change", "Trend"])
+
+            for i in range(len(report)):
+                row = report[i]
+                rev_change = f"↑ ₱{row['revenue_change']:,.2f}" if row['revenue_change'] and row['revenue_change'] > 0 else f"↓ ₱{abs(row['revenue_change']):,.2f}" if row['revenue_change'] and row['revenue_change'] < 0 else "₱0.00" if row['revenue_change'] == 0 else "-"
+                prof_change = f"↑ ₱{row['profit_change']:,.2f}" if row['profit_change'] and row['profit_change'] > 0 else f"↓ ₱{abs(row['profit_change']):,.2f}" if row['profit_change'] and row['profit_change'] < 0 else "₱0.00" if row['profit_change'] == 0 else "-"
+
+                writer.writerow([
+                    row["month"].strftime("%B %Y"),
+                    f"₱{row['revenue']:,.2f}",
+                    f"₱{row['financial_loss']:,.2f}",
+                    f"₱{row['expenses']:,.2f}",
+                    f"₱{row['profit']:,.2f}",
+                    rev_change,
+                    prof_change,
+                    row["trend"],
+                ])
+
+            return response
+
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="monthly_report_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="monthly_report_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
 
 class ProductsList(ListView):
     model = Products
@@ -3464,6 +3535,15 @@ class RawMaterialInventoryList(ListView):
 @require_GET
 @login_required
 def export_rawmaterial_inventory(request):
+    import csv
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+
     qs = RawMaterialInventory.objects.select_related('material').filter(
         material__is_archived=False
     ).order_by('material_id')
@@ -3498,44 +3578,136 @@ def export_rawmaterial_inventory(request):
     elif status == "out_of_stock":
         qs = qs.filter(total_stock=0)
 
-    response = HttpResponse(content_type='text/csv')
-    any_filter = bool(q or category or status)
-    suffix = 'filtered' if any_filter else 'all'
-    response['Content-Disposition'] = f'attachment; filename="raw_material_inventory_{suffix}.csv"'
+    try:
+        # Export based on format
+        if format_type == 'pdf':
+            # Prepare data for PDF template
+            inventory_items = []
+            total_stock = 0
+            low_stock_count = 0
 
-    writer = csv.writer(response)
-    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
-    writer.writerow(['Filters', f"q={q}", f"category={category}", f"status={status}"])
-    total_stock_sum = qs.aggregate(total=Sum('total_stock'))['total'] or 0
-    writer.writerow(['Total Materials', qs.count()])
-    writer.writerow(['Total Stock (Units)', f"{total_stock_sum:.0f}"])
-    writer.writerow([])
+            for item in qs:
+                mat = item.material
+                unit_obj = getattr(mat, 'unit', None)
+                unit_name = getattr(unit_obj, 'unit_name', str(unit_obj)) if unit_obj is not None else ''
+                
+                # Handle unit size - convert to float for formatting if possible
+                try:
+                    if mat.size is not None:
+                        unit_size = float(mat.size)
+                    else:
+                        unit_size = 0
+                except (ValueError, TypeError):
+                    unit_size = 0
+                
+                price = mat.price_per_unit if mat.price_per_unit is not None else 0
+                
+                status_label = (
+                    'Out of Stock' if item.total_stock == 0 else
+                    'Low Stock' if item.total_stock < item.reorder_threshold else
+                    'Warning' if item.total_stock == item.reorder_threshold else
+                    'On Stock'
+                )
 
-    writer.writerow(['Material', 'Unit Size', 'Unit', 'Price Per Unit', 'Category', 'Current Stock', 'Reorder Threshold', 'Status'])
-    for item in qs:
-        mat = item.material
-        unit_obj = getattr(mat, 'unit', None)
-        unit_name = getattr(unit_obj, 'unit_name', str(unit_obj)) if unit_obj is not None else ''
-        unit_size = f"{mat.size:.0f}" if mat.size is not None else ''
-        price = f"{mat.price_per_unit:.2f}" if mat.price_per_unit is not None else ''
-        status_label = (
-            'Out of Stock' if item.total_stock == 0 else
-            'Low Stock' if item.total_stock < item.reorder_threshold else
-            'Warning' if item.total_stock == item.reorder_threshold else
-            'On Stock'
-        )
-        writer.writerow([
-            mat.name,
-            unit_size,
-            unit_name,
-            price,
-            (mat.category or '').title() if getattr(mat, 'category', None) else '',
-            f"{item.total_stock:.0f}",
-            f"{item.reorder_threshold:.0f}",
-            status_label,
-        ])
+                if status_label == 'Low Stock':
+                    low_stock_count += 1
 
-    return response
+                inventory_items.append({
+                    'material_name': mat.name,
+                    'unit_size': unit_size,
+                    'unit_name': unit_name,
+                    'price_per_unit': price,
+                    'category': mat.category or '',
+                    'current_stock': item.total_stock,
+                    'reorder_threshold': item.reorder_threshold,
+                    'status': status_label,
+                })
+
+                total_stock += item.total_stock
+
+            # Prepare context for template
+            context = {
+                'inventory_items': inventory_items,
+                'total_materials': len(inventory_items),
+                'total_stock': total_stock,
+                'low_stock_count': low_stock_count,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,
+                'filters': {
+                    'search': q if q else None,
+                    'status': status.replace('_', ' ') if status else None,
+                    'category': category if category else None
+                }
+            }
+
+            # Render HTML template
+            html = render_to_string('exports/raw_material_inventory_pdf.html', context)
+
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="raw_material_inventory.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+
+        else:  # CSV format
+            response = HttpResponse(content_type='text/csv')
+            any_filter = bool(q or category or status)
+            suffix = 'filtered' if any_filter else 'all'
+            response['Content-Disposition'] = f'attachment; filename="raw_material_inventory_{suffix}.csv"'
+
+            writer = csv.writer(response)
+            writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+            writer.writerow(['Filters', f"q={q}", f"category={category}", f"status={status}"])
+            total_stock_sum = qs.aggregate(total=Sum('total_stock'))['total'] or 0
+            writer.writerow(['Total Materials', qs.count()])
+            writer.writerow(['Total Stock (Units)', f"{total_stock_sum:.0f}"])
+            writer.writerow([])
+
+            writer.writerow(['Material', 'Unit Size', 'Unit', 'Price Per Unit', 'Category', 'Current Stock', 'Reorder Threshold', 'Status'])
+            for item in qs:
+                mat = item.material
+                unit_obj = getattr(mat, 'unit', None)
+                unit_name = getattr(unit_obj, 'unit_name', str(unit_obj)) if unit_obj is not None else ''
+                unit_size = f"{mat.size:.0f}" if mat.size is not None else ''
+                price = f"{mat.price_per_unit:.2f}" if mat.price_per_unit is not None else ''
+                status_label = (
+                    'Out of Stock' if item.total_stock == 0 else
+                    'Low Stock' if item.total_stock < item.reorder_threshold else
+                    'Warning' if item.total_stock == item.reorder_threshold else
+                    'On Stock'
+                )
+                writer.writerow([
+                    mat.name,
+                    unit_size,
+                    unit_name,
+                    price,
+                    (mat.category or '').title() if getattr(mat, 'category', None) else '',
+                    f"{item.total_stock:.0f}",
+                    f"{item.reorder_threshold:.0f}",
+                    status_label,
+                ])
+
+            return response
+
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="raw_material_inventory_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="raw_material_inventory_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
 
 class ProductVariantCreateView(CreateView):
     model = ProductVariants
@@ -4146,12 +4318,39 @@ class WithdrawSuccessView(ListView):
 @require_GET
 @login_required
 def export_withdrawals(request):
+    import csv
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    
     qs = Withdrawals.objects.filter(is_archived=False).select_related('created_by_admin').order_by('-date')
     
     show_all = request.GET.get('show_all', '').strip()
     date_filter = request.GET.get('date_filter', '').strip()
     item_type = request.GET.get('item_type', '').strip()
     reason = request.GET.get('reason', '').strip()
+    
+    # Build filter info for display
+    filter_info_parts = []
+    if show_all:
+        filter_info_parts.append('All Data')
+    elif date_filter:
+        filter_info_parts.append(f'Month: {date_filter}')
+    else:
+        today = timezone.now()
+        filter_info_parts.append(f'Month: {today.strftime("%Y-%m")}')
+    
+    if item_type:
+        filter_info_parts.append(f'Item Type: {item_type}')
+    
+    if reason:
+        filter_info_parts.append(f'Reason: {reason}')
+    
+    filter_info = ' | '.join(filter_info_parts) if filter_info_parts else 'All Data'
     
     if not show_all:
         if date_filter:
@@ -4171,30 +4370,88 @@ def export_withdrawals(request):
     if reason:
         qs = qs.filter(reason=reason)
     
-    response = HttpResponse(content_type='text/csv')
-    suffix = 'all' if show_all else 'current_month'
-    if date_filter and not show_all:
-        suffix = 'filtered'
-    response['Content-Disposition'] = f'attachment; filename="withdrawals_{suffix}.csv"'
+    try:
+        # Export based on format
+        if format_type == 'pdf':
+            # Calculate summary data
+            total_withdrawals = sum(w.quantity for w in qs)
+            
+            product_withdrawals = [w for w in qs if w.item_type == 'PRODUCT']
+            raw_material_withdrawals = [w for w in qs if w.item_type == 'RAW_MATERIAL']
+            
+            product_withdrawals_count = len(product_withdrawals)
+            product_withdrawals_qty = sum(w.quantity for w in product_withdrawals)
+            
+            rawmat_withdrawals_count = len(raw_material_withdrawals)
+            rawmat_withdrawals_qty = sum(w.quantity for w in raw_material_withdrawals)
+            
+            # Prepare context for template
+            context = {
+                'withdrawals': qs,
+                'total_withdrawals': total_withdrawals,
+                'product_withdrawals_count': product_withdrawals_count,
+                'product_withdrawals_qty': product_withdrawals_qty,
+                'rawmat_withdrawals_count': rawmat_withdrawals_count,
+                'rawmat_withdrawals_qty': rawmat_withdrawals_qty,
+                'filter_info': filter_info,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,
+            }
+            
+            # Render HTML template
+            html = render_to_string('exports/withdrawals_pdf.html', context)
+            
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="withdrawals.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+        
+        else:  # CSV format
+            response = HttpResponse(content_type='text/csv')
+            suffix = 'all' if show_all else 'current_month'
+            if date_filter and not show_all:
+                suffix = 'filtered'
+            response['Content-Disposition'] = f'attachment; filename="withdrawals_{suffix}.csv"'
+            
+            writer = csv.writer(response)
+            writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
+            writer.writerow(['Filters', f"show_all={show_all}", f"date_filter={date_filter if not show_all else ''}", f"item_type={item_type}", f"reason={reason}"])
+            writer.writerow(['Total Records', qs.count()])
+            writer.writerow([])
+            
+            writer.writerow(['Date & Time', 'Item Type', 'Reason', 'Item Display', 'Quantity', 'Created By'])
+            for withdrawal in qs:
+                writer.writerow([
+                    withdrawal.date.strftime('%Y-%m-%d %H:%M:%S'),
+                    withdrawal.get_item_type_display(),
+                    withdrawal.get_reason_display(),
+                    withdrawal.get_item_display(),
+                    f"{withdrawal.quantity:.2f}",
+                    withdrawal.created_by_admin.username,
+                ])
+            
+            return response
     
-    writer = csv.writer(response)
-    writer.writerow(['Exported At', timezone.now().strftime('%Y-%m-%d %H:%M:%S')])
-    writer.writerow(['Filters', f"show_all={show_all}", f"date_filter={date_filter if not show_all else ''}", f"item_type={item_type}", f"reason={reason}"])
-    writer.writerow(['Total Records', qs.count()])
-    writer.writerow([])
-    
-    writer.writerow(['Date & Time', 'Item Type', 'Reason', 'Item Display', 'Quantity', 'Created By'])
-    for withdrawal in qs:
-        writer.writerow([
-            withdrawal.date.strftime('%Y-%m-%d %H:%M:%S'),
-            withdrawal.get_item_type_display(),
-            withdrawal.get_reason_display(),
-            withdrawal.get_item_display(),
-            f"{withdrawal.quantity:.2f}",
-            withdrawal.created_by_admin.username,
-        ])
-    
-    return response
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="withdrawals_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="withdrawals_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
     
 class WithdrawItemView(View):
     template_name = "withdraw_item.html"
@@ -6748,24 +7005,6 @@ def export_sales(request):
     return response
 
 @login_required
-def export_product_inventory(request):
-    import csv
-    from django.http import HttpResponse
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="product_inventory.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Product', 'Total Stock', 'Restock Threshold', 'Status'])
-    for inv in ProductInventory.objects.select_related('product').all():
-        if inv.total_stock <= 0:
-            status = 'Out of Stock'
-        elif inv.total_stock <= inv.restock_threshold:
-            status = 'Low Stock'
-        else:
-            status = 'In Stock'
-        writer.writerow([str(inv.product), inv.total_stock, inv.restock_threshold, status])
-    return response
-
-@login_required
 def export_expenses(request):
     import csv
     from django.http import HttpResponse
@@ -6780,6 +7019,177 @@ def export_expenses(request):
     except Exception:
         writer.writerow(['No data available'])
     return response
+
+@login_required
+def export_product_inventory(request):
+    import csv
+    from django.http import HttpResponse
+    from django.db.models import Q
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    
+    format_type = request.GET.get('format', 'csv').lower()
+    
+    try:
+        # Get base queryset with filters
+        queryset = ProductInventory.objects.select_related(
+            'product',
+            'product__product_type',
+            'product__variant',
+            'product__size',
+        ).filter(product__is_archived=False)
+        
+        # Apply search filter
+        search = request.GET.get('search', '').strip()
+        if search:
+            queryset = queryset.filter(
+                Q(product__product_type__name__icontains=search) |
+                Q(product__variant__name__icontains=search) |
+                Q(product__size__size_label__icontains=search)
+            )
+        
+        # Apply status filter
+        status = request.GET.get('status', '').strip()
+        if status:
+            filtered_items = []
+            for inv in queryset:
+                reorder_status = inv.get_reorder_status()
+                available_stock = reorder_status['available_stock']
+                threshold = inv.restock_threshold
+                
+                if status == "on_stock" and available_stock > threshold:
+                    filtered_items.append(inv.product_id)
+                elif status == "low_stock" and available_stock < threshold and available_stock > 0:
+                    filtered_items.append(inv.product_id)
+                elif status == "warning" and available_stock == threshold:
+                    filtered_items.append(inv.product_id)
+                elif status == "out_of_stock" and available_stock == 0:
+                    filtered_items.append(inv.product_id)
+            
+            queryset = queryset.filter(product_id__in=filtered_items) if filtered_items else queryset.none()
+        
+        # Apply month filter if provided
+        month = request.GET.get('month', '').strip()
+        if month:
+            from django.db.models import Sum
+            from django.utils import timezone
+            try:
+                year, month_num = month.split('-')
+                # Filter batches that have activity in the specified month
+                from realsproj.models import ProductBatches
+                batches_in_month = ProductBatches.objects.filter(
+                    batch_date__year=year,
+                    batch_date__month=month_num
+                ).values_list('product_id', flat=True).distinct()
+                queryset = queryset.filter(product_id__in=batches_in_month)
+            except (ValueError, IndexError):
+                pass  # Invalid month format, ignore filter
+        
+        # Export based on format
+        if format_type == 'pdf':
+            # Prepare data for PDF template
+            inventory_items = []
+            total_stock = 0
+            total_available = 0
+            from datetime import datetime
+            from django.conf import settings
+            
+            for inv in queryset:
+                reorder_status = inv.get_reorder_status()
+                available_stock = reorder_status['available_stock']
+                expiring_stock = reorder_status['expiring_stock']
+                
+                if inv.total_stock <= 0:
+                    stock_status = 'Out of Stock'
+                    status_class = 'out-of-stock'
+                elif inv.total_stock <= inv.restock_threshold:
+                    stock_status = 'Low Stock'
+                    status_class = 'low-stock'
+                elif inv.total_stock == inv.restock_threshold:
+                    stock_status = 'Warning'
+                    status_class = 'warning'
+                else:
+                    stock_status = 'In Stock'
+                    status_class = 'in-stock'
+                
+                # Get packaging information
+                packaging_used = getattr(inv, 'packaging_used', None) or 'N/A'
+                
+                inventory_items.append({
+                    'product': str(inv.product),
+                    'total_stock': inv.total_stock,
+                    'available_stock': available_stock,
+                    'expiring_stock': expiring_stock,
+                    'restock_threshold': inv.restock_threshold,
+                    'status': stock_status,
+                    'status_class': status_class,
+                    'packaging_used': packaging_used
+                })
+                
+                total_stock += inv.total_stock
+                total_available += available_stock
+            
+            # Prepare context for template
+            context = {
+                'inventory_items': inventory_items,
+                'total_products': len(inventory_items),
+                'total_stock': total_stock,
+                'total_available': total_available,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,  # Disabled: xhtml2pdf cannot resolve relative static paths
+                'filters': {
+                    'month': month if month else None,
+                    'search': search if search else None,
+                    'status': status.replace('_', ' ') if status else None
+                }
+            }
+            
+            # Render HTML template
+            html = render_to_string('exports/product_inventory_pdf.html', context)
+            
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="product_inventory.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+        
+        else:  # CSV format
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="product_inventory.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Product', 'Total Stock', 'Restock Threshold', 'Status'])
+            
+            for inv in queryset:
+                if inv.total_stock <= 0:
+                    stock_status = 'Out of Stock'
+                elif inv.total_stock <= inv.restock_threshold:
+                    stock_status = 'Low Stock'
+                else:
+                    stock_status = 'In Stock'
+                writer.writerow([str(inv.product), inv.total_stock, inv.restock_threshold, stock_status])
+            
+            return response
+            
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="product_inventory_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="product_inventory_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
 
 class UserActivityList(LoginRequiredMixin, ListView):
     template_name = 'user_activity_list.html'
@@ -6883,193 +7293,322 @@ def export_bestseller_report(request):
     import csv
     from django.http import HttpResponse
     from django.db.models import Sum, Count
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="bestseller_report.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Product', 'Product Type', 'Variant', 'Total Sold', 'Transactions'])
-    sales_by_item = Withdrawals.objects.filter(
-        item_type='PRODUCT',
-        reason='SOLD'
-    ).values('item_id').annotate(
-        total_quantity=Sum('quantity'),
-        total_transactions=Count('id')
-    ).order_by('-total_quantity')[:50]
-    for entry in sales_by_item:
-        try:
-            product = Products.objects.select_related('product_type', 'variant').get(id=entry['item_id'])
-            product_name = str(product)
-            product_type = product.product_type.name if product.product_type else ''
-            variant = product.variant.name if product.variant else ''
-        except Products.DoesNotExist:
-            product_name = f'Unknown (ID {entry["item_id"]})'
-            product_type = ''
-            variant = ''
-        writer.writerow([
-            product_name,
-            product_type,
-            variant,
-            entry.get('total_quantity', 0),
-            entry.get('total_transactions', 0),
-        ])
-    return response
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    show_all = request.GET.get('show_all', '').lower() == 'true'
+    include_no_sales = request.GET.get('include_no_sales', '').lower() == 'true'
+    month = request.GET.get('month', '').strip()
+
+    try:
+        # Build base queryset
+        queryset = Withdrawals.objects.filter(
+            item_type='PRODUCT',
+            reason='SOLD'
+        )
+
+        # Apply month filter if not showing all
+        if not show_all and month:
+            try:
+                year, month_num = month.split('-')
+                queryset = queryset.filter(
+                    date__year=year,
+                    date__month=month_num
+                )
+            except (ValueError, IndexError):
+                pass  # Invalid month format, ignore filter
+
+        # Get sales data
+        sales_by_item = queryset.values('item_id').annotate(
+            total_quantity=Sum('quantity'),
+            total_transactions=Count('id')
+        ).order_by('-total_quantity')[:50]
+
+        # Export based on format
+        if format_type == 'pdf':
+            # Prepare data for PDF template
+            bestseller_items = []
+            total_sold = 0
+            total_transactions = 0
+
+            for entry in sales_by_item:
+                try:
+                    product = Products.objects.select_related('product_type', 'variant', 'size', 'size_unit').get(id=entry['item_id'])
+                    product_name = str(product)
+                    product_type = product.product_type.name if product.product_type else ''
+                    variant = product.variant.name if product.variant else ''
+                except Products.DoesNotExist:
+                    product_name = f'Unknown (ID {entry["item_id"]})'
+                    product_type = ''
+                    variant = ''
+
+                bestseller_items.append({
+                    'product_name': product_name,
+                    'product_type': product_type,
+                    'variant': variant,
+                    'total_quantity': entry.get('total_quantity', 0),
+                    'total_transactions': entry.get('total_transactions', 0),
+                })
+
+                total_sold += entry.get('total_quantity', 0)
+                total_transactions += entry.get('total_transactions', 0)
+
+            # Prepare context for template
+            context = {
+                'bestseller_items': bestseller_items,
+                'total_products': len(bestseller_items),
+                'total_sold': total_sold,
+                'total_transactions': total_transactions,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,
+                'filters': {
+                    'month': month if month and not show_all else None,
+                    'show_all': show_all if show_all else None
+                }
+            }
+
+            # Render HTML template
+            html = render_to_string('exports/bestseller_pdf.html', context)
+
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="bestseller_report.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+
+        else:  # CSV format
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="bestseller_report.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Product', 'Product Type', 'Variant', 'Total Sold', 'Transactions'])
+
+            for entry in sales_by_item:
+                try:
+                    product = Products.objects.select_related('product_type', 'variant').get(id=entry['item_id'])
+                    product_name = str(product)
+                    product_type = product.product_type.name if product.product_type else ''
+                    variant = product.variant.name if product.variant else ''
+                except Products.DoesNotExist:
+                    product_name = f'Unknown (ID {entry["item_id"]})'
+                    product_type = ''
+                    variant = ''
+                writer.writerow([
+                    product_name,
+                    product_type,
+                    variant,
+                    entry.get('total_quantity', 0),
+                    entry.get('total_transactions', 0),
+                ])
+            return response
+
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="bestseller_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="bestseller_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
 
 @login_required
 def financial_loss(request):
     if not request.user.is_superuser:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
-    from django.core.paginator import Paginator
-    from django.utils import timezone
-
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
-
-    # Product withdrawals
-    product_withdrawals_qs = Withdrawals.objects.filter(
+    withdrawals = Withdrawals.objects.filter(
         item_type='PRODUCT',
-        reason__in=loss_reasons
+        reason__in=loss_reasons,
+        is_archived=False
     ).order_by('-date')
-
-    # Apply product date filter
-    product_date_filter = request.GET.get('product_date_filter')
-    product_show_all = request.GET.get('product_show_all')
-    if product_date_filter and not product_show_all:
-        try:
-            year, month = map(int, product_date_filter.split('-'))
-            product_withdrawals_qs = product_withdrawals_qs.filter(date__year=year, date__month=month)
-        except ValueError:
-            pass
-
-    # Calculate product loss
-    product_loss = 0
-    product_withdrawals = []
-    for w in product_withdrawals_qs:
+    total_loss = 0
+    losses = []
+    for w in withdrawals:
         try:
             product = Products.objects.get(id=w.item_id)
             price = float(product.unit_price or 0) if hasattr(product, 'unit_price') and product.unit_price else 0
-            loss_amount = float(w.quantity or 0) * price
-            product_loss += loss_amount
-            product_withdrawals.append({
-                'date': w.date,
-                'product_name': str(product),
-                'quantity': w.quantity,
-                'unit_price': price,
-                'reason': w.reason,
-                'get_reason_display': w.get_reason_display(),
-                'loss_amount': loss_amount,
-            })
+            loss_value = float(w.quantity or 0) * price
+            total_loss += loss_value
+            losses.append({'withdrawal': w, 'product_name': str(product), 'loss_value': loss_value})
         except Exception:
-            product_withdrawals.append({
-                'date': w.date,
-                'product_name': f'Unknown (ID {w.item_id})',
-                'quantity': w.quantity,
-                'unit_price': 0,
-                'reason': w.reason,
-                'get_reason_display': w.get_reason_display,
-                'loss_amount': 0,
-            })
-
-    # Raw material withdrawals
-    raw_material_withdrawals_qs = Withdrawals.objects.filter(
-        item_type='RAW_MATERIAL',
-        reason__in=loss_reasons
-    ).order_by('-date')
-
-    # Apply raw material date filter
-    raw_material_date_filter = request.GET.get('raw_material_date_filter')
-    raw_material_show_all = request.GET.get('raw_material_show_all')
-    if raw_material_date_filter and not raw_material_show_all:
-        try:
-            year, month = map(int, raw_material_date_filter.split('-'))
-            raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=year, date__month=month)
-        except ValueError:
-            pass
-
-    # Calculate raw material loss
-    raw_material_loss = 0
-    raw_material_withdrawals = []
-    for w in raw_material_withdrawals_qs:
-        try:
-            material = RawMaterials.objects.get(id=w.item_id)
-            price_per_unit = float(material.price_per_unit or 0) if hasattr(material, 'price_per_unit') and material.price_per_unit else 0
-            loss_amount = float(w.quantity or 0) * price_per_unit
-            raw_material_loss += loss_amount
-            raw_material_withdrawals.append({
-                'date': w.date,
-                'material_name': str(material),
-                'quantity': w.quantity,
-                'unit_name': material.unit_name if hasattr(material, 'unit_name') else '',
-                'price_per_unit': price_per_unit,
-                'reason': w.reason,
-                'get_reason_display': w.get_reason_display(),
-                'loss_amount': loss_amount,
-            })
-        except Exception:
-            raw_material_withdrawals.append({
-                'date': w.date,
-                'material_name': f'Unknown (ID {w.item_id})',
-                'quantity': w.quantity,
-                'unit_name': '',
-                'price_per_unit': 0,
-                'reason': w.reason,
-                'get_reason_display': w.get_reason_display,
-                'loss_amount': 0,
-            })
-
-    # Pagination for products
-    product_paginator = Paginator(product_withdrawals, 10)
-    product_page_number = request.GET.get('product_page', 1)
-    try:
-        product_page_obj = product_paginator.page(product_page_number)
-    except:
-        product_page_obj = product_paginator.page(1)
-
-    # Pagination for raw materials
-    raw_material_paginator = Paginator(raw_material_withdrawals, 10)
-    raw_material_page_number = request.GET.get('raw_material_page', 1)
-    try:
-        raw_material_page_obj = raw_material_paginator.page(raw_material_page_number)
-    except:
-        raw_material_page_obj = raw_material_paginator.page(1)
-
-    # Current month for default filter
-    current_month = timezone.now()
-    current_month_value = f"{current_month.year}-{current_month.month:02d}"
-
+            losses.append({'withdrawal': w, 'product_name': f'Unknown (ID {w.item_id})', 'loss_value': 0})
     return render(request, 'financial_loss.html', {
-        'product_loss': product_loss,
-        'raw_material_loss': raw_material_loss,
-        'product_withdrawals': product_page_obj,
-        'raw_material_withdrawals': raw_material_page_obj,
-        'product_paginator': product_paginator,
-        'raw_material_paginator': raw_material_paginator,
-        'product_page_obj': product_page_obj,
-        'raw_material_page_obj': raw_material_page_obj,
-        'product_is_paginated': product_paginator.num_pages > 1,
-        'raw_material_is_paginated': raw_material_paginator.num_pages > 1,
-        'current_month_value': current_month_value,
+        'losses': losses,
+        'total_loss': total_loss,
     })
 
 @login_required
 def financial_loss_export(request):
     import csv
     from django.http import HttpResponse
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="financial_loss.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Product', 'Quantity', 'Reason'])
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    filter_type = request.GET.get('filter', 'date')
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
+
+    # Build base queryset
     withdrawals = Withdrawals.objects.filter(
-        item_type='PRODUCT',
-        reason__in=loss_reasons
+        reason__in=loss_reasons,
+        is_archived=False
     ).order_by('-date')
-    for w in withdrawals:
+
+    # Apply date filters
+    filter_info = 'All Data'
+    if filter_type == 'date' and start:
+        withdrawals = withdrawals.filter(date__date=start)
+        filter_info = f'Date: {start}'
+    elif filter_type == 'month' and start:
         try:
-            product = Products.objects.get(id=w.item_id)
-            product_name = str(product)
-        except Products.DoesNotExist:
-            product_name = f'Unknown (ID {w.item_id})'
-        writer.writerow([w.date, product_name, w.quantity, w.reason])
-    return response
+            year, month = start.split('-')
+            withdrawals = withdrawals.filter(date__year=year, date__month=month)
+            filter_info = f'Month: {start}'
+        except ValueError:
+            pass
+    elif filter_type == 'year' and start:
+        withdrawals = withdrawals.filter(date__year=start)
+        filter_info = f'Year: {start}'
+    elif filter_type == 'range' and start and end:
+        withdrawals = withdrawals.filter(date__date__range=[start, end])
+        filter_info = f'Range: {start} to {end}'
+
+    # Separate by item type
+    product_withdrawals = []
+    raw_material_withdrawals = []
+
+    for w in withdrawals:
+        if w.item_type == 'PRODUCT':
+            try:
+                product = Products.objects.select_related('unit_price').get(id=w.item_id)
+                unit_price = product.unit_price.unit_price if product.unit_price else Decimal('0.00')
+                loss_amount = Decimal(w.quantity) * unit_price
+                product_withdrawals.append({
+                    'date': w.date,
+                    'product_name': str(product),
+                    'quantity': w.quantity,
+                    'unit_price': unit_price,
+                    'reason': w.reason,
+                    'get_reason_display': w.get_reason_display(),
+                    'loss_amount': loss_amount,
+                })
+            except Products.DoesNotExist:
+                continue
+        elif w.item_type == 'RAW_MATERIAL':
+            try:
+                material = RawMaterials.objects.get(id=w.item_id)
+                loss_amount = Decimal(w.quantity) * material.price_per_unit
+                raw_material_withdrawals.append({
+                    'date': w.date,
+                    'material_name': material.name,
+                    'quantity': w.quantity,
+                    'unit_name': material.unit_name,
+                    'price_per_unit': material.price_per_unit,
+                    'reason': w.reason,
+                    'get_reason_display': w.get_reason_display(),
+                    'loss_amount': loss_amount,
+                })
+            except RawMaterials.DoesNotExist:
+                continue
+
+    # Calculate totals
+    product_loss = sum(item['loss_amount'] for item in product_withdrawals)
+    raw_material_loss = sum(item['loss_amount'] for item in raw_material_withdrawals)
+    total_loss = product_loss + raw_material_loss
+
+    try:
+        # Export based on format
+        if format_type == 'pdf':
+            # Prepare context for template
+            context = {
+                'product_withdrawals': product_withdrawals,
+                'raw_material_withdrawals': raw_material_withdrawals,
+                'product_loss': product_loss,
+                'raw_material_loss': raw_material_loss,
+                'total_loss': total_loss,
+                'filter_info': filter_info,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,
+            }
+
+            # Render HTML template
+            html = render_to_string('exports/financial_loss_pdf.html', context)
+
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="financial_loss.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+
+        else:  # CSV format
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="financial_loss.csv"'
+            response.write(u'\ufeff'.encode('utf8'))
+            writer = csv.writer(response)
+            writer.writerow(['Type', 'Date', 'Item', 'Quantity', 'Reason', 'Financial Loss'])
+
+            # Write product losses
+            for item in product_withdrawals:
+                writer.writerow([
+                    'Product',
+                    item['date'].strftime('%Y-%m-%d %H:%M:%S'),
+                    item['product_name'],
+                    item['quantity'],
+                    item['get_reason_display'],
+                    f"₱{item['loss_amount']:,.2f}",
+                ])
+
+            # Write raw material losses
+            for item in raw_material_withdrawals:
+                writer.writerow([
+                    'Packaging Material',
+                    item['date'].strftime('%Y-%m-%d %H:%M:%S'),
+                    item['material_name'],
+                    f"{item['quantity']} {item['unit_name']}",
+                    item['get_reason_display'],
+                    f"₱{item['loss_amount']:,.2f}",
+                ])
+
+            return response
+
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="financial_loss_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="financial_loss_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
 
 @login_required
 def setup_2fa(request):
@@ -7362,7 +7901,16 @@ class PriceHistoryList(ListView):
         return context
 
 def export_price_history(request):
-    """Export Price History to CSV using the same month/show_all filters as the list view."""
+    """Export Price History to CSV or PDF using the same month/show_all filters as the list view."""
+    import csv
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+
     # Base queryset
     qs = PriceHistory.objects.all().select_related('product', 'changed_by_admin')
 
@@ -7375,7 +7923,6 @@ def export_price_history(request):
     show_all = request.GET.get('show_all', '').strip()
     date_created = request.GET.get('date_created', '').strip()
 
-    from datetime import datetime
     if not show_all:
         if date_created:
             try:
@@ -7393,69 +7940,163 @@ def export_price_history(request):
     # Order by latest changes first
     qs = qs.order_by('-changed_at')
 
-    # Prepare CSV response
-    response = HttpResponse(content_type='text/csv')
-    filename_suffix = date_created if date_created else ('all' if show_all else datetime.now().strftime('%Y-%m'))
-    response['Content-Disposition'] = f'attachment; filename="price_history_{filename_suffix}.csv"'
+    try:
+        # Export based on format
+        if format_type == 'pdf':
+            # Prepare data for PDF template
+            price_changes = []
+            total_increases = 0
+            total_decreases = 0
 
-    writer = csv.writer(response)
-    writer.writerow([
-        'Date & Time',
-        'Product',
-        'Price Type',
-        'Old Price',
-        'New Price',
-        'Change Amount',
-        'Change Percent',
-        'By',
-    ])
+            for ph in qs:
+                # Product string
+                product_str = str(ph.product) if getattr(ph, 'product', None) else ''
 
-    for ph in qs:
-        # Product string
-        product_str = str(ph.product) if getattr(ph, 'product', None) else ''
+                # Price type display
+                try:
+                    price_type_display = ph.get_price_type_display()
+                except Exception:
+                    price_type_display = ph.price_type
 
-        # Price type display
-        try:
-            price_type_display = ph.get_price_type_display()
-        except Exception:
-            price_type_display = ph.price_type
+                # Old/New price
+                old_price = ph.old_price if ph.old_price is not None else None
+                new_price = ph.new_price
 
-        # Old/New price
-        old_price = ph.old_price if ph.old_price is not None else ''
-        new_price = ph.new_price
+                # Compute change
+                change_amount = None
+                try:
+                    if ph.old_price is not None and ph.old_price != 0:
+                        change_amount = ph.new_price - ph.old_price
+                        if change_amount > 0:
+                            total_increases += 1
+                        elif change_amount < 0:
+                            total_decreases += 1
+                except Exception:
+                    pass
 
-        # Compute change
-        change_amount = ''
-        change_percent = ''
-        try:
-            if ph.old_price is not None and ph.old_price != 0:
-                change_amount_val = ph.new_price - ph.old_price
-                change_amount = f"{change_amount_val:.2f}"
-                change_percent_val = ((ph.new_price - ph.old_price) / ph.old_price) * 100
-                change_percent = f"{change_percent_val:.2f}%"
-        except Exception:
-            pass
+                # Changed by
+                changed_by = ph.changed_by_admin.username if getattr(ph, 'changed_by_admin', None) else 'System'
 
-        # Changed by
-        changed_by = ph.changed_by_admin.username if getattr(ph, 'changed_by_admin', None) else 'System'
+                price_changes.append({
+                    'changed_at': ph.changed_at,
+                    'product': product_str,
+                    'price_type': ph.price_type,
+                    'get_price_type_display': price_type_display,
+                    'old_price': old_price,
+                    'new_price': new_price,
+                    'price_change_amount': change_amount,
+                    'changed_by': changed_by,
+                })
 
-        writer.writerow([
-            ph.changed_at.strftime('%Y-%m-%d %H:%M:%S'),
-            product_str,
-            price_type_display,
-            old_price,
-            f"{new_price:.2f}",
-            change_amount,
-            change_percent,
-            changed_by,
-        ])
-    
-    return response
+            # Prepare context for template
+            context = {
+                'price_changes': price_changes,
+                'total_changes': len(price_changes),
+                'total_increases': total_increases,
+                'total_decreases': total_decreases,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+                'logo_url': None,
+                'filters': {
+                    'month': date_created if date_created and not show_all else None,
+                    'show_all': show_all if show_all else None,
+                    'price_type': price_type if price_type else None
+                }
+            }
+
+            # Render HTML template
+            html = render_to_string('exports/price_history_pdf.html', context)
+
+            # Generate PDF
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="price_history.pdf"'
+                return response
+            else:
+                raise Exception('PDF generation failed')
+
+        else:  # CSV format
+            # Prepare CSV response
+            response = HttpResponse(content_type='text/csv')
+            filename_suffix = date_created if date_created else ('all' if show_all else datetime.now().strftime('%Y-%m'))
+            response['Content-Disposition'] = f'attachment; filename="price_history_{filename_suffix}.csv"'
+
+            writer = csv.writer(response)
+            writer.writerow([
+                'Date & Time',
+                'Product',
+                'Price Type',
+                'Old Price',
+                'New Price',
+                'Change Amount',
+                'Change Percent',
+                'By',
+            ])
+
+            for ph in qs:
+                # Product string
+                product_str = str(ph.product) if getattr(ph, 'product', None) else ''
+
+                # Price type display
+                try:
+                    price_type_display = ph.get_price_type_display()
+                except Exception:
+                    price_type_display = ph.price_type
+
+                # Old/New price
+                old_price = ph.old_price if ph.old_price is not None else ''
+                new_price = ph.new_price
+
+                # Compute change
+                change_amount = ''
+                change_percent = ''
+                try:
+                    if ph.old_price is not None and ph.old_price != 0:
+                        change_amount_val = ph.new_price - ph.old_price
+                        change_amount = f"{change_amount_val:.2f}"
+                        change_percent_val = ((ph.new_price - ph.old_price) / ph.old_price) * 100
+                        change_percent = f"{change_percent_val:.2f}%"
+                except Exception:
+                    pass
+
+                # Changed by
+                changed_by = ph.changed_by_admin.username if getattr(ph, 'changed_by_admin', None) else 'System'
+
+                writer.writerow([
+                    ph.changed_at.strftime('%Y-%m-%d %I:%M %p') if ph.changed_at else '',
+                    product_str,
+                    price_type_display,
+                    old_price,
+                    new_price,
+                    change_amount,
+                    change_percent,
+                    changed_by,
+                ])
+
+            return response
+
+    except Exception as e:
+        # Handle errors gracefully
+        if format_type == 'pdf':
+            response = HttpResponse(content_type='text/plain')
+            response['Content-Disposition'] = 'attachment; filename="price_history_error.txt"'
+            response.write(f'An error occurred: {str(e)}')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="price_history_error.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Error'])
+            writer.writerow([f'An error occurred: {str(e)}'])
+        return response
 
 
 @login_required
 def check_product_batches(request):
     """API endpoint to check if products already have batches with the same quantity."""
+    from django.utils import timezone
     product_data = request.GET.get('product_data', '[]')
 
     try:
@@ -7470,10 +8111,10 @@ def check_product_batches(request):
         try:
             product_id = item.get('id')
             quantity = float(item.get('qty', 0))
-            
+
             if quantity <= 0:
                 continue
-            
+
             product = Products.objects.get(id=product_id)
 
             # Check if there's an existing batch with the same quantity

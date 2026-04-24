@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.2cm 1.5cm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            background: #ffffff;
+            line-height: 1.5;
+        }
+
+        /* ── HEADER ─────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #4a8c2a;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-wrap {
+            width: 54px;
+            height: 54px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #5ca832 0%, #3d7a1e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .logo-placeholder {
+            font-family: Georgia, serif;
+            font-size: 20pt;
+            color: #fff;
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        .company-name {
+            font-family: Georgia, serif;
+            font-size: 18pt;
+            color: #1a2e1a;
+            letter-spacing: -0.3px;
+            line-height: 1.1;
+        }
+
+        .report-label {
+            font-size: 8.5pt;
+            color: #5ca832;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .header-right .date-label {
+            font-size: 8pt;
+            color: #888;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .header-right .date-val {
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        /* ── FILTER INFO ─────────────────────────────────── */
+        .filter-info {
+            background: #f5faf1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #d0e8c5;
+            margin-bottom: 18px;
+            font-size: 8.5pt;
+            color: #4a8c2a;
+        }
+
+        .filter-info span {
+            font-weight: 600;
+        }
+
+        /* ── SUMMARY CARD ────────────────────────────────── */
+        .summary-card {
+            padding: 16px;
+            border-radius: 10px;
+            border: 1.5px solid #b8dda0;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .summary-card h6 {
+            font-size: 7.5pt;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #4a8c2a;
+            margin-bottom: 2px;
+        }
+
+        .summary-card p {
+            font-size: 7.5pt;
+            color: #888;
+            margin: 0;
+        }
+
+        .summary-card .value {
+            font-family: Georgia, serif;
+            font-size: 16pt;
+            font-weight: 600;
+            color: #dc2626;
+        }
+
+        .summary-card .sub {
+            font-size: 8pt;
+            color: #888;
+            text-align: right;
+        }
+
+        /* ── SECTION HEADER ──────────────────────────────── */
+        .section-header {
+            font-size: 11pt;
+            font-weight: 700;
+            color: #1a2e1a;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #d0e8c5;
+        }
+
+        /* ── TABLE ───────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        thead tr {
+            background: #2e6b10;
+            color: #ffffff;
+        }
+
+        th {
+            padding: 9px 10px;
+            text-align: left;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e8f0e3;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f5faf1;
+        }
+
+        tbody tr:last-child {
+            border-bottom: 2px solid #4a8c2a;
+        }
+
+        td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            color: #1a2e1a;
+            vertical-align: middle;
+        }
+
+        td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .reason-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .reason-expired {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .reason-damaged {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .loss-amount {
+            font-weight: 700;
+            color: #dc2626;
+        }
+
+        .empty-row td {
+            text-align: center;
+            color: #aaa;
+            padding: 24px;
+            font-style: italic;
+        }
+
+        /* ── FOOTER ──────────────────────────────────────── */
+        .footer {
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid #d0e8c5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            font-size: 7.5pt;
+            color: #888;
+        }
+
+        .footer-right {
+            font-size: 7.5pt;
+            color: #888;
+            text-align: right;
+        }
+
+        .footer-brand {
+            font-weight: 700;
+            color: #4a8c2a;
+        }
+
+        @media print {
+            body { background: white; }
+            tr { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-wrap">
+                <span class="logo-placeholder">R</span>
+            </div>
+            <div>
+                <div class="company-name">Real's Food Products</div>
+                <div class="report-label">Financial Loss Report</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="date-label">Generated</div>
+            <div class="date-val">{{ generated_date }}</div>
+        </div>
+    </div>
+
+    <!-- FILTER INFO -->
+    {% if filter_info %}
+    <div class="filter-info">
+        Filter: <span>{{ filter_info }}</span>
+    </div>
+    {% endif %}
+
+    <!-- SUMMARY CARD -->
+    <div class="summary-card">
+        <div>
+            <h6>Total Financial Loss</h6>
+            <p>Combined loss from products and packaging materials</p>
+        </div>
+        <div class="text-right">
+            <div class="value">₱{{ total_loss|floatformat:2 }}</div>
+            <div class="sub">Products: ₱{{ product_loss|floatformat:2 }} + Packaging: ₱{{ raw_material_loss|floatformat:2 }}</div>
+        </div>
+    </div>
+
+    <!-- PRODUCTS SECTION -->
+    <div class="section-header">Products - Expired & Damaged</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Product</th>
+                <th class="num">Quantity</th>
+                <th class="num">Unit Price</th>
+                <th>Reason</th>
+                <th class="num">Financial Loss</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in product_withdrawals %}
+            <tr>
+                <td>{{ item.date|date:"Y-m-d g:i A" }}</td>
+                <td>{{ item.product_name }}</td>
+                <td class="num">{{ item.quantity }}</td>
+                <td class="num">₱{{ item.unit_price|floatformat:2 }}</td>
+                <td>
+                    <span class="reason-badge {% if item.reason == 'EXPIRED' %}reason-expired{% else %}reason-damaged{% endif %}">
+                        {{ item.get_reason_display }}
+                    </span>
+                </td>
+                <td class="num loss-amount">₱{{ item.loss_amount|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row">
+                <td colspan="6">No product losses found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- PACKAGING MATERIALS SECTION -->
+    <div class="section-header">Packaging Materials - Expired & Damaged</div>
+    <table>
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Packaging Material</th>
+                <th class="num">Quantity</th>
+                <th class="num">Price per Unit</th>
+                <th>Reason</th>
+                <th class="num">Financial Loss</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in raw_material_withdrawals %}
+            <tr>
+                <td>{{ item.date|date:"Y-m-d g:i A" }}</td>
+                <td>{{ item.material_name }}</td>
+                <td class="num">{{ item.quantity }} {{ item.unit_name }}</td>
+                <td class="num">₱{{ item.price_per_unit|floatformat:2 }}</td>
+                <td>
+                    <span class="reason-badge {% if item.reason == 'EXPIRED' %}reason-expired{% else %}reason-damaged{% endif %}">
+                        {{ item.get_reason_display }}
+                    </span>
+                </td>
+                <td class="num loss-amount">₱{{ item.loss_amount|floatformat:2 }}</td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row">
+                <td colspan="6">No packaging material losses found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-left">
+            <span class="footer-brand">Real's Food Products</span> · Financial Loss Report
+        </div>
+        <div class="footer-right">
+            © {{ current_year }} Real's Food Products. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

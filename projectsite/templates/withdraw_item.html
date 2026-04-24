@@ -111,7 +111,7 @@
               <tbody>
             <div class="alert alert-info">
               <i class="la la-info-circle"></i>
-              <strong>Packaging-Specific FIFO:</strong> When you select a specific packaging type, the system will withdraw from the oldest batches of that packaging type first. If no packaging is selected, it will use standard FIFO across all packaging types.
+              <strong>Select a Batch:</strong> You must select a specific batch to withdraw from. The system will deduct from the selected batch only.
             </div>
                 {% for product in products %}
                 <tr>
@@ -133,21 +133,21 @@
                     {% endif %}
                   </td>
                   <td>
-                    <select name="batch_{{ product.id }}" class="form-control packaging-select" data-product-id="{{ product.id }}">
-                      <option value="">Any Batch (FIFO)</option>
+                    <select name="batch_{{ product.id }}" class="form-control packaging-select" data-product-id="{{ product.id }}" data-total-stock="{{ product.productinventory.total_stock }}">
+                      <option value="">-- Select Batch --</option>
                       {% for packaging in product.packaging_options %}
                         {% if packaging.expiring > 0 %}
-                          <option value="{{ packaging.id }}" data-expiring="true">
+                          <option value="{{ packaging.id }}" data-expiring="true" data-quantity="{{ packaging.quantity }}">
                             ⚠️ {{ packaging.name }} | {{ packaging.quantity|floatformat:0 }} units | Mfg: {{ packaging.manufactured_date }} | Exp: {{ packaging.expiration_date }}
                           </option>
                         {% else %}
-                          <option value="{{ packaging.id }}">
+                          <option value="{{ packaging.id }}" data-quantity="{{ packaging.quantity }}">
                             {{ packaging.name }} | {{ packaging.quantity|floatformat:0 }} units | Mfg: {{ packaging.manufactured_date }} | Exp: {{ packaging.expiration_date }}
                           </option>
                         {% endif %}
                       {% endfor %}
                     </select>
-                    <small class="form-text text-muted">Select specific batch or leave empty for FIFO (oldest first)</small>
+                    <small class="form-text text-muted">Select a specific batch to withdraw from</small>
                   </td>
                   <td>
                     <input type="number" step="0.01" name="product_{{ product.id }}" 
@@ -315,11 +315,48 @@ document.addEventListener("DOMContentLoaded", function() {
     input.addEventListener("blur", function() { validateWithdrawQuantity(this); });
   });
 
+  // Listen for packaging selection changes to update max-stock dynamically
+  const packagingSelects = document.querySelectorAll(".packaging-select");
+  packagingSelects.forEach(select => {
+    select.addEventListener("change", function() {
+      try {
+        const selectedOption = this.options[this.selectedIndex];
+        const row = this.closest('tr');
+        if (!row) return;
+        
+        const withdrawInput = row.querySelector('.withdraw-input');
+        if (!withdrawInput) return;
+        
+        if (selectedOption) {
+          // Get quantity from data attribute, fallback to total stock from select
+          let newMaxStock;
+          if (selectedOption.dataset.quantity !== undefined && selectedOption.dataset.quantity !== '') {
+            newMaxStock = parseFloat(selectedOption.dataset.quantity);
+          } else {
+            // Fallback to total stock from the select element
+            newMaxStock = parseFloat(select.dataset.totalStock) || parseFloat(withdrawInput.dataset.maxStock);
+          }
+          
+          if (!isNaN(newMaxStock)) {
+            withdrawInput.dataset.maxStock = newMaxStock;
+            // Re-validate the input if it has a value
+            if (withdrawInput.value) {
+              validateWithdrawQuantity(withdrawInput);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error updating max stock on packaging change:', error);
+      }
+    });
+  });
+
   function validateWithdrawQuantity(input) {
     const maxStock = parseFloat(input.dataset.maxStock);
     const withdrawQty = parseFloat(input.value) || 0;
     const validationMsg = input.nextElementSibling;
     const inputName = input.name;
+    const row = input.closest('tr');
 
     validationErrors.delete(inputName);
 
@@ -327,8 +364,35 @@ document.addEventListener("DOMContentLoaded", function() {
       validationMsg.textContent = "";
       validationMsg.className = "form-text";
       input.style.borderColor = "";
+      // Also clear any error on the packaging select
+      if (row) {
+        const packagingSelect = row.querySelector('.packaging-select');
+        if (packagingSelect) {
+          packagingSelect.style.borderColor = "";
+          packagingSelect.style.backgroundColor = "";
+        }
+      }
       updateSubmitButton();
       return;
+    }
+
+    // Check if batch is selected for products
+    if (input.dataset.itemType === 'PRODUCT' && row) {
+      const packagingSelect = row.querySelector('.packaging-select');
+      if (packagingSelect && !packagingSelect.value) {
+        validationMsg.textContent = "❌ Please select a batch first!";
+        validationMsg.className = "form-text text-danger font-weight-bold";
+        input.style.borderColor = "#dc3545";
+        input.style.backgroundColor = "#fff3cd";
+        packagingSelect.style.borderColor = "#dc3545";
+        packagingSelect.style.backgroundColor = "#fff3cd";
+        validationErrors.add(inputName);
+        updateSubmitButton();
+        return;
+      } else if (packagingSelect) {
+        packagingSelect.style.borderColor = "";
+        packagingSelect.style.backgroundColor = "";
+      }
     }
 
     if (withdrawQty > maxStock) {
