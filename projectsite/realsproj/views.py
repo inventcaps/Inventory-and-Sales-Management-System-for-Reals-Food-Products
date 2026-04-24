@@ -6918,25 +6918,135 @@ def financial_loss(request):
     if not request.user.is_superuser:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
+    from django.core.paginator import Paginator
+    from django.utils import timezone
+
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
-    withdrawals = Withdrawals.objects.filter(
+
+    # Product withdrawals
+    product_withdrawals_qs = Withdrawals.objects.filter(
         item_type='PRODUCT',
         reason__in=loss_reasons
     ).order_by('-date')
-    total_loss = 0
-    losses = []
-    for w in withdrawals:
+
+    # Apply product date filter
+    product_date_filter = request.GET.get('product_date_filter')
+    product_show_all = request.GET.get('product_show_all')
+    if product_date_filter and not product_show_all:
+        try:
+            year, month = map(int, product_date_filter.split('-'))
+            product_withdrawals_qs = product_withdrawals_qs.filter(date__year=year, date__month=month)
+        except ValueError:
+            pass
+
+    # Calculate product loss
+    product_loss = 0
+    product_withdrawals = []
+    for w in product_withdrawals_qs:
         try:
             product = Products.objects.get(id=w.item_id)
             price = float(product.unit_price or 0) if hasattr(product, 'unit_price') and product.unit_price else 0
-            loss_value = float(w.quantity or 0) * price
-            total_loss += loss_value
-            losses.append({'withdrawal': w, 'product_name': str(product), 'loss_value': loss_value})
+            loss_amount = float(w.quantity or 0) * price
+            product_loss += loss_amount
+            product_withdrawals.append({
+                'date': w.date,
+                'product_name': str(product),
+                'quantity': w.quantity,
+                'unit_price': price,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display(),
+                'loss_amount': loss_amount,
+            })
         except Exception:
-            losses.append({'withdrawal': w, 'product_name': f'Unknown (ID {w.item_id})', 'loss_value': 0})
+            product_withdrawals.append({
+                'date': w.date,
+                'product_name': f'Unknown (ID {w.item_id})',
+                'quantity': w.quantity,
+                'unit_price': 0,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display,
+                'loss_amount': 0,
+            })
+
+    # Raw material withdrawals
+    raw_material_withdrawals_qs = Withdrawals.objects.filter(
+        item_type='RAW_MATERIAL',
+        reason__in=loss_reasons
+    ).order_by('-date')
+
+    # Apply raw material date filter
+    raw_material_date_filter = request.GET.get('raw_material_date_filter')
+    raw_material_show_all = request.GET.get('raw_material_show_all')
+    if raw_material_date_filter and not raw_material_show_all:
+        try:
+            year, month = map(int, raw_material_date_filter.split('-'))
+            raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=year, date__month=month)
+        except ValueError:
+            pass
+
+    # Calculate raw material loss
+    raw_material_loss = 0
+    raw_material_withdrawals = []
+    for w in raw_material_withdrawals_qs:
+        try:
+            material = RawMaterials.objects.get(id=w.item_id)
+            price_per_unit = float(material.price_per_unit or 0) if hasattr(material, 'price_per_unit') and material.price_per_unit else 0
+            loss_amount = float(w.quantity or 0) * price_per_unit
+            raw_material_loss += loss_amount
+            raw_material_withdrawals.append({
+                'date': w.date,
+                'material_name': str(material),
+                'quantity': w.quantity,
+                'unit_name': material.unit_name if hasattr(material, 'unit_name') else '',
+                'price_per_unit': price_per_unit,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display(),
+                'loss_amount': loss_amount,
+            })
+        except Exception:
+            raw_material_withdrawals.append({
+                'date': w.date,
+                'material_name': f'Unknown (ID {w.item_id})',
+                'quantity': w.quantity,
+                'unit_name': '',
+                'price_per_unit': 0,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display,
+                'loss_amount': 0,
+            })
+
+    # Pagination for products
+    product_paginator = Paginator(product_withdrawals, 10)
+    product_page_number = request.GET.get('product_page', 1)
+    try:
+        product_page_obj = product_paginator.page(product_page_number)
+    except:
+        product_page_obj = product_paginator.page(1)
+
+    # Pagination for raw materials
+    raw_material_paginator = Paginator(raw_material_withdrawals, 10)
+    raw_material_page_number = request.GET.get('raw_material_page', 1)
+    try:
+        raw_material_page_obj = raw_material_paginator.page(raw_material_page_number)
+    except:
+        raw_material_page_obj = raw_material_paginator.page(1)
+
+    # Current month for default filter
+    current_month = timezone.now()
+    current_month_value = f"{current_month.year}-{current_month.month:02d}"
+
     return render(request, 'financial_loss.html', {
-        'losses': losses,
-        'total_loss': total_loss,
+        'product_loss': product_loss,
+        'raw_material_loss': raw_material_loss,
+        'product_withdrawals': product_page_obj,
+        'raw_material_withdrawals': raw_material_page_obj,
+        'product_paginator': product_paginator,
+        'raw_material_paginator': raw_material_paginator,
+        'product_page_obj': product_page_obj,
+        'raw_material_page_obj': raw_material_page_obj,
+        'product_is_paginated': product_paginator.num_pages > 1,
+        'raw_material_is_paginated': raw_material_paginator.num_pages > 1,
+        'current_month_value': current_month_value,
     })
 
 @login_required

@@ -149,9 +149,9 @@ import os
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'ednocdb',
+        'NAME': 'clean_db',
         'USER': 'postgres',
-        'PASSWORD': 'reals',
+        'PASSWORD': 'admin',
         'HOST': 'localhost',
         'PORT': '5432',
     }
