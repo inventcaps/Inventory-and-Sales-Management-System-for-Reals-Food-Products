@@ -63,10 +63,17 @@
                                             <input type="checkbox" id="reportShowAll" class="form-check-input" {% if request.GET.show_all %}checked{% endif %}>
                                             <label class="form-check-label" for="reportShowAll">Export all data</label>
                                         </div>
+                                        <div class="form-group mt-3">
+                                            <label for="reportFormat">Export Format</label>
+                                            <select id="reportFormat" class="form-control">
+                                                <option value="csv">CSV</option>
+                                                <option value="pdf">PDF</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary" data-dismiss="modal" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="button" class="btn btn-success btn-rounded" onclick="exportPriceHistoryReport()">
+                                        <button type="button" class="btn btn-success btn-rounded" onclick="exportPriceHistoryReport()" id="exportButton">
                                             <i class="la la-download mr-1"></i> Export CSV
                                         </button>
                                     </div>
@@ -296,6 +303,10 @@ function exportPriceHistoryReport() {
     const showAll = document.getElementById('reportShowAll') ? document.getElementById('reportShowAll').checked : false;
     const priceTypeEl = document.getElementById('priceTypeColumnFilter');
     const priceType = priceTypeEl ? priceTypeEl.value : '';
+    const formatEl = document.getElementById('reportFormat');
+    const format = formatEl ? formatEl.value : 'csv';
+
+    params.set('format', format);
 
     if (showAll) {
         params.set('show_all', 'true');
@@ -310,6 +321,19 @@ function exportPriceHistoryReport() {
     const url = '/price-history/export/' + (params.toString() ? ('?' + params.toString()) : '');
     window.location.href = url;
 }
+
+// Update button text based on format selection
+document.addEventListener('DOMContentLoaded', function () {
+    const formatSelect = document.getElementById('reportFormat');
+    const exportButton = document.getElementById('exportButton');
+
+    if (formatSelect && exportButton) {
+        formatSelect.addEventListener('change', function() {
+            const format = this.value.toUpperCase();
+            exportButton.innerHTML = '<i class="la la-download mr-1"></i> Export ' + format;
+        });
+    }
+});
 </script>
 
 <style>

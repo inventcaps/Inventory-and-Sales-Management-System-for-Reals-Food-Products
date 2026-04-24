@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.2cm 1.5cm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            background: #ffffff;
+            line-height: 1.5;
+        }
+
+        /* ── HEADER ─────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #4a8c2a;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-wrap {
+            width: 54px;
+            height: 54px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #5ca832 0%, #3d7a1e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .logo-placeholder {
+            font-family: Georgia, serif;
+            font-size: 20pt;
+            color: #fff;
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        .company-name {
+            font-family: Georgia, serif;
+            font-size: 18pt;
+            color: #1a2e1a;
+            letter-spacing: -0.3px;
+            line-height: 1.1;
+        }
+
+        .report-label {
+            font-size: 8.5pt;
+            color: #5ca832;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .header-right .date-label {
+            font-size: 8pt;
+            color: #888;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .header-right .date-val {
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        /* ── FILTER INFO ─────────────────────────────────── */
+        .filter-info {
+            background: #f5faf1;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid #d0e8c5;
+            margin-bottom: 18px;
+            font-size: 8.5pt;
+            color: #4a8c2a;
+        }
+
+        .filter-info span {
+            font-weight: 600;
+        }
+
+        /* ── SUMMARY CARDS ──────────────────────────────── */
+        .summary-cards {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            flex: 1;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1.5px solid #b8dda0;
+        }
+
+        .summary-card h6 {
+            font-size: 7.5pt;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #4a8c2a;
+            margin-bottom: 4px;
+        }
+
+        .summary-card p {
+            font-size: 7.5pt;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .value {
+            font-family: Georgia, serif;
+            font-size: 14pt;
+            font-weight: 600;
+        }
+
+        .summary-card.primary .value {
+            color: #2563eb;
+        }
+
+        .summary-card.success .value {
+            color: #16a34a;
+        }
+
+        .summary-card.warning .value {
+            color: #f59e0b;
+        }
+
+        /* ── TABLE ───────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+
+        thead tr {
+            background: #2e6b10;
+            color: #ffffff;
+        }
+
+        th {
+            padding: 9px 10px;
+            text-align: left;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e8f0e3;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f5faf1;
+        }
+
+        tbody tr:last-child {
+            border-bottom: 2px solid #4a8c2a;
+        }
+
+        td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            color: #1a2e1a;
+            vertical-align: middle;
+        }
+
+        td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .item-type-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .type-product {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .type-raw-material {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .empty-row td {
+            text-align: center;
+            color: #aaa;
+            padding: 24px;
+            font-style: italic;
+        }
+
+        /* ── FOOTER ──────────────────────────────────────── */
+        .footer {
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid #d0e8c5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            font-size: 7.5pt;
+            color: #888;
+        }
+
+        .footer-right {
+            font-size: 7.5pt;
+            color: #888;
+            text-align: right;
+        }
+
+        .footer-brand {
+            font-weight: 700;
+            color: #4a8c2a;
+        }
+
+        @media print {
+            body { background: white; }
+            tr { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-wrap">
+                <span class="logo-placeholder">R</span>
+            </div>
+            <div>
+                <div class="company-name">Real's Food Products</div>
+                <div class="report-label">Withdrawals Report</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="date-label">Generated</div>
+            <div class="date-val">{{ generated_date }}</div>
+        </div>
+    </div>
+
+    <!-- FILTER INFO -->
+    {% if filter_info %}
+    <div class="filter-info">
+        Filter: <span>{{ filter_info }}</span>
+    </div>
+    {% endif %}
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-cards">
+        <div class="summary-card primary">
+            <h6>Total Withdrawals</h6>
+            <p>All withdrawal quantities</p>
+            <div class="value">{{ total_withdrawals|floatformat:0 }}</div>
+        </div>
+        <div class="summary-card success">
+            <h6>Product Withdrawals</h6>
+            <p>{{ product_withdrawals_count }} withdrawal(s)</p>
+            <div class="value">{{ product_withdrawals_qty|floatformat:0 }}</div>
+        </div>
+        <div class="summary-card warning">
+            <h6>Raw Material Withdrawals</h6>
+            <p>{{ rawmat_withdrawals_count }} withdrawal(s)</p>
+            <div class="value">{{ rawmat_withdrawals_qty|floatformat:0 }}</div>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th>Date & Time</th>
+                <th>Item Type</th>
+                <th>Reason</th>
+                <th>Item Display</th>
+                <th class="num">Quantity</th>
+                <th>Created By</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for withdrawal in withdrawals %}
+            <tr>
+                <td>{{ withdrawal.date|date:"Y-m-d g:i A" }}</td>
+                <td>
+                    <span class="item-type-badge {% if withdrawal.item_type == 'PRODUCT' %}type-product{% else %}type-raw-material{% endif %}">
+                        {{ withdrawal.get_item_type_display }}
+                    </span>
+                </td>
+                <td>{{ withdrawal.get_reason_display }}</td>
+                <td>{{ withdrawal.get_item_display }}</td>
+                <td class="num">{{ withdrawal.quantity|floatformat:2 }}</td>
+                <td>{{ withdrawal.created_by_admin.username }}</td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row">
+                <td colspan="6">No withdrawals found matching the current filters.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-left">
+            <span class="footer-brand">Real's Food Products</span> · Withdrawals Report
+        </div>
+        <div class="footer-right">
+            Total Records: {{ withdrawals|length }} · © {{ current_year }} Real's Food Products. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

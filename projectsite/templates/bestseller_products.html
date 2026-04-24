@@ -201,10 +201,17 @@
                             <input type="checkbox" id="reportIncludeZeroSales" class="form-check-input">
                             <label class="form-check-label" for="reportIncludeZeroSales">Include products with zero sales</label>
                         </div>
+                        <div class="form-group mt-3">
+                            <label for="reportFormat">Export Format</label>
+                            <select id="reportFormat" class="form-control">
+                                <option value="csv">CSV</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                        <button type="button" class="btn btn-success btn-rounded" onclick="exportBestsellerReport()">
+                        <button type="button" class="btn btn-success btn-rounded" onclick="exportBestsellerReport()" id="exportButton">
                             <i class="la la-download mr-1"></i> Export CSV
                         </button>
                     </div>
@@ -222,9 +229,13 @@ function exportBestsellerReport() {
     const monthEl = document.getElementById('reportMonthInput');
     const showAllEl = document.getElementById('reportShowAll');
     const includeZeroEl = document.getElementById('reportIncludeZeroSales');
+    const formatEl = document.getElementById('reportFormat');
     const month = monthEl ? monthEl.value : '';
     const showAll = showAllEl ? showAllEl.checked : false;
     const includeZero = includeZeroEl ? includeZeroEl.checked : false;
+    const format = formatEl ? formatEl.value : 'csv';
+
+    params.set('format', format);
 
     if (showAll) {
         params.set('show_all', 'true');
@@ -240,8 +251,19 @@ function exportBestsellerReport() {
     window.location.href = url;
 }
 
-// Ensure modal attaches to <body> and initialize programmatically as fallback
+// Update button text based on format selection
 document.addEventListener('DOMContentLoaded', function () {
+    const formatSelect = document.getElementById('reportFormat');
+    const exportButton = document.getElementById('exportButton');
+
+    if (formatSelect && exportButton) {
+        formatSelect.addEventListener('change', function() {
+            const format = this.value.toUpperCase();
+            exportButton.innerHTML = '<i class="la la-download mr-1"></i> Export ' + format;
+        });
+    }
+
+    // Ensure modal attaches to <body> and initialize programmatically as fallback
     var modalEl = document.getElementById('bestsellerReportModal');
     if (modalEl && modalEl.parentElement !== document.body) {
         document.body.appendChild(modalEl);
