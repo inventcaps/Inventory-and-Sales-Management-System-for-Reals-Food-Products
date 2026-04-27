@@ -39,8 +39,8 @@
             </thead>
             <tbody>
               {% for p in products %}
-              <tr data-product-id="{{ p.product.id }}" data-product-name="{{ p.product }}">
-                <td>{{ p.product }}</td>
+              <tr data-product-id="{{ p.product.id }}" data-product-name="{{ p.product }}" data-product-code="{{ p.product.product_code }}">
+                <td>{{ p.product.product_code }} — {{ p.product }}</td>
                 <td>{{ p.product.productinventory.total_stock|floatformat:0 }}</td>
                 <td>
                   {{ p.packaging_field }}
@@ -54,6 +54,7 @@
                 </td>
                 <td>
                   {{ p.qty_field }}
+                  <small class="form-text validation-msg"></small>
                   {% if p.qty_field.errors %}
                     <div class="text-danger small mt-1">
                       {% for error in p.qty_field.errors %}
@@ -88,7 +89,7 @@
           </table>
 
           <div class="form-group mt-3">
-            <button type="submit" class="btn btn-success btn-rounded">Save</button>
+            <button type="submit" id="batchSubmitBtn" class="btn btn-success btn-rounded">Save</button>
           </div>
         </form>
       </div>
@@ -133,8 +134,8 @@ document.addEventListener("DOMContentLoaded", function() {
   }
 
   // Compute expiration:
-  // Yema -> +6 months (27/05/2026 for 26/11/2025)
-  // Normal -> +1 year +1 day (27/11/2026 for 26/11/2025)
+  // Yema -> +6 months +1 day
+  // Normal -> +1 year -1 day (e.g. 27/04/2026 -> 26/04/2027)
   function computeExpiration(mdateStr, isYema) {
     if (!mdateStr) return "";
     const base = new Date(mdateStr);
@@ -146,14 +147,14 @@ document.addEventListener("DOMContentLoaded", function() {
       result = addMonthsSafe(base, 6);
       result.setDate(result.getDate() + 1);
     } else {
-      // For normal: add 1 year, then add 1 day
+      // For normal: add 1 year, then subtract 1 day
       const y = base.getFullYear() + 1;
       const m = base.getMonth();
       const d = base.getDate();
       result = new Date(base.getTime());
       result.setFullYear(y);
       if (result.getMonth() !== m) result = new Date(y, m + 1, 0);
-      result.setDate(result.getDate() + 1);
+      result.setDate(result.getDate() - 1);
     }
 
     return result.toISOString().split("T")[0];
@@ -182,6 +183,147 @@ document.addEventListener("DOMContentLoaded", function() {
     });
   });
 
+  // Real-time quantity validation (matching withdraw flow)
+  const batchQtyInputs = document.querySelectorAll('[data-field-type="quantity"]');
+  const batchPackagingSelects = document.querySelectorAll('[data-field-type="packaging"]');
+  const submitBtn = document.getElementById('batchSubmitBtn');
+  let validationErrors = new Set();
+
+  // Listen for packaging selection changes to update max-stock dynamically
+  batchPackagingSelects.forEach(select => {
+    select.addEventListener('change', function() {
+      const productId = this.dataset.productId;
+      const qtyInput = document.querySelector(`input[data-product-id="${productId}"][data-field-type="quantity"]`);
+      if (!qtyInput) return;
+
+      const selectedOption = this.options[this.selectedIndex];
+      if (selectedOption && selectedOption.value) {
+        // Get stock from the packaging stock map on the select element
+        try {
+          const stockMap = JSON.parse(this.dataset.packagingStock || '{}');
+          const stock = parseFloat(stockMap[selectedOption.value]);
+          if (!isNaN(stock)) {
+            qtyInput.dataset.maxStock = stock;
+          }
+        } catch(e) {}
+        // Always re-validate when packaging changes (qty may now be required)
+        validateBatchQuantity(qtyInput);
+      } else {
+        delete qtyInput.dataset.maxStock;
+        // Packaging deselected — re-validate to clear any "required" error
+        validateBatchQuantity(qtyInput);
+      }
+    });
+  });
+
+  batchQtyInputs.forEach(input => {
+    input.addEventListener('input', function() { validateBatchQuantity(this); });
+    input.addEventListener('blur', function() { validateBatchQuantity(this); });
+  });
+
+  function validateBatchQuantity(input) {
+    const productId = input.dataset.productId;
+    const inputName = input.name;
+    const validationMsg = input.nextElementSibling;
+    const row = input.closest('tr');
+    const qty = parseFloat(input.value) || 0;
+
+    // Always remove this input's error first, then re-evaluate
+    validationErrors.delete(inputName);
+
+    if (qty === 0) {
+      // If packaging is selected, quantity is required
+      if (row) {
+        const packagingSelect = row.querySelector('[data-field-type="packaging"]');
+        if (packagingSelect && packagingSelect.value) {
+          validationMsg.textContent = '❌ Quantity is required when packaging is selected!';
+          validationMsg.className = 'form-text validation-msg text-danger font-weight-bold';
+          input.style.borderColor = '#dc3545';
+          input.style.backgroundColor = '#fff3cd';
+          validationErrors.add(inputName);
+          updateBatchSubmitButton();
+          return;
+        }
+      }
+      validationMsg.textContent = '';
+      validationMsg.className = 'form-text validation-msg';
+      input.style.borderColor = '';
+      input.style.backgroundColor = '';
+      // Clear packaging error styling
+      if (row) {
+        const packagingSelect = row.querySelector('[data-field-type="packaging"]');
+        if (packagingSelect) {
+          packagingSelect.style.borderColor = '';
+          packagingSelect.style.backgroundColor = '';
+        }
+      }
+      updateBatchSubmitButton();
+      return;
+    }
+
+    // Check if packaging is selected
+    if (row) {
+      const packagingSelect = row.querySelector('[data-field-type="packaging"]');
+      if (packagingSelect && !packagingSelect.value) {
+        validationMsg.textContent = '❌ Please select a packaging type first!';
+        validationMsg.className = 'form-text validation-msg text-danger font-weight-bold';
+        input.style.borderColor = '#dc3545';
+        input.style.backgroundColor = '#fff3cd';
+        packagingSelect.style.borderColor = '#dc3545';
+        packagingSelect.style.backgroundColor = '#fff3cd';
+        validationErrors.add(inputName);
+        updateBatchSubmitButton();
+        return;
+      } else if (packagingSelect) {
+        packagingSelect.style.borderColor = '';
+        packagingSelect.style.backgroundColor = '';
+      }
+    }
+
+    // Check quantity against packaging stock
+    const maxStock = parseFloat(input.dataset.maxStock);
+    if (!isNaN(maxStock) && qty > maxStock) {
+      validationMsg.textContent = `❌ Exceeds available stock! (Max: ${maxStock.toFixed(2)})`;
+      validationMsg.className = 'form-text validation-msg text-danger font-weight-bold';
+      input.style.borderColor = '#dc3545';
+      input.style.backgroundColor = '#fff3cd';
+      validationErrors.add(inputName);
+    } else if (qty < 0) {
+      validationMsg.textContent = '❌ Cannot be negative!';
+      validationMsg.className = 'form-text validation-msg text-danger font-weight-bold';
+      input.style.borderColor = '#dc3545';
+      input.style.backgroundColor = '#fff3cd';
+      validationErrors.add(inputName);
+    } else {
+      if (!isNaN(maxStock)) {
+        validationMsg.textContent = `✓ Valid (${qty.toFixed(2)} / ${maxStock.toFixed(2)})`;
+      } else {
+        validationMsg.textContent = '✓ Valid';
+      }
+      validationMsg.className = 'form-text validation-msg text-success';
+      input.style.borderColor = '#28a745';
+      input.style.backgroundColor = '#d4edda';
+    }
+
+    updateBatchSubmitButton();
+  }
+
+  function updateBatchSubmitButton() {
+    if (validationErrors.size > 0) {
+      submitBtn.disabled = true;
+      submitBtn.classList.remove('btn-success');
+      submitBtn.classList.add('btn-secondary');
+      submitBtn.textContent = `⚠️ Fix ${validationErrors.size} error(s) to continue`;
+      submitBtn.style.cursor = 'not-allowed';
+    } else {
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('btn-secondary');
+      submitBtn.classList.add('btn-success');
+      submitBtn.textContent = 'Save';
+      submitBtn.style.cursor = 'pointer';
+    }
+  }
+
   // Duplicate detection logic
   const quantityInputs = document.querySelectorAll('[data-field-type="quantity"]');
   const form = document.getElementById('batchForm');
@@ -206,6 +348,15 @@ document.addEventListener("DOMContentLoaded", function() {
   });
 
   form.addEventListener('submit', function(e) {
+    // Block submission if there are validation errors
+    if (validationErrors.size > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      alert(`Cannot submit! Please fix ${validationErrors.size} validation error(s) first.`);
+      return false;
+    }
+
     if (allowSubmit) {
       allowSubmit = false;
       return;
@@ -263,9 +414,10 @@ document.addEventListener("DOMContentLoaded", function() {
 
     tableRows.forEach(row => {
       const productName = row.dataset.productName ? row.dataset.productName.toLowerCase() : '';
+      const productCode = row.dataset.productCode ? row.dataset.productCode.toLowerCase() : '';
       const rowText = row.textContent.toLowerCase();
 
-      if (productName.includes(searchTerm) || rowText.includes(searchTerm)) {
+      if (productCode.includes(searchTerm) || productName.includes(searchTerm) || rowText.includes(searchTerm)) {
         row.style.display = '';
       } else {
         row.style.display = 'none';
