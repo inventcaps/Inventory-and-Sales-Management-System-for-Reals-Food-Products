@@ -152,6 +152,7 @@ DATABASES = {
         'NAME': 'clean_db',
         'USER': 'postgres',
         'PASSWORD': 'admin',
+        'PASSWORD': 'admin',
         'HOST': 'localhost',
         'PORT': '5432',
     }

@@ -341,38 +341,81 @@
 <div class="modal fade" id="exportLossModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
-      <form method="get" action="{% url 'financial-loss-export' %}">
-        <div class="modal-header">
-          <h5 class="modal-title">Export Financial Loss Report</h5>
-          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-        </div>
-        <div class="modal-body">
-          <label>Filter Type</label>
-          <select name="filter" class="form-control mb-3" id="lossFilterType" required>
-            <option value="date">By Date</option>
-            <option value="month">By Month</option>
-            <option value="year">By Year</option>
-            <option value="range">Custom Range</option>
+      <div class="modal-header">
+        <h5 class="modal-title">Export Financial Loss Report</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label>Export Format</label>
+          <select id="lossExportFormat" class="form-control">
+            <option value="csv">CSV</option>
+            <option value="pdf">PDF</option>
           </select>
-          <div id="lossStartInput">
-            <label>Start</label>
-            <input type="date" name="start" class="form-control mb-3" required>
-          </div>
-          <div id="lossEndInput" style="display:none;">
-            <label>End</label>
-            <input type="date" name="end" class="form-control mb-3">
-          </div>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Export CSV</button>
+        <label>Filter Type</label>
+        <select name="filter" class="form-control mb-3" id="lossFilterType" required>
+          <option value="date">By Date</option>
+          <option value="month">By Month</option>
+          <option value="year">By Year</option>
+          <option value="range">Custom Range</option>
+        </select>
+        <div id="lossStartInput">
+          <label>Start</label>
+          <input type="date" name="start" class="form-control mb-3" required>
         </div>
-      </form>
+        <div id="lossEndInput" style="display:none;">
+          <label>End</label>
+          <input type="date" name="end" class="form-control mb-3">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="exportFinancialLossReport()" id="exportLossButton">
+          <i class="la la-download mr-1"></i> Export CSV
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
+function exportFinancialLossReport() {
+  const params = new URLSearchParams();
+  const formatEl = document.getElementById('lossExportFormat');
+  const format = formatEl ? formatEl.value : 'csv';
+  const filterType = document.getElementById('lossFilterType').value;
+  const startInput = document.querySelector('#lossStartInput input');
+  const endInput = document.querySelector('#lossEndInput input');
+
+  params.set('format', format);
+  params.set('filter', filterType);
+  
+  if (startInput && startInput.value) {
+    params.set('start', startInput.value);
+  }
+  
+  if (endInput && endInput.value) {
+    params.set('end', endInput.value);
+  }
+
+  const url = '/financial-loss/export/' + (params.toString() ? ('?' + params.toString()) : '');
+  window.location.href = url;
+}
+
+// Update button text based on format selection
+document.addEventListener('DOMContentLoaded', function () {
+  const formatSelect = document.getElementById('lossExportFormat');
+  const exportButton = document.getElementById('exportLossButton');
+
+  if (formatSelect && exportButton) {
+    formatSelect.addEventListener('change', function() {
+      const format = this.value.toUpperCase();
+      exportButton.innerHTML = '<i class="la la-download mr-1"></i> Export ' + format;
+    });
+  }
+});
+
 document.getElementById("lossFilterType").addEventListener("change", function() {
   const start = document.querySelector("#lossStartInput input");
   const endDiv = document.getElementById("lossEndInput");

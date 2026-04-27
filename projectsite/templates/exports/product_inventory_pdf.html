@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.2cm 1.5cm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            background: #ffffff;
+            line-height: 1.5;
+        }
+
+        /* ── HEADER ─────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #4a8c2a;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-wrap {
+            width: 54px;
+            height: 54px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #5ca832 0%, #3d7a1e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .logo-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .logo-placeholder {
+            font-family: Georgia, serif;
+            font-size: 20pt;
+            color: #fff;
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        .company-name {
+            font-family: Georgia, serif;
+            font-size: 18pt;
+            color: #1a2e1a;
+            letter-spacing: -0.3px;
+            line-height: 1.1;
+        }
+
+        .report-label {
+            font-size: 8.5pt;
+            color: #5ca832;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .header-right .date-label {
+            font-size: 8pt;
+            color: #888;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .header-right .date-val {
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        /* ── FILTER PILL ─────────────────────────────────── */
+        .filter-info {
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-info .label {
+            font-size: 8pt;
+            font-weight: 700;
+            color: #4a8c2a;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        .filter-pill {
+            display: inline-block;
+            background: #eef7e8;
+            color: #2e6b10;
+            border: 1px solid #b8dda0;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 8pt;
+            font-weight: 500;
+        }
+
+        /* ── TABLE ───────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+
+        thead tr {
+            background: #2e6b10;
+            color: #ffffff;
+        }
+
+        th {
+            padding: 9px 10px;
+            text-align: left;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        th:first-child { border-radius: 0; }
+
+        tbody tr {
+            border-bottom: 1px solid #e8f0e3;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f5faf1;
+        }
+
+        tbody tr:last-child {
+            border-bottom: 2px solid #4a8c2a;
+        }
+
+        td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            color: #1a2e1a;
+            vertical-align: middle;
+        }
+
+        td.product-name {
+            font-weight: 600;
+            color: #1a2e1a;
+        }
+
+        td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        td.packaging {
+            font-size: 7.8pt;
+            color: #667766;
+            font-style: italic;
+        }
+
+        .empty-row td {
+            text-align: center;
+            color: #aaa;
+            padding: 24px;
+            font-style: italic;
+        }
+
+        /* ── STATUS BADGES ───────────────────────────────── */
+        .badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+
+        .badge-on-stock    { background: #d4edda; color: #155724; border: 1px solid #b8ddb0; }
+        .badge-low-stock   { background: #fff3cd; color: #7a5300; border: 1px solid #ffd97a; }
+        .badge-warning     { background: #d6eaf8; color: #1a5276; border: 1px solid #a9cce3; }
+        .badge-out-stock   { background: #fde8e8; color: #7b1111; border: 1px solid #f5a0a0; }
+
+        /* ── SUMMARY STRIP ───────────────────────────────── */
+        .summary {
+            display: flex;
+            align-items: stretch;
+            border: 1.5px solid #b8dda0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .summary-item {
+            flex: 1;
+            padding: 12px 16px;
+            text-align: center;
+            border-right: 1.5px solid #b8dda0;
+        }
+
+        .summary-item:last-child {
+            border-right: none;
+        }
+
+        .summary-item .s-label {
+            font-size: 7.5pt;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #4a8c2a;
+            margin-bottom: 4px;
+        }
+
+        .summary-item .s-val {
+            font-family: 'DM Serif Display', serif;
+            font-size: 16pt;
+            color: #1a2e1a;
+            line-height: 1;
+        }
+
+        .summary-item.highlight {
+            background: #2e6b10;
+        }
+
+        .summary-item.highlight .s-label {
+            color: #a8e48a;
+        }
+
+        .summary-item.highlight .s-val {
+            color: #ffffff;
+        }
+
+        /* ── FOOTER ──────────────────────────────────────── */
+        .footer {
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid #d0e8c5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            font-size: 7.5pt;
+            color: #888;
+        }
+
+        .footer-right {
+            font-size: 7.5pt;
+            color: #888;
+            text-align: right;
+        }
+
+        .footer-brand {
+            font-weight: 700;
+            color: #4a8c2a;
+        }
+
+        /* ── LEGEND ──────────────────────────────────────── */
+        .legend {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+            flex-wrap: wrap;
+        }
+
+        .legend-label {
+            font-size: 7.5pt;
+            font-weight: 700;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-right: 4px;
+        }
+
+        @media print {
+            body { background: white; }
+            tr { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-wrap">
+                {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Logo">
+                {% else %}
+                    <span class="logo-placeholder">R</span>
+                {% endif %}
+            </div>
+            <div>
+                <div class="company-name">Real's Food Products</div>
+                <div class="report-label">Product Inventory Report</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="date-label">Generated</div>
+            <div class="date-val">{{ generated_date }}</div>
+        </div>
+    </div>
+
+    <!-- FILTERS -->
+    {% if filters %}
+    <div class="filter-info">
+        <span class="label">Filters:</span>
+        {% if filters.month %}<span class="filter-pill">📅 {{ filters.month }}</span>{% endif %}
+        {% if filters.search %}<span class="filter-pill">🔍 "{{ filters.search }}"</span>{% endif %}
+        {% if filters.status %}<span class="filter-pill">● {{ filters.status|title }}</span>{% endif %}
+    </div>
+    {% endif %}
+
+    <!-- LEGEND -->
+    <div class="legend">
+        <span class="legend-label">Status:</span>
+        <span class="badge badge-on-stock">On Stock</span>
+        <span class="badge badge-low-stock">Low Stock</span>
+        <span class="badge badge-warning">Warning</span>
+        <span class="badge badge-out-stock">Out of Stock</span>
+    </div>
+
+    <!-- TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th class="num">Total Stock</th>
+                <th class="num">Available</th>
+                <th class="num">Expiring Soon</th>
+                <th>Packaging Used</th>
+                <th class="num">Restock Threshold</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in inventory_items %}
+            <tr>
+                <td class="product-name">{{ item.product }}</td>
+                <td class="num">{{ item.total_stock|floatformat:0 }}</td>
+                <td class="num">{{ item.available_stock|floatformat:0 }}</td>
+                <td class="num">
+                    {% if item.expiring_stock > 0 %}
+                        <strong style="color:#b45309;">{{ item.expiring_stock|floatformat:0 }}</strong>
+                    {% else %}
+                        0
+                    {% endif %}
+                </td>
+                <td class="packaging">{{ item.packaging_used|default:"—" }}</td>
+                <td class="num">{{ item.restock_threshold|floatformat:0 }}</td>
+                <td>
+                    {% if item.status_class == 'in-stock' %}
+                        <span class="badge badge-on-stock">{{ item.status }}</span>
+                    {% elif item.status_class == 'low-stock' %}
+                        <span class="badge badge-low-stock">{{ item.status }}</span>
+                    {% elif item.status_class == 'warning' %}
+                        <span class="badge badge-warning">{{ item.status }}</span>
+                    {% else %}
+                        <span class="badge badge-out-stock">{{ item.status }}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row">
+                <td colspan="7">No inventory data found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- SUMMARY STRIP -->
+    <div class="summary">
+        <div class="summary-item highlight">
+            <div class="s-label">Total Products</div>
+            <div class="s-val">{{ total_products }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="s-label">Total Stock</div>
+            <div class="s-val">{{ total_stock|floatformat:0 }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="s-label">Available Stock</div>
+            <div class="s-val">{{ total_available|floatformat:0 }}</div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-left">
+            <span class="footer-brand">Real's Food Products</span> · Inventory Management System
+        </div>
+        <div class="footer-right">
+            © {{ current_year }} Real's Food Products. All rights reserved.
+        </div>
+    </div>
+
+</body>
+</html>

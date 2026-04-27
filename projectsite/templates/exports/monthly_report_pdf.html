@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 1.2cm 1.5cm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            background: #ffffff;
+            line-height: 1.5;
+        }
+
+        /* ── HEADER ─────────────────────────────────────── */
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+            padding-bottom: 16px;
+            border-bottom: 3px solid #4a8c2a;
+            gap: 16px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .logo-wrap {
+            width: 54px;
+            height: 54px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #5ca832 0%, #3d7a1e 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        .logo-placeholder {
+            font-family: Georgia, serif;
+            font-size: 20pt;
+            color: #fff;
+            font-weight: 400;
+            line-height: 1;
+        }
+
+        .company-name {
+            font-family: Georgia, serif;
+            font-size: 18pt;
+            color: #1a2e1a;
+            letter-spacing: -0.3px;
+            line-height: 1.1;
+        }
+
+        .report-label {
+            font-size: 8.5pt;
+            color: #5ca832;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-top: 2px;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .header-right .date-label {
+            font-size: 8pt;
+            color: #888;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .header-right .date-val {
+            font-size: 9.5pt;
+            color: #1a2e1a;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        /* ── SUMMARY CARDS ───────────────────────────────── */
+        .summary-cards {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .summary-card {
+            flex: 1;
+            padding: 16px;
+            border-radius: 10px;
+            border: 1.5px solid #b8dda0;
+        }
+
+        .summary-card h6 {
+            font-size: 7.5pt;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: #4a8c2a;
+            margin-bottom: 4px;
+        }
+
+        .summary-card p {
+            font-size: 7.5pt;
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .summary-card .value {
+            font-family: Georgia, serif;
+            font-size: 14pt;
+            font-weight: 600;
+        }
+
+        .summary-card.success .value {
+            color: #16a34a;
+        }
+
+        .summary-card.danger .value {
+            color: #dc2626;
+        }
+
+        .summary-card.primary .value {
+            color: #2563eb;
+        }
+
+        .summary-card.info .value {
+            color: #0891b2;
+        }
+
+        /* ── TABLE ───────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 18px;
+        }
+
+        thead tr {
+            background: #2e6b10;
+            color: #ffffff;
+        }
+
+        th {
+            padding: 9px 10px;
+            text-align: left;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        tbody tr {
+            border-bottom: 1px solid #e8f0e3;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f5faf1;
+        }
+
+        tbody tr:last-child {
+            border-bottom: 2px solid #4a8c2a;
+        }
+
+        td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            color: #1a2e1a;
+            vertical-align: middle;
+        }
+
+        td.num {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .trend-badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 20px;
+            font-size: 7.5pt;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        .trend-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .trend-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .trend-danger {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .change-up {
+            color: #16a34a;
+            font-weight: 600;
+        }
+
+        .change-down {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .empty-row td {
+            text-align: center;
+            color: #aaa;
+            padding: 24px;
+            font-style: italic;
+        }
+
+        /* ── FOOTER ──────────────────────────────────────── */
+        .footer {
+            margin-top: 10px;
+            padding-top: 12px;
+            border-top: 1px solid #d0e8c5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            font-size: 7.5pt;
+            color: #888;
+        }
+
+        .footer-right {
+            font-size: 7.5pt;
+            color: #888;
+            text-align: right;
+        }
+
+        .footer-brand {
+            font-weight: 700;
+            color: #4a8c2a;
+        }
+
+        @media print {
+            body { background: white; }
+            tr { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-wrap">
+                <span class="logo-placeholder">R</span>
+            </div>
+            <div>
+                <div class="company-name">Real's Food Products</div>
+                <div class="report-label">Monthly Business Report</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="date-label">Generated</div>
+            <div class="date-val">{{ generated_date }}</div>
+        </div>
+    </div>
+
+    <!-- SUMMARY CARDS -->
+    <div class="summary-cards">
+        <div class="summary-card success">
+            <h6>Total Revenue</h6>
+            <p>After financial loss</p>
+            <div class="value">₱{{ summary.total_revenue|floatformat:2 }}</div>
+        </div>
+        <div class="summary-card danger">
+            <h6>Financial Loss</h6>
+            <p>Expired & damaged</p>
+            <div class="value">₱{{ summary.total_financial_loss|floatformat:2 }}</div>
+        </div>
+        <div class="summary-card primary">
+            <h6>Total Profit</h6>
+            <p>Net profit for the period</p>
+            <div class="value">₱{{ summary.total_profit|floatformat:2 }}</div>
+        </div>
+        <div class="summary-card info">
+            <h6>Average Profit</h6>
+            <p>Monthly average profit</p>
+            <div class="value">₱{{ summary.average_profit|floatformat:2 }}</div>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <table>
+        <thead>
+            <tr>
+                <th>Month</th>
+                <th class="num">Revenue</th>
+                <th class="num">Financial Loss</th>
+                <th class="num">Expenses</th>
+                <th class="num">Profit</th>
+                <th class="num">Revenue Change</th>
+                <th class="num">Profit Change</th>
+                <th>Trend</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in report %}
+            <tr>
+                <td>{{ row.month|date:"F Y" }}</td>
+                <td class="num">₱{{ row.revenue|floatformat:2 }}</td>
+                <td class="num">₱{{ row.financial_loss|floatformat:2 }}</td>
+                <td class="num">₱{{ row.expenses|floatformat:2 }}</td>
+                <td class="num">₱{{ row.profit|floatformat:2 }}</td>
+                <td class="num">
+                    {% if row.revenue_change %}
+                        {% if row.revenue_change > 0 %}
+                            <span class="change-up">↑ ₱{{ row.revenue_change|floatformat:2 }}</span>
+                        {% else %}
+                            <span class="change-down">↓ ₱{{ row.revenue_change|floatformat:2 }}</span>
+                        {% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td class="num">
+                    {% if row.profit_change %}
+                        {% if row.profit_change > 0 %}
+                            <span class="change-up">↑ ₱{{ row.profit_change|floatformat:2 }}</span>
+                        {% else %}
+                            <span class="change-down">↓ ₱{{ row.profit_change|floatformat:2 }}</span>
+                        {% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if row.revenue_change and row.profit_change %}
+                        {% if row.revenue_change > 0 and row.profit_change > 0 %}
+                            <span class="trend-badge trend-success">Revenue & Profit Increased</span>
+                        {% elif row.revenue_change > 0 and row.profit_change < 0 %}
+                            <span class="trend-badge trend-warning">Revenue Increased, Profit Decreased</span>
+                        {% elif row.revenue_change < 0 and row.profit_change > 0 %}
+                            <span class="trend-badge trend-warning">Revenue Decreased, Profit Increased</span>
+                        {% else %}
+                            <span class="trend-badge trend-danger">Revenue & Profit Decreased</span>
+                        {% endif %}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row">
+                <td colspan="8">No monthly report data available.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div class="footer-left">
+            <span class="footer-brand">Real's Food Products</span> · Financial Report
+        </div>
+        <div class="footer-right">
+            © {{ current_year }} Real's Food Products. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

@@ -312,6 +312,14 @@ document.addEventListener('DOMContentLoaded', function() {
             <input type="month" class="form-control" id="exportMonth" name="month" 
               value="{{ export_month|default:'' }}">
           </div>
+          
+          <div class="form-group">
+            <label for="exportFormat">Export Format</label>
+            <select class="form-control" id="exportFormat" name="format">
+              <option value="csv">CSV</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </div>
 
           <!-- Hidden inputs to preserve current filters -->
           <input type="hidden" name="search" value="{{ request.GET.search|default:'' }}">
@@ -319,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-success btn-rounded">
+          <button type="submit" class="btn btn-success btn-rounded" id="exportButton">
             <i class="la la-download mr-1"></i> Export CSV
           </button>
         </div>
@@ -336,6 +344,8 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   const monthInput = document.getElementById('exportMonth');
+  const formatSelect = document.getElementById('exportFormat');
+  const exportButton = document.getElementById('exportButton');
   
   // Set default month to current month if not set
   if (!monthInput.value) {
@@ -344,6 +354,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     monthInput.value = `${year}-${month}`;
   }
+  
+  // Update button text based on format selection
+  formatSelect.addEventListener('change', function() {
+    const format = this.value.toUpperCase();
+    exportButton.innerHTML = `<i class="la la-download mr-1"></i> Export ${format}`;
+  });
 });
 </script>
 
