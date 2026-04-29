@@ -149,10 +149,9 @@ import os
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'clean_db',
+        'NAME': 'ednocdb',
         'USER': 'postgres',
-        'PASSWORD': 'admin',
-        'PASSWORD': 'admin',
+        'PASSWORD': 'reals',
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -163,7 +162,7 @@ DATABASES = {
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': 'realsproj.validators.LenientUserAttributeSimilarityValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',

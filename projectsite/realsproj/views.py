@@ -6415,14 +6415,15 @@ def login_view(request):
             except Exception as e:
                 messages.error(request, f"An error occurred: {str(e)}")
                 return render(request, '2fa_verify.html')
-        
-        username = request.POST.get('username', '')
-        password = request.POST.get('password', '')
-                
+
+        username = request.POST.get('username', '').strip()
+        password = request.POST.get('password', '').strip()
+
         # Check for login lockout
         from realsproj.models import LoginAttempt
         from django.utils import timezone
         from datetime import timedelta
+
         
         ip_address = get_client_ip(request)
         lockout_duration = timedelta(minutes=5)
