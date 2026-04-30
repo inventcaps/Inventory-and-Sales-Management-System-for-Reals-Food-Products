@@ -122,7 +122,8 @@
       const options = { 
         chart: {
           type: "bar",
-          height: 350,
+          height: '100%',
+          parentHeightOffset: 0,
           foreColor: themeColors.textColor,
           toolbar: { show: false },
           events: {
@@ -308,7 +309,8 @@
           bestSellerChart = new ApexCharts(document.querySelector("#bestSellerChart"), {
             chart: { 
               type: "pie", 
-              height: 300,
+              height: '100%',
+              parentHeightOffset: 0,
               foreColor: themeColors.textColor
             },
             series: data.data,
@@ -340,7 +342,8 @@
   const options = {
     chart: {
       type: "bar",
-      height: 350,
+      height: '100%',
+      parentHeightOffset: 0,
       toolbar: { show: true },
       zoom: { enabled: true },
       foreColor: themeColors.textColor

@@ -1,11 +1,8 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic.list import ListView
+﻿from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import (
     ListView, CreateView, UpdateView, DeleteView, TemplateView, View
 )
-from django.views.generic.edit import ModelFormMixin
 from django.contrib import messages
-from django.views import View
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.db import transaction, models
@@ -13,20 +10,16 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal, InvalidOperation
 from django.urls import reverse, reverse_lazy
-from django.contrib.auth.forms import AuthenticationForm, UserChangeForm
 from django.contrib.auth import login, authenticate, update_session_auth_hash
 from django.contrib.auth import get_user_model
-from .forms import CustomUserCreationForm
 from django.db.models import Avg, Count, Sum
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
-from django.forms import modelformset_factory
 import threading
 from realsproj.forms import (
     ProductsForm,
     RawMaterialsForm,
-    HistoryLogForm,
     SalesForm,
     ExpensesForm,
     SalesExpensesForm,
@@ -40,11 +33,8 @@ from realsproj.forms import (
     SizeUnitsForm,
     UnitPricesForm,
     SrpPricesForm,
-    NotificationsForm,
     BulkProductBatchForm,
-    StockChangesForm,
     BulkRawMaterialBatchForm,
-    UnifiedWithdrawForm,
     CustomUserCreationForm,
     WithdrawEditForm
 )
@@ -77,26 +67,18 @@ from realsproj.models import (
     PriceHistory
 )
 
-from django.db.models import Q, CharField
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import TemplateView
 from django.db.models.functions import TruncMonth, TruncDay
 from django.db.models.functions import Cast
 from django.contrib.auth.models import User
-import os
 from django.http import HttpResponse
 import csv
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
-from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.db.models import Q, F, CharField
-from django.db.models.functions import Cast
 import re
-from urllib.parse import urlparse, parse_qs
-from django.db.models import Count
-
 
 def get_or_create_auth_user(user):
     """
@@ -611,8 +593,8 @@ def monthly_report_export(request):
                     'total_profit': total_profit,
                     'average_profit': average_profit,
                 },
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
             }
 
@@ -3643,8 +3625,8 @@ def export_rawmaterial_inventory(request):
                 'total_materials': len(inventory_items),
                 'total_stock': total_stock,
                 'low_stock_count': low_stock_count,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
                 'filters': {
                     'search': q if q else None,
@@ -3721,7 +3703,7 @@ def export_rawmaterial_inventory(request):
             writer.writerow([f'An error occurred: {str(e)}'])
         return response
 
-class ProductVariantCreateView(CreateView):
+class ProductVariantCreateView(LoginRequiredMixin, CreateView):
     model = ProductVariants
     form_class = ProductVariantsForm
     template_name = "prodvar_add.html"
@@ -3733,7 +3715,7 @@ class ProductVariantCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class SizesCreateView(CreateView):
+class SizesCreateView(LoginRequiredMixin, CreateView):
     model = Sizes
     form_class = SizesForm
     template_name = "sizes_add.html"
@@ -3744,7 +3726,7 @@ class SizesCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class SizeUnitsCreateView(CreateView):
+class SizeUnitsCreateView(LoginRequiredMixin, CreateView):
     model = SizeUnits
     form_class = SizeUnitsForm
     template_name = "sizeunits_add.html"
@@ -3755,7 +3737,7 @@ class SizeUnitsCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class UnitPricesCreateView(CreateView):
+class UnitPricesCreateView(LoginRequiredMixin, CreateView):
     model = UnitPrices
     form_class = UnitPricesForm
     template_name = "unitprices_add.html"
@@ -3766,7 +3748,7 @@ class UnitPricesCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class SrpPricesCreateView(CreateView):
+class SrpPricesCreateView(LoginRequiredMixin, CreateView):
     model = SrpPrices
     form_class = SrpPricesForm
     template_name = "srpprices_add.html"
@@ -4205,7 +4187,7 @@ class SrpPriceDeleteView(View):
         return redirect('product-attributes')
 
 
-class WithdrawSuccessView(ListView):
+class WithdrawSuccessView(LoginRequiredMixin, ListView):
     model = Withdrawals
     context_object_name = 'withdrawals'
     template_name = "withdrawn.html"
@@ -4406,8 +4388,8 @@ def export_withdrawals(request):
                 'rawmat_withdrawals_count': rawmat_withdrawals_count,
                 'rawmat_withdrawals_qty': rawmat_withdrawals_qty,
                 'filter_info': filter_info,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
             }
             
@@ -4465,7 +4447,7 @@ def export_withdrawals(request):
             writer.writerow([f'An error occurred: {str(e)}'])
         return response
     
-class WithdrawItemView(View):
+class WithdrawItemView(LoginRequiredMixin, View):
     template_name = "withdraw_item.html"
 
     def get(self, request):
@@ -4552,11 +4534,6 @@ class WithdrawItemView(View):
         payment_status = request.POST.get("payment_status", "PAID")
         paid_amount_input = request.POST.get("paid_amount")
        
-        if reason == "REPLACEMENT_FOR_RETURNED":
-            print(f"DEBUG: Processing REPLACEMENT_FOR_RETURNED withdrawal")
-            print(f"DEBUG: item_type={item_type}, reason={reason}")
-            print(f"DEBUG: POST data keys: {list(request.POST.keys())}")
-
         # Parse price input
         if price_input in ['UNIT', 'SRP']:
             price_type = price_input
@@ -4595,9 +4572,6 @@ class WithdrawItemView(View):
                         quantity = Decimal(value)  # Use Decimal instead of float
                         if quantity <= 0:
                             continue
-                        
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: Processing product {product_id} with quantity {quantity}")
                         
                         product = Products.objects.get(id=product_id)
                         inv = product.productinventory
@@ -4663,12 +4637,6 @@ class WithdrawItemView(View):
                                 messages.error(request, f"Invalid batch selected for {product}")
                                 continue
 
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: About to create withdrawal for product {product.id}, quantity {quantity}")
-                            print(f"DEBUG: Current stock before deduction: {inv.total_stock}")
-                            print(f"DEBUG: Selected batch: {selected_batch}")
-                            print(f"DEBUG: Selected packaging: {selected_packaging}")
-
                         withdrawal = Withdrawals.objects.create(
                             item_id=product.id,
                             item_type="PRODUCT",
@@ -4695,15 +4663,10 @@ class WithdrawItemView(View):
                             total_amount=total_amount,
                         )
 
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
-
                         count += 1
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                        print(f"ERROR withdrawing product {product_id}: {str(e)}")
-                        print(f"Full traceback: {error_details}")
                         messages.error(request, f"❌ Error withdrawing product: {str(e)}")
                         continue
 
@@ -4741,14 +4704,9 @@ class WithdrawItemView(View):
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                        print(f"ERROR withdrawing raw material {material_id}: {str(e)}")
-                        print(f"Full traceback: {error_details}")
                         messages.error(request, f"❌ Error withdrawing raw material: {str(e)}")
                         continue
 
-        if reason == "REPLACEMENT_FOR_RETURNED":
-            print(f"DEBUG: Final count of processed items: {count}")
-        
         if count > 0:
             
             if reason == "SOLD" and sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and order_group_id:
@@ -4820,7 +4778,7 @@ class WithdrawItemView(View):
         return redirect("withdrawals")
 
 
-class WithdrawalsArchiveView(View):
+class WithdrawalsArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
@@ -4849,7 +4807,7 @@ class ArchivedWithdrawalsListView(ListView):
         return Withdrawals.objects.filter(is_archived=True).order_by('-date')
 
 
-class WithdrawalsUnarchiveView(View):
+class WithdrawalsUnarchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
@@ -4864,7 +4822,7 @@ class WithdrawalsUnarchiveView(View):
         messages.success(request, "✅ Withdrawal restored successfully.")
         return redirect('withdrawals-archived-list')
 
-class WithdrawalBulkRestoreView(View):
+class WithdrawalBulkRestoreView(LoginRequiredMixin, View):
     def post(self, request):
         import json
         try:
@@ -4879,7 +4837,7 @@ class WithdrawalBulkRestoreView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
 
-class WithdrawalBulkDeleteView(View):
+class WithdrawalBulkDeleteView(LoginRequiredMixin, View):
     def post(self, request):
         import json
         try:
@@ -4894,7 +4852,7 @@ class WithdrawalBulkDeleteView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
 
-class WithdrawalsArchiveOldView(View):
+class WithdrawalsArchiveOldView(LoginRequiredMixin, View):
     def post(self, request):
         from datetime import timedelta
         one_year_ago = timezone.now() - timedelta(days=365)
@@ -4936,7 +4894,7 @@ def withdrawals_bulk_archive(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
-class WithdrawUpdateView(UpdateView):
+class WithdrawUpdateView(LoginRequiredMixin, UpdateView):
     model = Withdrawals
     form_class = WithdrawEditForm
     template_name = "withdraw_edit.html"
@@ -4952,8 +4910,6 @@ class WithdrawUpdateView(UpdateView):
         
         original_date = withdrawal.date
         current_time = timezone.now()
-        print(f"Current time: {current_time}")
-        print(f"Original date before save: {original_date}")
 
         before = {
             'item_type': withdrawal.item_type,
@@ -5057,7 +5013,6 @@ class WithdrawUpdateView(UpdateView):
                 "✅ Withdrawal updated successfully! Inventory has been adjusted.")
 
         withdrawal.refresh_from_db()
-        print(f"Date after save: {withdrawal.date}")
 
         after = {
             'item_type': withdrawal.item_type,
@@ -5085,7 +5040,6 @@ class WithdrawUpdateView(UpdateView):
                                 before['custom_discount_value'] != after['custom_discount_value'])
 
             if quantity_changed or discount_changed:
-                print(f"🔄 Updating sales entry for order #{withdrawal.order_group_id}")
 
                 order_withdrawals = Withdrawals.objects.filter(order_group_id=withdrawal.order_group_id)
                 new_total = Decimal(0)
@@ -5129,7 +5083,7 @@ class WithdrawUpdateView(UpdateView):
         return super().form_invalid(form)
 
 
-class WithdrawDeleteView(DeleteView):
+class WithdrawDeleteView(LoginRequiredMixin, DeleteView):
     model = Withdrawals
     success_url = reverse_lazy('withdrawals')
 
@@ -5568,6 +5522,7 @@ def get_total_revenue():
     return total
 
     
+@login_required
 @require_GET
 def get_stock(request):
     item_type = request.GET.get("type")
@@ -5582,7 +5537,7 @@ def get_stock(request):
 
     return JsonResponse({"stock": inventory.total_stock if inventory else 0})
 
-class NotificationsList(ListView):
+class NotificationsList(LoginRequiredMixin, ListView):
     model = Notifications
     context_object_name = 'notifications'
     template_name = "notification.html"
@@ -5634,7 +5589,7 @@ class NotificationsList(ListView):
 
     def get(self, request, *args, **kwargs):
         # Mark all as read
-        Notifications.objects.filter(is_read=False).update(is_read=True)
+        Notifications.objects.filter(is_read=False, user=request.user).update(is_read=True)
         
         # Handle pagination - if page doesn't exist, redirect to page 1 with same filters
         try:
@@ -5997,6 +5952,7 @@ def download_my_data(request):
     
     return response
 
+@login_required
 def best_sellers_api(request):
     from datetime import datetime
     TOP_N = 5
@@ -6004,7 +5960,7 @@ def best_sellers_api(request):
     year = request.GET.get('year')
     month = request.GET.get('month')
 
-    now = datetime.now()
+    now = timezone.now()
     if not year:
         year = now.year
     if not month:
@@ -6035,6 +5991,7 @@ def best_sellers_api(request):
 
     return JsonResponse({"labels": labels, "data": data})
 
+@login_required
 def mark_notification_read(request, pk):
     notif = get_object_or_404(Notifications, pk=pk)
     notif.is_read = True
@@ -6042,7 +5999,7 @@ def mark_notification_read(request, pk):
     return redirect('notifications')
 
 
-class StockChangesList(ListView):
+class StockChangesList(LoginRequiredMixin, ListView):
     model = StockChanges
     context_object_name = 'stock_changes'
     template_name = "stock_changes.html"
@@ -6124,7 +6081,7 @@ def export_stock_changes(request):
     
     return response
 
-class StockChangesArchiveView(View):
+class StockChangesArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         stock_change = get_object_or_404(StockChanges, pk=pk)
         
@@ -6163,7 +6120,7 @@ def stock_changes_bulk_archive(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
-class ArchivedStockChangesListView(ListView):
+class ArchivedStockChangesListView(LoginRequiredMixin, ListView):
     model = StockChanges
     template_name = 'archived_stock_changes.html'
     context_object_name = 'object_list'
@@ -6173,7 +6130,7 @@ class ArchivedStockChangesListView(ListView):
         return StockChanges.objects.filter(is_archived=True).order_by('-date')
 
 
-class StockChangesUnarchiveView(View):
+class StockChangesUnarchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         stock_change = get_object_or_404(StockChanges, pk=pk)
         stock_change.is_archived = False
@@ -6182,7 +6139,7 @@ class StockChangesUnarchiveView(View):
         return redirect('stock-changes-archived-list')
 
 
-class StockChangesBulkRestoreView(View):
+class StockChangesBulkRestoreView(LoginRequiredMixin, View):
     def post(self, request):
         import json
         try:
@@ -6198,7 +6155,7 @@ class StockChangesBulkRestoreView(View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class StockChangesArchiveOldView(View):
+class StockChangesArchiveOldView(LoginRequiredMixin, View):
     def post(self, request):
         from datetime import timedelta
         one_year_ago = timezone.now() - timedelta(days=365)
@@ -6275,54 +6232,6 @@ def get_device_info(request):
         'device_name': f"{os} - {browser}"
     }
 
-
-def send_login_notification(user, device_info, ip_address, is_new_device=False):
-    """Send email notification about login"""
-    from django.core.mail import send_mail
-    from django.conf import settings
-    from django.utils import timezone
-    
-    if is_new_device:
-        subject = '🔐 New Device Verified - Real\'s Food Products'
-        message = f'''Hello {user.username},
-
-A new device has been verified for your account.
-
-Device: {device_info['device_name']}
-IP Address: {ip_address}
-Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-This device is now trusted and will not require OTP for future logins.
-
-If this wasn't you, please secure your account immediately.
-
-Real's Food Products Security Team'''
-    else:
-        subject = '✅ Login Notification - Real\'s Food Products'
-        message = f'''Hello {user.username},
-
-You recently logged in to your account.
-
-Device: {device_info['device_name']}
-IP Address: {ip_address}
-Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-This login was from a trusted device.
-
-If this wasn't you, please secure your account immediately.
-
-Real's Food Products Security Team'''
-    
-    try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
-    except Exception as e:
-        pass
 
 def login_view(request):
     if request.method == 'POST':
@@ -6550,15 +6459,13 @@ Real's Food Products Security Team''',
                                 recipient_list=[user.email],
                                 fail_silently=False,
                             )
-                            print(f"[OTP EMAIL] Successfully sent OTP to {user.email}")
                         except Exception as e:
-                            print(f"[OTP EMAIL ERROR] Failed to send OTP email: {e}")
+                            pass
                     
                     try:
                         from threading import Thread
                         Thread(target=send_otp_email).start()
                     except Exception as e:
-                        print(f"[THREAD ERROR] Failed to start email thread: {e}")
                         messages.error(request, "Failed to send confirmation email. Please contact support.")  
 
                     LoginAttempt.objects.create(
@@ -6740,7 +6647,7 @@ def reject_user(request, user_id):
             )
         except Exception:
             pass
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
         user.email = f"rejected_{user.id}_{timestamp}@deleted.local"
         user.username = f"rejected_user_{user.id}_{timestamp}"
         user.first_name = "Rejected"
@@ -6766,7 +6673,7 @@ def send_role_change_email_async(username, email, new_role):
             fail_silently=True,
         )
     except Exception as e:
-        print(f"[ROLE CHANGE ERROR] Failed to send email: {e}")
+        pass
 
 @login_required
 @require_http_methods(["POST"])
@@ -6879,7 +6786,7 @@ def send_deactivation_email_async(username, email):
             fail_silently=True,
         )
     except Exception as e:
-        print(f"[DEACTIVATION EMAIL ERROR] {e}")
+        pass
 
 def send_reactivation_email_async(username, email):
     from django.core.mail import send_mail
@@ -6893,7 +6800,7 @@ def send_reactivation_email_async(username, email):
             fail_silently=True,
         )
     except Exception as e:
-        print(f"[REACTIVATION EMAIL ERROR] {e}")
+        pass
 
 @login_required
 @require_http_methods(["POST"])
@@ -6907,7 +6814,7 @@ def deactivate_user(request, user_id):
             return JsonResponse({'success': False, 'message': 'Cannot deactivate your own account'})
         username = user.username
         email = user.email
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
         user.is_active = False
         user.first_name = f"ORIGINAL_USERNAME:{username}"
         user.last_name = f"ORIGINAL_EMAIL:{email}"
@@ -6965,7 +6872,7 @@ def delete_user(request, user_id):
         if user.id == request.user.id:
             return JsonResponse({'success': False, 'message': 'Cannot delete your own account'})
         username = user.username
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
         user.is_active = False
         user.email = f"deleted_{user.id}_{timestamp}@deleted.local"
         user.username = f"deleted_user_{user.id}_{timestamp}"
@@ -7148,8 +7055,8 @@ def export_product_inventory(request):
                 'total_products': len(inventory_items),
                 'total_stock': total_stock,
                 'total_available': total_available,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,  # Disabled: xhtml2pdf cannot resolve relative static paths
                 'filters': {
                     'month': month if month else None,
@@ -7239,13 +7146,18 @@ class UserActivityList(LoginRequiredMixin, ListView):
             qs = qs.filter(id__in=ids)
         return qs
 
+@login_required
 def check_account_status(request):
     if not request.user.is_authenticated:
         return JsonResponse({'is_active': False, 'deactivated': True})
     if not request.user.is_active:
         return JsonResponse({'is_active': False, 'deactivated': True})
     deactivated_flag = request.session.get('account_deactivated', False)
-    return JsonResponse({'is_active': True, 'deactivated': deactivated_flag})
+    return JsonResponse({
+        'is_active': True,
+        'deactivated': deactivated_flag,
+        'is_superuser': request.user.is_superuser,
+    })
 
 def clear_deactivation_flag(request):
     if request.method == 'POST':
@@ -7374,8 +7286,8 @@ def export_bestseller_report(request):
                 'total_products': len(bestseller_items),
                 'total_sold': total_sold,
                 'total_transactions': total_transactions,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
                 'filters': {
                     'month': month if month and not show_all else None,
@@ -7449,7 +7361,7 @@ def financial_loss(request):
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
     
     # Get current month value for default filter
-    current_month = datetime.now().strftime('%Y-%m')
+    current_month = timezone.now().strftime('%Y-%m')
     current_month_value = current_month
     
     # Product withdrawals with loss reasons
@@ -7467,11 +7379,14 @@ def financial_loss(request):
         # Show all data
         pass
     elif product_date_filter:
-        # Filter by selected month
-        product_withdrawals_qs = product_withdrawals_qs.filter(date__startswith=product_date_filter)
+        try:
+            _pd = datetime.strptime(product_date_filter, '%Y-%m')
+            product_withdrawals_qs = product_withdrawals_qs.filter(date__year=_pd.year, date__month=_pd.month)
+        except ValueError:
+            pass
     else:
-        # Default to current month
-        product_withdrawals_qs = product_withdrawals_qs.filter(date__startswith=current_month)
+        _now = timezone.now()
+        product_withdrawals_qs = product_withdrawals_qs.filter(date__year=_now.year, date__month=_now.month)
     
     # Calculate product loss and prepare withdrawal data
     product_loss = 0
@@ -7523,11 +7438,14 @@ def financial_loss(request):
         # Show all data
         pass
     elif raw_material_date_filter:
-        # Filter by selected month
-        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__startswith=raw_material_date_filter)
+        try:
+            _rd = datetime.strptime(raw_material_date_filter, '%Y-%m')
+            raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=_rd.year, date__month=_rd.month)
+        except ValueError:
+            pass
     else:
-        # Default to current month
-        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__startswith=current_month)
+        _now2 = timezone.now()
+        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=_now2.year, date__month=_now2.month)
     
     # Calculate raw material loss and prepare withdrawal data
     raw_material_loss = 0
@@ -7689,8 +7607,8 @@ def financial_loss_export(request):
                 'raw_material_loss': raw_material_loss,
                 'total_loss': total_loss,
                 'filter_info': filter_info,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
             }
 
@@ -7870,7 +7788,7 @@ def delete_account(request):
             
             # Generate unique timestamp-based identifier
             from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
             
             # Soft delete: Deactivate account and anonymize email/username to prevent conflicts
             user.is_active = False
@@ -7968,7 +7886,7 @@ def terms_of_use(request):
     """Display the terms of use page"""
     return render(request, 'terms_of_use.html')
 
-class PriceHistoryList(ListView):
+class PriceHistoryList(LoginRequiredMixin, ListView):
     """View for displaying price change history"""
     model = PriceHistory
     context_object_name = 'price_changes'
@@ -8011,7 +7929,7 @@ class PriceHistoryList(ListView):
                     pass
             else:
                 # Default to current month if no date selected
-                now = datetime.now()
+                now = timezone.now()
                 qs = qs.filter(
                     changed_at__year=now.year,
                     changed_at__month=now.month
@@ -8033,7 +7951,7 @@ class PriceHistoryList(ListView):
         context['products'] = Products.objects.all().order_by('product_type__name', 'variant__name')
         context['price_types'] = PriceHistory.PRICE_TYPE_CHOICES
         
-        now = datetime.now()
+        now = timezone.now()
         context['current_month_value'] = now.strftime('%Y-%m')
 
         query_params = self.request.GET.copy()
@@ -8077,7 +7995,7 @@ def export_price_history(request):
             except ValueError:
                 pass
         else:
-            now = datetime.now()
+            now = timezone.now()
             qs = qs.filter(changed_at__year=now.year, changed_at__month=now.month)
 
     # Order by latest changes first
@@ -8137,8 +8055,8 @@ def export_price_history(request):
                 'total_changes': len(price_changes),
                 'total_increases': total_increases,
                 'total_decreases': total_decreases,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
                 'filters': {
                     'month': date_created if date_created and not show_all else None,
@@ -8164,7 +8082,7 @@ def export_price_history(request):
         else:  # CSV format
             # Prepare CSV response
             response = HttpResponse(content_type='text/csv')
-            filename_suffix = date_created if date_created else ('all' if show_all else datetime.now().strftime('%Y-%m'))
+            filename_suffix = date_created if date_created else ('all' if show_all else timezone.now().strftime('%Y-%m'))
             response['Content-Disposition'] = f'attachment; filename="price_history_{filename_suffix}.csv"'
 
             writer = csv.writer(response)
