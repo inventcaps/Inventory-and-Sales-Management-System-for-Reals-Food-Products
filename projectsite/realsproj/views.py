@@ -3077,8 +3077,7 @@ class ProductInventoryList(ListView):
         
         # Ensure reorder_status is added to ALL items
         for inv in inventory_list:
-            if not hasattr(inv, 'reorder_status') or inv.reorder_status is None:
-                inv.reorder_status = inv.get_reorder_status()
+            inv.reorder_status = inv.get_reorder_status(days_ahead=30)
             
             # Get packaging information and stock from batches
             batches = ProductBatches.objects.filter(
@@ -3092,7 +3091,7 @@ class ProductInventoryList(ListView):
 
             from django.utils import timezone
             today = timezone.localdate()
-            expiration_cutoff = today + timezone.timedelta(days=7)
+            near_expiry_cutoff = today + timezone.timedelta(days=30)
 
             for batch in batches:
                 if batch.packaging:
@@ -3101,18 +3100,18 @@ class ProductInventoryList(ListView):
                         unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
                         packaging_name = f"{packaging_name} ({batch.packaging.size} {unit_name})"
 
-                    # Include expiration date in key to keep batches separate
+                    # Group by packaging name + expiration date (no batch.id) to merge duplicates
                     exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
-                    packaging_key = f"{packaging_name}|{exp_date_str}|{batch.id}"
+                    packaging_key = f"{packaging_name}|{exp_date_str}"
 
                     # Track total stock per packaging + expiration date combination
                     if packaging_key not in packaging_stock:
                         packaging_stock[packaging_key] = 0
                     packaging_stock[packaging_key] += batch.quantity
 
-                    # Track expiring stock per packaging + expiration date combination
+                    # Track near-expiry stock (within 30 days, not yet expired)
                     if (batch.expiration_date and
-                        batch.expiration_date <= expiration_cutoff and
+                        batch.expiration_date <= near_expiry_cutoff and
                         batch.expiration_date >= today and
                         batch.quantity > 0):
                         if packaging_key not in packaging_expiring:
@@ -3127,12 +3126,25 @@ class ProductInventoryList(ListView):
             for packaging_key in packaging_list:
                 stock_qty = packaging_stock.get(packaging_key, 0)
                 expiring_qty = packaging_expiring.get(packaging_key, 0)
-                packaging_name, exp_date_str, batch_id = packaging_key.split('|')
+                packaging_name, exp_date_str = packaging_key.split('|')
+                # Determine expiry status for color-coded badge
+                if exp_date_str != 'No Date':
+                    from datetime import date as date_type
+                    exp_date_obj = date_type.fromisoformat(exp_date_str)
+                    if exp_date_obj < today:
+                        expiry_status = 'expired'
+                    elif exp_date_obj <= near_expiry_cutoff:
+                        expiry_status = 'near_expiry'
+                    else:
+                        expiry_status = 'normal'
+                else:
+                    expiry_status = 'normal'
                 packaging_breakdown.append({
                     'name': packaging_name,
                     'stock': stock_qty,
                     'expiring': expiring_qty,
-                    'expiration_date': exp_date_str
+                    'expiration_date': exp_date_str,
+                    'expiry_status': expiry_status
                 })
 
             inv.packaging_used = ', '.join(packaging_list) if packaging_list else None

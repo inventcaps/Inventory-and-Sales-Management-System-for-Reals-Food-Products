@@ -5,6 +5,7 @@ from datetime import timedelta
 from calendar import monthrange
 
 from django.utils import timezone
+import json
 
 from .models import Expenses, Products, RawMaterials, HistoryLog, Sales, ProductBatches, ProductInventory, RawMaterialBatches, RawMaterialInventory, ProductTypes, ProductVariants, Sizes, SizeUnits, UnitPrices, SrpPrices, Notifications, StockChanges, Discounts, Withdrawals
 from django.contrib.auth.models import User
@@ -798,6 +799,12 @@ class BulkProductBatchForm(forms.Form):
             total_stock__gt=0
         ).order_by('material__category', 'material__name')
 
+        # Build packaging stock map for client-side validation
+        self.packaging_stock_map = json.dumps({
+            str(item.material.id): str(item.total_stock)
+            for item in self.raw_material_inventory
+        })
+
         # Filter out archived products
         for product in Products.objects.filter(is_archived=False).order_by('id'):
 
@@ -867,9 +874,10 @@ class BulkProductBatchForm(forms.Form):
                 choices=packaging_choices,
                 required=False,
                 widget=forms.Select(attrs={
-                    'class': 'form-control',
+                    'class': 'form-control packaging-select',
                     'data-product-id': str(product.id),
-                    'data-field-type': 'packaging'
+                    'data-field-type': 'packaging',
+                    'data-packaging-stock': self.packaging_stock_map
                 })
             )
 
@@ -903,7 +911,10 @@ class BulkProductBatchForm(forms.Form):
     def _calculate_expiration(self, manufactured_value, is_yema):
         months_to_add = 6 if is_yema else 12
         base_expiration = self._add_months_safe(manufactured_value, months_to_add)
-        return base_expiration + timedelta(days=1)
+        if is_yema:
+            return base_expiration + timedelta(days=1)
+        else:
+            return base_expiration - timedelta(days=1)
 
     def clean(self):
         cleaned_data = super().clean()

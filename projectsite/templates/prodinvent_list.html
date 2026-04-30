@@ -80,7 +80,7 @@
 
                 <tbody id="inventoryTableBody">
                   {% for object in product_inventory %}
-                  {% with reorder_status=object.get_reorder_status %}
+                  {% with reorder_status=object.reorder_status %}
                   <tr>
                     <td>{{ object.product.product_code }}</td>
                     <td>{{ object.product }}</td>
@@ -88,11 +88,17 @@
                       {% if object.packaging_stock_breakdown %}
                         {% for packaging in object.packaging_stock_breakdown %}
                           <div class="mb-1">
-                            {% if packaging.expiring > 0 %}
+                            {% if packaging.expiry_status == 'expired' %}
+                              <span class="badge bg-danger text-white">
+                                {{ packaging.name }}: {{ packaging.stock|floatformat:0 }}
+                                <small class="ml-1">(Exp: {{ packaging.expiration_date }})</small>
+                                <i class="la la-times-circle ml-1" title="Expired"></i>
+                              </span>
+                            {% elif packaging.expiry_status == 'near_expiry' %}
                               <span class="badge bg-warning text-dark">
                                 {{ packaging.name }}: {{ packaging.stock|floatformat:0 }}
                                 <small class="ml-1">(Exp: {{ packaging.expiration_date }})</small>
-                                <i class="la la-exclamation-triangle ml-1" title="{{ packaging.expiring|floatformat:0 }} expiring soon"></i>
+                                <i class="la la-exclamation-triangle ml-1" title="Expiring within 30 days"></i>
                               </span>
                             {% else %}
                               <span class="badge bg-info text-white">
