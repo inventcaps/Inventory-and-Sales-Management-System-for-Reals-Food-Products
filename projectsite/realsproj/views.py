@@ -2762,7 +2762,8 @@ class ProductBatchList(ListView):
             queryset = queryset.filter(
                 Q(product__product_type__name__icontains=search) |
                 Q(product__variant__name__icontains=search) |
-                Q(product__size__size_label__icontains=search)
+                Q(product__size__size_label__icontains=search) |
+                Q(packaging__name__icontains=search)
             )
 
         if date_filter:
@@ -5589,7 +5590,7 @@ class NotificationsList(LoginRequiredMixin, ListView):
 
     def get(self, request, *args, **kwargs):
         # Mark all as read
-        Notifications.objects.filter(is_read=False, user=request.user).update(is_read=True)
+        Notifications.objects.filter(is_read=False).update(is_read=True)
         
         # Handle pagination - if page doesn't exist, redirect to page 1 with same filters
         try:
