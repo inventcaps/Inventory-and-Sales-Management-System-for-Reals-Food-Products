@@ -111,7 +111,7 @@
               <tbody>
             <div class="alert alert-info">
               <i class="la la-info-circle"></i>
-              <strong>Select a Batch:</strong> You must select a specific batch to withdraw from. The system will deduct from the selected batch only.
+              <strong>FIFO Auto-Selection:</strong> Select a packaging type and enter quantity. The system will automatically withdraw from the oldest batches first (FIFO) to ensure freshness.
             </div>
                 {% for product in products %}
                 <tr>
@@ -133,21 +133,21 @@
                     {% endif %}
                   </td>
                   <td>
-                    <select name="batch_{{ product.id }}" class="form-control packaging-select" data-product-id="{{ product.id }}" data-total-stock="{{ product.productinventory.total_stock }}">
-                      <option value="">-- Select Batch --</option>
+                    <select name="packaging_{{ product.id }}" class="form-control packaging-select" data-product-id="{{ product.id }}" data-total-stock="{{ product.productinventory.total_stock }}">
+                      <option value="">-- Select Packaging --</option>
                       {% for packaging in product.packaging_options %}
                         {% if packaging.expiring > 0 %}
-                          <option value="{{ packaging.id }}" data-expiring="true" data-quantity="{{ packaging.quantity }}">
-                            ⚠️ {{ packaging.name }} | {{ packaging.quantity|floatformat:0 }} units | Mfg: {{ packaging.manufactured_date }} | Exp: {{ packaging.expiration_date }}
+                          <option value="{{ packaging.packaging_id }}" data-expiring="true" data-quantity="{{ packaging.quantity }}">
+                            ⚠️ {{ packaging.name }} | {{ packaging.quantity|floatformat:0 }} units | {{ packaging.batch_count }} batch{{ packaging.batch_count|pluralize }} | Exp: {{ packaging.expiry_range }}
                           </option>
                         {% else %}
-                          <option value="{{ packaging.id }}" data-quantity="{{ packaging.quantity }}">
-                            {{ packaging.name }} | {{ packaging.quantity|floatformat:0 }} units | Mfg: {{ packaging.manufactured_date }} | Exp: {{ packaging.expiration_date }}
+                          <option value="{{ packaging.packaging_id }}" data-quantity="{{ packaging.quantity }}">
+                            {{ packaging.name }} | {{ packaging.quantity|floatformat:0 }} units | {{ packaging.batch_count }} batch{{ packaging.batch_count|pluralize }} | Exp: {{ packaging.expiry_range }}
                           </option>
                         {% endif %}
                       {% endfor %}
                     </select>
-                    <small class="form-text text-muted">Select a specific batch to withdraw from</small>
+                    <small class="form-text text-muted">Select packaging type for FIFO withdrawal</small>
                   </td>
                   <td>
                     <input type="number" step="0.01" name="product_{{ product.id }}" 
