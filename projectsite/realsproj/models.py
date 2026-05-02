@@ -1,21 +1,12 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove `managed = False` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
-from django.contrib.auth.decorators import login_required
 from decimal import Decimal
 from django.db.models import Sum
 from django.db.models import Q
 from datetime import timedelta
-from django.utils.safestring import mark_safe
 import json
-from django.utils import timezone
+
 from django.conf import settings
 
 
@@ -143,7 +134,7 @@ class Expenses(models.Model):
     date = models.DateField(default=timezone.localdate)
     description = models.TextField(blank=True, null=True)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    is_archived = models.BooleanField(default=False) 
+    is_archived = models.BooleanField(default=False)
 
     class Meta:
         managed = False
@@ -204,7 +195,6 @@ class HistoryLog(models.Model):
 
             elif self.entity_type == "sale":
                 s = Sales.objects.get(pk=self.entity_id)
-                # Format category to title case (e.g., ORDER -> Order)
                 category = s.category.replace('_', ' ').title() if s.category else s.category
                 return f"{category}"
 
@@ -213,9 +203,7 @@ class HistoryLog(models.Model):
                     w = Withdrawals.objects.get(pk=self.entity_id)
                     return f"{w.get_reason_display()} - {w.quantity} {w.get_item_type_display()} ({w.get_sales_channel_display() or 'N/A'})"
                 except Withdrawals.DoesNotExist:
-                    # If withdrawal is deleted, use data from history log details
                     if self.details:
-                        # Try different data structures based on log type
                         data = None
                         if 'before' in self.details:
                             data = self.details['before']
@@ -230,7 +218,6 @@ class HistoryLog(models.Model):
                             quantity = data.get('quantity', 'Unknown')
                             sales_channel = dict(Withdrawals.SALES_CHANNEL_CHOICES).get(data.get('sales_channel'), data.get('sales_channel', 'N/A'))
                             
-                            # Get product/material name if available
                             item_name = "Unknown Item"
                             if data.get('item_type') == 'PRODUCT' and data.get('item_id'):
                                 try:
@@ -249,7 +236,6 @@ class HistoryLog(models.Model):
                                 except RawMaterials.DoesNotExist:
                                     pass
                             
-                            # Format like: "Deleted (Sold - 2.0 Yema - Mani (120 Grams) (ORDER))"
                             return f"Deleted ({reason} - {quantity} {item_name} ({sales_channel}))"
                     
                     return f"Deleted Withdrawal #{self.entity_id}"
@@ -300,8 +286,6 @@ class HistoryLog(models.Model):
                 return f"Entity #{self.entity_id}"
 
         except Exception:
-            # Entity doesn't exist in database - try to get info from details
-            # Check both 'before' (for updates/deletes) and 'after' (for creates) fields
             entity_data = None
             if self.details:
                 if 'before' in self.details:
@@ -322,7 +306,7 @@ class HistoryLog(models.Model):
                         size_unit_name = SizeUnits.objects.get(id=size_unit).unit_name if size_unit else ''
                         
                         return f"Deleted ({product_type_name} - {variant_name} ({size_label} {size_unit_name}))"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "raw_material":
@@ -331,7 +315,6 @@ class HistoryLog(models.Model):
                         unit_id = entity_data.get('unit_id', '')
                         price = entity_data.get('price_per_unit', '')
                         
-                        # Safely get unit name
                         unit_name = ''
                         if unit_id:
                             try:
@@ -340,7 +323,7 @@ class HistoryLog(models.Model):
                                 unit_name = 'Unknown Unit'
                         
                         return f"Deleted ({name} ({unit_name}) - ₱{price})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "product_batch":
@@ -351,7 +334,7 @@ class HistoryLog(models.Model):
                                 "product_type", "variant", "size_unit", "size"
                             ).get(pk=product_id)
                             return f"Deleted ({p.product_type.name} - {p.variant.name} ({p.size.size_label if p.size else ''} {p.size_unit.unit_name}))"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "raw_material_batch":
@@ -360,7 +343,7 @@ class HistoryLog(models.Model):
                         if material_id:
                             rm = RawMaterials.objects.get(pk=material_id)
                             return f"Deleted ({rm.name})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "expense":
@@ -369,7 +352,7 @@ class HistoryLog(models.Model):
                         if category:
                             return f"{category}"
                         return "Deleted (Expense)"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "sale":
@@ -379,49 +362,49 @@ class HistoryLog(models.Model):
                             formatted_category = category.replace('_', ' ').title()
                             return f"{formatted_category}"
                         return "Deleted (Sale)"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "product_type":
                     try:
                         name = entity_data.get('name', '')
                         return f"Deleted ({name})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "product_variant":
                     try:
                         name = entity_data.get('name', '')
                         return f"Deleted ({name})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "size":
                     try:
                         size_label = entity_data.get('size_label', '')
                         return f"Deleted ({size_label})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "size_unit":
                     try:
                         unit_name = entity_data.get('unit_name', '')
                         return f"Deleted (Size Unit: {unit_name})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "unit_price":
                     try:
                         unit_price = entity_data.get('unit_price', '')
                         return f"Deleted (Unit Price: ₱{unit_price})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "srp_price":
                     try:
                         srp_price = entity_data.get('srp_price', '')
                         return f"Deleted (SRP Price: ₱{srp_price})"
-                    except:
+                    except Exception:
                         pass
                 
                 elif self.entity_type == "stock_change":
@@ -440,42 +423,34 @@ class HistoryLog(models.Model):
                                 elif item_type.lower() in ("raw", "raw_material", "rawmaterials"):
                                     rm = RawMaterials.objects.select_related("unit").get(pk=item_id)
                                     item_name = f"{rm.name} ({rm.unit.unit_name}) - ₱{rm.price_per_unit}"
-                            except:
+                            except Exception:
                                 pass
                         
                         return f"Deleted ({item_name} Quantity Change: {quantity_sign}{quantity_change})"
-                    except:
+                    except Exception:
                         pass
                 
-                # Generic fallback for any entity type with details
                 return f"Deleted ({self.entity_type.replace('_', ' ').title()})"
             
             return f"Entity #{self.entity_id}"
     
     def get_admin_display(self):
-        """Safely get admin username even if user is deleted or deactivated."""
         try:
             if self.admin:
-                # Check if user is deleted (username starts with 'deleted_user_')
                 if self.admin.username.startswith('deleted_user_'):
-                    # Try to extract original username from first_name field
                     if self.admin.first_name and self.admin.first_name.startswith('ORIGINAL_USERNAME:'):
                         parts = self.admin.first_name.split('|')
                         original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
                         return f"{original_username} (Deleted User)"
-                    # Fallback: try to extract from username pattern deleted_user_X_timestamp
                     parts = self.admin.username.split('_')
                     if len(parts) >= 3 and parts[0] == 'deleted' and parts[1] == 'user':
                         try:
-                            # Extract the original username part (usually the third part)
                             original_username = parts[2]
                             return f"{original_username} (Deleted User)"
-                        except:
+                        except Exception:
                             pass
                     return "Deleted User"
-                # Check if user is deactivated (username starts with 'inactive_user_')
                 elif self.admin.username.startswith('inactive_user_'):
-                    # Try to extract original username from first_name field
                     if self.admin.first_name and self.admin.first_name.startswith('ORIGINAL_USERNAME:'):
                         parts = self.admin.first_name.split('|')
                         original_username = parts[0].replace('ORIGINAL_USERNAME:', '')
@@ -483,216 +458,144 @@ class HistoryLog(models.Model):
                     return "Deactivated User"
                 return self.admin.username
         except Exception:
-            # If admin is deleted, try to get from details
             if self.details and 'admin_username' in self.details:
                 return f"{self.details['admin_username']} (Deleted)"
             return "Unknown User"
         return "Unknown User"
 
     def get_details_display(self):
-        """Pretty-print before/after changes with human-readable names and clean formatting."""
-        try:
-            if not self.details:
-                return ""
+        if not self.details:
+            return ""
 
-            def humanize_field(key, value):
-                """Convert FK ids or choice fields into readable names."""
-                if value is None:
-                    return None
+        def humanize_field(key, value):
+            if value is None:
+                return None
 
-                if key == "reason":
-                    return dict(Withdrawals.REASON_CHOICES).get(value, value)
-                if key == "sales_channel":
-                    return dict(Withdrawals.SALES_CHANNEL_CHOICES).get(value, value)
-                if key == "price_type":
-                    return dict(Withdrawals.PRICE_TYPE_CHOICES).get(value, value)
-                if key == "payment_status":
-                    return dict(Withdrawals.PAYMENT_STATUS_CHOICES).get(value, value)
-                if key == "item_type":
-                    return dict(Withdrawals.ITEM_TYPE_CHOICES).get(value, value)
-                if key == "category" and isinstance(value, str):
-                    return value.replace('_', ' ').title()
-                if key == "product_id":
-                    try:
-                        product = Products.objects.select_related("product_type", "variant", "size_unit", "size").get(id=value)
-                        return str(product)
-                    except Products.DoesNotExist:
-                        return f"Product #{value}"
+            if key == "reason":
+                return dict(Withdrawals.REASON_CHOICES).get(value, value)
+            if key == "sales_channel":
+                return dict(Withdrawals.SALES_CHANNEL_CHOICES).get(value, value)
+            if key == "price_type":
+                return dict(Withdrawals.PRICE_TYPE_CHOICES).get(value, value)
+            if key == "payment_status":
+                return dict(Withdrawals.PAYMENT_STATUS_CHOICES).get(value, value)
+            if key == "item_type":
+                return dict(Withdrawals.ITEM_TYPE_CHOICES).get(value, value)
+            if key == "category" and isinstance(value, str):
+                return value.replace('_', ' ').title()
+            if key == "product_id":
+                try:
+                    product = Products.objects.select_related("product_type", "variant", "size_unit", "size").get(id=value)
+                    return str(product)
+                except Products.DoesNotExist:
+                    return f"Product #{value}"
 
-                if key == "variant_id":
-                    try:
-                        return ProductVariants.objects.get(id=value).name
-                    except ProductVariants.DoesNotExist:
-                        return f"Variant #{value}"
+            if key == "variant_id":
+                try:
+                    return ProductVariants.objects.get(id=value).name
+                except ProductVariants.DoesNotExist:
+                    return f"Variant #{value}"
 
-                if key == "product_type_id":
-                    try:
-                        return ProductTypes.objects.get(id=value).name
-                    except ProductTypes.DoesNotExist:
-                        return f"ProductType #{value}"
+            if key == "product_type_id":
+                try:
+                    return ProductTypes.objects.get(id=value).name
+                except ProductTypes.DoesNotExist:
+                    return f"ProductType #{value}"
 
-                if key == "size_id":
-                    try:
-                        return Sizes.objects.get(id=value).size_label
-                    except Sizes.DoesNotExist:
-                        return f"Size #{value}"
+            if key == "size_id":
+                try:
+                    return Sizes.objects.get(id=value).size_label
+                except Sizes.DoesNotExist:
+                    return f"Size #{value}"
 
-                if key in ("size_unit_id", "unit_id"):
-                    try:
-                        return SizeUnits.objects.get(id=value).unit_name
-                    except SizeUnits.DoesNotExist:
-                        return f"Unit #{value}"
+            if key in ("size_unit_id", "unit_id"):
+                try:
+                    return SizeUnits.objects.get(id=value).unit_name
+                except SizeUnits.DoesNotExist:
+                    return f"Unit #{value}"
 
-                if key == "material_id":
-                    try:
-                        return RawMaterials.objects.get(id=value).name
-                    except RawMaterials.DoesNotExist:
-                        return f"Material #{value}"
+            if key == "material_id":
+                try:
+                    return RawMaterials.objects.get(id=value).name
+                except RawMaterials.DoesNotExist:
+                    return f"Material #{value}"
 
-                if key == "srp_price_id":
-                    try:
-                        return str(SrpPrices.objects.get(id=value))
-                    except SrpPrices.DoesNotExist:
-                        return f"SRP #{value}"
+            if key == "srp_price_id":
+                try:
+                    return str(SrpPrices.objects.get(id=value))
+                except SrpPrices.DoesNotExist:
+                    return f"SRP #{value}"
 
-                if key == "unit_price_id":
-                    try:
-                        return str(UnitPrices.objects.get(id=value))
-                    except UnitPrices.DoesNotExist:
-                        return f"Unit Price #{value}"
+            if key == "unit_price_id":
+                try:
+                    return str(UnitPrices.objects.get(id=value))
+                except UnitPrices.DoesNotExist:
+                    return f"Unit Price #{value}"
 
-                return value
+            return value
 
-            ignore_fields = [
-                "id",
-                "created_by_admin_id",
-                "date_created",
-                "expiration_date",
-                "manufactured_date",
-                "batch_date",
-                "received_date",
-                "description",
-                "date",
-                "withdrawal_id", 
-                "item_id", 
-                "item_type",
-            ]
+        ignore_fields = [
+            "id",
+            "created_by_admin_id",
+            "date_created",
+            "expiration_date",
+            "manufactured_date",
+            "batch_date",
+            "received_date",
+            "description",
+            "date",
+            "withdrawal_id", 
+            "item_id", 
+            "item_type",
+        ]
 
-            if self.entity_type == "user":
-                ignore_fields.append("date_joined")
+        if self.entity_type == "user":
+            ignore_fields.append("date_joined")
 
-            def format_key(key):
-                return key.replace("_id", "").replace("_", " ").title()
+        def format_key(key):
+            return key.replace("_id", "").replace("_", " ").title()
 
-            # Handle withdrawal-specific data structures first
-            if self.entity_type == "withdrawal":
-                if "created" in self.details:
-                    # Withdrawal Created (new format with nested data)
-                    data = self.details["created"]
-                    parts = []
-                    if data.get('reason'):
-                        parts.append(f"Reason: {humanize_field('reason', data['reason'])}")
-                    if data.get('quantity'):
-                        parts.append(f"Quantity: {data['quantity']}")
-                    if data.get('sales_channel'):
-                        parts.append(f"Channel: {humanize_field('sales_channel', data['sales_channel'])}")
-                    if data.get('payment_status'):
-                        parts.append(f"Status: {humanize_field('payment_status', data['payment_status'])}")
-                    if data.get('customer_name'):
-                        parts.append(f"Customer: {data['customer_name']}")
-                    return " | ".join(parts)
-                
-                elif "updated" in self.details:
-                    # Withdrawal Updated (new format with nested before/after)
-                    update_data = self.details["updated"]
-                    before = update_data.get("before", {})
-                    after = update_data.get("after", {})
-                    
-                    changes = []
-                    for key in ['quantity', 'reason', 'payment_status', 'sales_channel', 'customer_name']:
-                        old_val = before.get(key)
-                        new_val = after.get(key)
-                        if old_val != new_val:
-                            old_display = humanize_field(key, old_val) if old_val else "None"
-                            new_display = humanize_field(key, new_val) if new_val else "None"
-                            changes.append(f"{format_key(key)}: {old_display} → {new_display}")
-                    
-                    return " | ".join(changes) if changes else "Updated"
-                
-                elif "deleted" in self.details:
-                    # Withdrawal Deleted (new format with nested data)
-                    data = self.details["deleted"]
-                    parts = []
-                    if data.get('reason'):
-                        parts.append(f"Reason: {humanize_field('reason', data['reason'])}")
-                    if data.get('quantity'):
-                        parts.append(f"Quantity: {data['quantity']}")
-                    if data.get('sales_channel'):
-                        parts.append(f"Channel: {humanize_field('sales_channel', data['sales_channel'])}")
-                    if data.get('payment_status'):
-                        parts.append(f"Status: {humanize_field('payment_status', data['payment_status'])}")
-                    if data.get('customer_name'):
-                        parts.append(f"Customer: {data['customer_name']}")
-                    return " | ".join(parts)
-                
-                elif "archived" in self.details:
-                    # Withdrawal Archived/Restored (new format)
-                    archive_data = self.details["archived"]
-                    before = archive_data.get("before", {})
-                    after = archive_data.get("after", {})
-                    
-                    if after.get("is_archived") == True:
-                        return "Archived"
-                    elif after.get("is_archived") == False:
-                        return "Restored"
+        if "before" in self.details and "after" in self.details:
+            diffs = []
+            before, after = self.details["before"], self.details["after"]
+            for key in after.keys():
+                if key in ignore_fields:
+                    continue
+                b, a = humanize_field(key, before.get(key)), humanize_field(key, after.get(key))
+                if b != a:
+                    if key == "is_archived":
+                        if a == True or a == "True":
+                            diffs.append("Archived")
+                        elif a == False or a == "False":
+                            diffs.append("Restored")
                     else:
-                        return "Archive Status Changed"
+                        diffs.append(f"{format_key(key)}: {b} → {a}")
 
-            if "before" in self.details and "after" in self.details:
-                diffs = []
-                before, after = self.details["before"], self.details["after"]
-                for key in after.keys():
-                    if key in ignore_fields:
-                        continue
-                    b, a = humanize_field(key, before.get(key)), humanize_field(key, after.get(key))
-                    if b != a:
-                        # Special handling for is_archived field
-                        if key == "is_archived":
-                            if a == True or a == "True":
-                                diffs.append("Archived")
-                            elif a == False or a == "False":
-                                diffs.append("Restored")
-                        else:
-                            diffs.append(f"{format_key(key)}: {b} → {a}")
+            return " | ".join(diffs) if diffs else "None"
 
-                return " | ".join(diffs) if diffs else "None"
+        elif "after" in self.details:
+            after = self.details["after"]
+            summary = ", ".join(
+                f"{format_key(k)}: {humanize_field(k, v)}"
+                for k, v in after.items() 
+                if k not in ignore_fields 
+                and v is not None 
+                and not (k == "is_archived" and v is False)
+            )
+            return summary
 
-            elif "after" in self.details:
-                after = self.details["after"]
-                summary = ", ".join(
-                    f"{format_key(k)}: {humanize_field(k, v)}"
-                    for k, v in after.items() 
-                    if k not in ignore_fields 
-                    and v is not None 
-                    and not (k == "is_archived" and v is False)
-                )
-                return summary
+        elif "before" in self.details:
+            before = self.details["before"]
+            summary = ", ".join(
+                f"{format_key(k)}: {humanize_field(k, v)}"
+                for k, v in before.items() 
+                if k not in ignore_fields 
+                and v is not None 
+                and not (k == "is_archived" and v is False)
+            )
+            return summary
 
-            elif "before" in self.details:
-                before = self.details["before"]
-                summary = ", ".join(
-                    f"{format_key(k)}: {humanize_field(k, v)}"
-                    for k, v in before.items() 
-                    if k not in ignore_fields 
-                    and v is not None 
-                    and not (k == "is_archived" and v is False)
-                )
-                return summary
-
-            return json.dumps(self.details)
-
-        except Exception:
-            return str(self.details)
+        return json.dumps(self.details)
 
 
 class HistoryLogTypes(models.Model):
@@ -872,10 +775,8 @@ class Notifications(models.Model):
                         item_name = f"{material_name} ({unit_name})"
 
         except Exception as e:
-            print(f"[Notification Error] Failed to format {self.item_type} #{self.item_id}: {e}")
             item_name = f"Unknown ({self.item_type} #{self.item_id})"
 
-        # Build final message
         if notif_type == "PRE_LOW_STOCK" and expiring_qty is not None:
             return f"PRE LOW STOCK: {item_name} – {expiring_qty} items will expire soon, check remaining stock!"
         elif notif_type in ["EXPIRATION_ALERT", "EXPIRED_TODAY", "EXPIRES_IN_WEEK", "EXPIRES_IN_MONTH"]:
@@ -913,8 +814,10 @@ class Notifications(models.Model):
                 return f"has expired ({batch.expiration_date})"
 
         except Exception as e:
-            print(f"[Expiration Error] {self.item_type} #{self.item_id}: {e}")
             return "has unknown expiration date"
+
+    def __str__(self):
+        return f"{self.item_type} {self.item_id} - {self.notification_type}"
 
 
 class ProductBatches(models.Model):
@@ -936,7 +839,7 @@ class ProductBatches(models.Model):
         db_table = 'product_batches'
 
     def __str__(self):
-        local_date = timezone.localtime(self.date)
+        return f"Batch {self.batch_code or self.id} - {self.product} ({self.batch_date})"
 
 
 class ProductInventory(models.Model):
@@ -949,22 +852,9 @@ class ProductInventory(models.Model):
         db_table = 'product_inventory'
 
     def get_available_stock(self, days_ahead=7):
-        """
-        Calculate available stock by subtracting expiring stock from total stock.
-        Available Stock = Total Stock - Expiring Soon
-        
-        Args:
-            days_ahead: Number of days to look ahead for expiration (default: 7 days)
-        
-        Returns:
-            Decimal: Available stock quantity
-        """
-        from django.utils import timezone
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches that are NOT expiring soon (expiration date is more than days_ahead away)
-        # Only count batches with quantity > 0
         available_batches = ProductBatches.objects.filter(
             product=self.product,
             is_archived=False,
@@ -976,24 +866,9 @@ class ProductInventory(models.Model):
         return Decimal(available)
     
     def get_expiring_stock(self, days_ahead=7):
-        """
-        Calculate stock expiring within the specified days.
-        
-        Args:
-            days_ahead: Number of days to look ahead for expiration (default: 7 days)
-        
-        Returns:
-            Decimal: Quantity expiring soon
-        """
-        from django.utils import timezone
-        from django.db.models import Q
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches expiring within the timeframe (including today)
-        # Must exclude NULL expiration_date values and only include non-archived batches
-        # Only count batches that still have quantity > 0 (not fully withdrawn)
-        # Exclude batches already marked as is_expired=True (already withdrawn)
         expiring_batches = ProductBatches.objects.filter(
             product=self.product,
             is_archived=False,
@@ -1009,22 +884,10 @@ class ProductInventory(models.Model):
         return Decimal(expiring)
     
     def should_reorder(self, days_ahead=7):
-        """
-        Determine if reorder is needed based on available stock and threshold.
-        
-        Returns:
-            bool: True if reorder is needed
-        """
         available = self.get_available_stock(days_ahead)
         return available < self.restock_threshold
     
     def get_reorder_status(self, days_ahead=7):
-        """
-        Get detailed reorder status considering expiration dates.
-        
-        Returns:
-            dict: Status information
-        """
         available = self.get_available_stock(days_ahead)
         expiring = self.get_expiring_stock(days_ahead)
         
@@ -1104,6 +967,9 @@ class RawMaterialBatches(models.Model):
         managed = False
         db_table = 'raw_material_batches'
 
+    def __str__(self):
+        return f"Batch {self.id} - {self.material} ({self.batch_date})"
+
 
 class RawMaterialInventory(models.Model):
     material = models.OneToOneField('RawMaterials', models.DO_NOTHING, primary_key=True)
@@ -1115,30 +981,12 @@ class RawMaterialInventory(models.Model):
         db_table = 'raw_material_inventory'
 
     def get_available_stock(self, days_ahead=7):
-        """
-        Calculate available stock by subtracting expiring stock from total stock.
-        Available Stock = Total Stock - Expiring Soon
-        
-        For packaging materials (which don't expire), returns total_stock directly.
-        
-        Args:
-            days_ahead: Number of days to look ahead for expiration (default: 7 days)
-        
-        Returns:
-            Decimal: Available stock quantity
-        """
-        from django.utils import timezone
-        
-        # Check if this is a packaging material (which doesn't expire)
-        # Packaging materials have no expiration, so return total_stock directly
         if self.material.category.upper() == 'PACKAGING':
             return Decimal(self.total_stock)
         
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches that are NOT expiring soon (expiration date is more than days_ahead away)
-        # Only count batches with quantity > 0
         available_batches = RawMaterialBatches.objects.filter(
             material=self.material,
             is_archived=False,
@@ -1150,23 +998,9 @@ class RawMaterialInventory(models.Model):
         return Decimal(available)
     
     def get_expiring_stock(self, days_ahead=7):
-        """
-        Calculate stock expiring within the specified days.
-        
-        Args:
-            days_ahead: Number of days to look ahead for expiration (default: 7 days)
-        
-        Returns:
-            Decimal: Quantity expiring soon
-        """
-        from django.utils import timezone
         today = timezone.localdate()
         expiration_cutoff = today + timezone.timedelta(days=days_ahead)
         
-        # Get batches expiring within the timeframe (including today)
-        # Must exclude NULL expiration_date values and only include non-archived batches
-        # Only count batches that still have quantity > 0 (not fully withdrawn)
-        # Exclude batches already marked as is_expired=True (already withdrawn)
         expiring_batches = RawMaterialBatches.objects.filter(
             material=self.material,
             is_archived=False,
@@ -1182,22 +1016,10 @@ class RawMaterialInventory(models.Model):
         return Decimal(expiring)
     
     def should_reorder(self, days_ahead=7):
-        """
-        Determine if reorder is needed based on available stock and threshold.
-        
-        Returns:
-            bool: True if reorder is needed
-        """
         available = self.get_available_stock(days_ahead)
         return available < self.reorder_threshold
     
     def get_reorder_status(self, days_ahead=7):
-        """
-        Get detailed reorder status considering expiration dates.
-        
-        Returns:
-            dict: Status information
-        """
         available = self.get_available_stock(days_ahead)
         expiring = self.get_expiring_stock(days_ahead)
         
@@ -1237,7 +1059,7 @@ class Sales(models.Model):
     date = models.DateField(default=timezone.localdate)
     description = models.TextField(blank=True, null=True)
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
-    is_archived = models.BooleanField(default=False) # <-- Idagdag ito
+    is_archived = models.BooleanField(default=False)
 
     class Meta:
         managed = False
@@ -1323,7 +1145,6 @@ class StockChanges(models.Model):
 
     @property
     def item_display(self):
-        """Human-readable item representation."""
         item = self.get_item()
         if item:
             return str(item)
@@ -1344,6 +1165,7 @@ class UnitPrices(models.Model):
 
     def __str__(self):
         return f"₱{self.unit_price}"
+
 
 class Discounts(models.Model):
     DISCOUNT_TYPE_CHOICES = [
@@ -1366,7 +1188,7 @@ class Discounts(models.Model):
         if self.discount_type == "PERCENT":
             return f"{self.name} ({self.value}%)"
         return f"{self.name} (-{self.value})"
-    
+
 
 class UserActivity(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
@@ -1383,11 +1205,6 @@ class UserActivity(models.Model):
     
     @property
     def is_truly_active(self):
-        """
-        User is truly active if:
-        - They are marked as active (logged in)
-        - AND their last activity was within the last 5 minutes
-        """
         if not self.active:
             return False
         
@@ -1449,7 +1266,6 @@ class Withdrawals(models.Model):
         blank=True
     )
 
-    # NEW DISCOUNT FIELDS
     discount = models.ForeignKey(
         Discounts,
         null=True,
@@ -1465,7 +1281,6 @@ class Withdrawals(models.Model):
     custom_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     is_archived = models.BooleanField(default=False)
     
-    # NEW CUSTOMER AND PAYMENT FIELDS
     customer_name = models.CharField(max_length=255, null=True, blank=True)
     
     PAYMENT_STATUS_CHOICES = [
@@ -1520,7 +1335,6 @@ class Withdrawals(models.Model):
         help_text="Total amount (quantity × final_price_per_unit)"
     )
     
-    # Packaging selection field
     packaging = models.ForeignKey(
         'RawMaterials',
         null=True,
@@ -1530,7 +1344,6 @@ class Withdrawals(models.Model):
         help_text="Selected packaging type for this withdrawal (null = any packaging)"
     )
 
-    # Batch selection field for precise batch tracking
     batch = models.ForeignKey(
         'ProductBatches',
         null=True,
@@ -1549,14 +1362,12 @@ class Withdrawals(models.Model):
 
     def get_item_display(self):
         if self.item_type == "PRODUCT":
-            from .models import Products
             try:
                 product = Products.objects.get(id=self.item_id)
                 return str(product)
             except Products.DoesNotExist:
                 return f"Unknown Product (ID {self.item_id})"
         elif self.item_type == "RAW_MATERIAL":
-            from .models import RawMaterials
             try:
                 material = RawMaterials.objects.get(id=self.item_id)
                 return str(material)
@@ -1565,16 +1376,11 @@ class Withdrawals(models.Model):
         return f"Unknown Item (ID {self.item_id})"
 
     def compute_revenue(self):
-        """
-        Compute revenue using stored actual prices.
-        Falls back to current prices for old records (before fix).
-        """
         if self.item_type == "PRODUCT" and self.reason == "SOLD":
         
             if self.total_amount is not None:
                 return self.total_amount
 
-            from .models import Products
             try:
                 product = Products.objects.get(id=self.item_id)
                 base_revenue = Decimal(self.quantity) * product.srp_price.srp_price

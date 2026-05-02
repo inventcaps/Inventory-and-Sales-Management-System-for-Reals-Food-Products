@@ -304,6 +304,118 @@
         display: flex !important;
       }
     }
+
+    /* Logo with image */
+    .logo-img-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .logo-img-wrap img {
+      width: 26px;
+      height: 26px;
+      object-fit: contain;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    html[data-theme="dark"] .logo-img-wrap .logo-text {
+      color: #f1f8f4 !important;
+    }
+
+    /* Sidebar user card */
+    .sidebar-user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255,255,255,0.35);
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-decoration: none !important;
+      transition: background 0.2s;
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    .sidebar-user-card:hover {
+      background: rgba(255,255,255,0.52) !important;
+    }
+    html[data-theme="dark"] .sidebar-user-card {
+      background: rgba(119,178,84,0.1);
+      border-color: rgba(119,178,84,0.2);
+    }
+    html[data-theme="dark"] .sidebar-user-card:hover {
+      background: rgba(119,178,84,0.22) !important;
+    }
+    .sidebar-user-card .u-photo img {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.7);
+      display: block;
+    }
+    .sidebar-user-card .u-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .sidebar-user-card .u-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+      line-height: 1.2;
+    }
+    .sidebar-user-card .u-role {
+      display: inline-block;
+      font-size: 0.58rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 20px;
+      margin-top: 4px;
+      background: var(--primary-500);
+      color: #fff;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    html[data-theme="dark"] .sidebar-user-card .u-name {
+      color: #f1f8f4 !important;
+    }
+    html[data-theme="dark"] .sidebar-user-card .u-role {
+      background: var(--primary-400);
+      color: #0a0e0f;
+    }
+
+    /* Sidebar section labels */
+    .sidebar .nav > .nav-section-label {
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: rgba(44, 62, 50, 0.45);
+      padding: 14px 14px 0 !important;
+      pointer-events: none;
+      user-select: none;
+      list-style: none;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    .sidebar .nav > .nav-section-label span {
+      display: block;
+      padding: 8px 2px 4px;
+      border-top: 1px solid rgba(44, 62, 50, 0.1);
+    }
+    .sidebar .nav > .nav-section-label:first-child span {
+      border-top: none;
+      padding-top: 0;
+    }
+    html[data-theme="dark"] .sidebar .nav > .nav-section-label {
+      color: rgba(200, 230, 201, 0.4);
+    }
+    html[data-theme="dark"] .sidebar .nav > .nav-section-label span {
+      border-top-color: rgba(119, 178, 84, 0.15);
+    }
   </style>
 
   <!-- Theme Detection Script - MUST run BEFORE page renders to prevent flash -->
@@ -328,7 +440,12 @@
 <!-- Main Header - OUTSIDE wrapper for true sticky behavior -->
 <div class="main-header">
         <div class="logo-header">
-            <a href="{% url 'home' %}" class="logo">Real's Food Products</a>
+            <a href="{% url 'home' %}" class="logo">
+                <span class="logo-img-wrap">
+                    <img src="{% static 'img/Reals_logo.png' %}" alt="Reals logo">
+                    <span class="logo-text">Real's Food Products</span>
+                </span>
+            </a>
             <button class="navbar-toggler sidenav-toggler ml-auto" type="button" data-toggle="collapse" data-target="collapse" aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -461,35 +578,24 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="scrollbar-inner sidebar-wrapper">
-            <div class="user">
-                <div class="photo">
-                    <img src="{% static 'img/reals.jpg' %}">
-                </div>
-                <div class="info">
-                    <a data-toggle="collapse" href="#collapseExample" aria-expanded="true">
-                        <span>
-                            {{ request.user.username }}
-                            <span class="user-level">
-                            {% if request.user.is_superuser %}
-                              Administrator
-                            {% else %}
-                              Staff
-                            {% endif %}
-                            </span>
-                            <span class="caret"></span>
-                        </span>
-                    </a>
-                    <div class="collapse in" id="collapseExample" aria-expanded="true">
-                        <ul class="nav">
-                            <li><a href="{% url 'profile' %}"><span class="link-collapse">My Profile</span></a></li> 
-                        </ul>
+            <div class="user" style="padding:10px 12px 4px;">
+                <a href="{% url 'profile' %}" class="sidebar-user-card">
+                    <div class="u-photo">
+                        <img src="{% static 'img/reals.jpg' %}" alt="user">
                     </div>
-                </div>
+                    <div class="u-info">
+                        <span class="u-name">{{ request.user.username }}</span>
+                        <span class="u-role">{% if request.user.is_superuser %}Administrator{% else %}Staff{% endif %}</span>
+                    </div>
+                    <i class="la la-angle-right" style="font-size:11px;opacity:0.4;margin-left:auto;flex-shrink:0;"></i>
+                </a>
             </div>
 
             <ul class="nav">
+                <li class="nav-section-label"><span>Main</span></li>
                 <li class="nav-item"><a href="{% url 'home' %}"><i class="la la-dashboard"></i><p>Dashboard</p></a></li>
 
+                <li class="nav-section-label"><span>Inventory</span></li>
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#productsMenu" 
                        aria-expanded="{% if request.resolver_match.url_name in 'products product-list product-batch product-inventory best-seller-products price-history' %}true{% else %}false{% endif %}">
@@ -537,6 +643,7 @@
                 </li>
 
                 {% if user.is_superuser %}
+                <li class="nav-section-label"><span>Finance</span></li>
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#financialMenu" 
                        aria-expanded="{% if request.resolver_match.url_name == 'monthly-report' or request.resolver_match.url_name == 'salesexpenses' or request.resolver_match.url_name == 'financial-loss' %}true{% else %}false{% endif %}">
@@ -558,6 +665,7 @@
                 </li>
                 {% endif %}
 
+                <li class="nav-section-label"><span>Operations</span></li>
                 <li class="nav-item">
                     <a data-toggle="collapse" href="#withdrawalsMenu" 
                        aria-expanded="{% if request.resolver_match.url_name in 'withdrawals stock-changes' %}true{% else %}false{% endif %}">
@@ -579,6 +687,7 @@
                 <!-- <li class="nav-item"><a href="{% url 'user-activity' %}"><i class="la la-user"></i><p>User Activity</p></a></li> -->
 
                 {%if user.is_superuser %}
+                <li class="nav-section-label"><span>Admin</span></li>
                 <li class="nav-item"><a href="{% url 'user-management' %}"><i class="la la-users"></i><p>User Management</p></a></li>
                 <li class="nav-item"><a href="#" id="backupBtn"><i class="la la-download"></i><p>Backup Database</p></a></li>
                 {% endif %}
@@ -906,7 +1015,8 @@ $(document).ready(function() {
             }
             
             // Check if role changed (promoted or demoted)
-            if (data.is_superuser !== lastKnownRole) {
+            // Guard: only act when server actually returned the field
+            if (typeof data.is_superuser !== 'undefined' && data.is_superuser !== lastKnownRole) {
                 isLoggingOut = true;
                 clearInterval(window.accountStatusInterval);
                 

@@ -12,16 +12,72 @@
   <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0"></script>
 {% endblock vendor_js %}
 
+{% block page_css %}
+<style>
+  .dash-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:4px 0 10px;}
+  .dash-title{font-weight:700;margin:0;font-size:1.3rem;}
+  .dash-tabs{display:inline-flex;background:rgba(255,255,255,0.5);border-radius:14px;padding:4px;gap:4px;border:1px solid rgba(255,255,255,0.55);box-shadow:0 1px 4px rgba(0,0,0,0.05);}
+  .dash-tab{background:transparent;border:none;padding:8px 18px;border-radius:10px;font-weight:600;font-size:0.85rem;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .2s ease;outline:none;white-space:nowrap;}
+  .dash-tab:hover:not(.active){background:rgba(255,255,255,0.6);color:var(--primary-600);}
+  .dash-tab.active{background:var(--primary-500);color:#fff;box-shadow:0 2px 8px rgba(119,178,84,0.3);}
+  .dash-tab i{font-size:1.05rem;}
+  html[data-theme="dark"] .dash-tabs{background:rgba(119,178,84,0.1);border-color:rgba(119,178,84,0.2);}
+  html[data-theme="dark"] .dash-tab{color:#f1f8f4;}
+  html[data-theme="dark"] .dash-tab:hover:not(.active){background:rgba(119,178,84,0.18);}
+  html[data-theme="dark"] .dash-tab.active{color:#0a0e0f;}
+  .dash-sections-wrap{position:relative;}
+  .dash-section{width:100%;animation:dashFade .25s ease;}
+  .dash-section.dash-section-hidden{position:absolute;top:0;left:0;right:0;visibility:hidden;pointer-events:none;opacity:0;}
+  @keyframes dashFade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+  .dash-grid{display:grid;gap:10px;}
+  .dash-col-stack{display:flex;flex-direction:column;gap:10px;min-height:0;}
+  .dash-col-stack > *{flex:1 1 0;min-height:0;}
+  .dash-card-link{text-decoration:none !important;color:inherit !important;display:block;}
+  .dash-card-link > .card{height:100%;}
+  .dash-card{border:none !important;border-radius:14px !important;box-shadow:0 1px 4px rgba(0,0,0,0.08) !important;height:100%;}
+  .dash-chart-card{display:flex;flex-direction:column;}
+  .dash-chart-body{padding:10px 16px;flex:1 1 0;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+  .dash-chart-fill{flex:1 1 0;min-height:0;width:100%;position:relative;}
+  .dash-chart-fill > div{height:100% !important;}
+  .dash-recent-sales-body{padding:4px 16px;overflow-y:auto;flex:1 1 0;min-height:0;}
+  /* Pie chart container: cap the pie size so it doesn't get clipped */
+  #bestSellerChart{display:flex;align-items:center;justify-content:center;}
+  #bestSellerChart > div{max-width:100%;max-height:100%;}
+  @media (min-width:992px){
+    .dash-sections-wrap{overflow:hidden;}
+    .dash-grid-1{grid-template-columns:minmax(220px,0.75fr) 2fr;height:calc(100vh - 155px);min-height:400px;overflow:hidden;}
+    .dash-grid-2{grid-template-columns:1.7fr minmax(290px,1fr);height:calc(100vh - 155px);min-height:400px;overflow:hidden;}
+  }
+  @media (max-width:991.98px){
+    .dash-grid-1,.dash-grid-2{grid-template-columns:1fr;}
+    .dash-grid-1 .dash-col-stack > *,.dash-grid-2 .dash-col-stack > *{flex:none;}
+    .dash-chart-fill{min-height:260px;}
+    .dash-recent-sales-body{max-height:300px;}
+  }
+</style>
+{% endblock page_css %}
+
 {% block content %}
 <div class="content">
   <div class="container-fluid">
     {% if is_superuser %}
-    <div class="d-flex align-items-baseline gap-2 mt-1 mb-1">
-      <h4 class="mb-0" style="font-weight:700;">Dashboard</h4>
+    <!-- Header with section tabs -->
+    <div class="dash-header">
+      <h4 class="dash-title">Dashboard</h4>
+      <div class="dash-tabs" role="tablist" aria-label="Dashboard sections">
+        <button type="button" class="dash-tab active" data-section="1" role="tab" aria-selected="true"><i class="la la-th-large"></i><span>Overview</span></button>
+        <button type="button" class="dash-tab" data-section="2" role="tab" aria-selected="false"><i class="la la-chart-line"></i><span>Performance</span></button>
+      </div>
     </div>
 
-    <!-- KPI Cards -->
-    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:16px 0 28px;">
+    <div class="dash-sections-wrap">
+
+    <!-- ================= SECTION 1: Overview ================= -->
+    <div class="dash-section" id="dashSection1" role="tabpanel">
+    <div class="dash-grid dash-grid-1">
+
+      <!-- LEFT column: stacked KPI cards -->
+      <div class="dash-col-stack">
       {% comment "Revenue/Profit/Expenses KPI cards — disabled, metrics shown in chart strips instead" %}
       <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
         <div class="card-body" style="padding:18px 20px;">
@@ -57,151 +113,151 @@
         </div>
       </div>
       {% endcomment %}
-      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:20px 24px;">
-          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-            <div style="width:38px;height:38px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-box" style="font-size:1.25rem;color:#2563eb;"></i></div>
-            <span style="font-size:0.78rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Products</span>
-          </div>
-          <div style="font-size:1.75rem;font-weight:800;line-height:1.1;margin-bottom:8px;">{{ total_products }}</div>
-          <span style="font-size:0.8rem;color:#6b7280;font-weight:600;">{{ total_stocks|floatformat:0 }} units in stock</span>
-        </div>
-      </div>
-      <a href="{% url 'product-inventory' %}" style="text-decoration:none;color:inherit;">
-        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.13)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='0 1px 4px rgba(0,0,0,0.08)';this.style.transform='none'">
-          <div class="card-body" style="padding:20px 24px;">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-              <div style="width:38px;height:38px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-bell" style="font-size:1.25rem;color:#d97706;"></i></div>
-              <span style="font-size:0.78rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Stock Alerts</span>
+        <!-- Products card -->
+        <div class="card dash-card">
+          <div class="card-body" style="padding:12px 18px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <div style="width:32px;height:32px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-box" style="font-size:1.1rem;color:#2563eb;"></i></div>
+              <span style="font-size:0.72rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Products</span>
             </div>
-            <div style="display:flex;gap:22px;align-items:flex-end;">
-              <div><div style="font-size:1.75rem;font-weight:800;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div><div style="font-size:0.78rem;color:#6b7280;font-weight:600;margin-top:4px;">Low Stock</div></div>
-              <div style="width:1px;height:34px;background:#e5e7eb;"></div>
-              <div><div style="font-size:1.75rem;font-weight:800;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div><div style="font-size:0.78rem;color:#6b7280;font-weight:600;margin-top:4px;">Out of Stock</div></div>
-            </div>
+            <div style="font-size:1.4rem;font-weight:800;line-height:1.1;margin-bottom:4px;">{{ total_products }}</div>
+            <span style="font-size:0.75rem;color:#6b7280;font-weight:600;">{{ total_stocks|floatformat:0 }} units in stock</span>
           </div>
         </div>
-      </a>
-    </div>
 
-    <!-- Row 2: Sales vs Expenses Chart -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
-            <div>
-              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Sales vs Expenses</h6>
-              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Monthly profit breakdown</p>
-            </div>
-            <div class="d-flex gap-2">
-              <select id="yearFilter" class="form-select form-select-sm" style="width:100px;"></select>
-              <select id="monthFilter" class="form-select form-select-sm" style="width:110px;">
-                <option value="all">All Months</option>
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
-          </div>
-          <div class="card-body" style="padding:20px;">
-            <div style="display:flex;gap:28px;margin-bottom:14px;padding:10px 16px;background:#f9fafb;border-radius:10px;">
-              <div id="profitContainer">
-                <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Profit</div>
-                <div id="profitSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+        <!-- Stock Alerts card -->
+        <a href="{% url 'product-inventory' %}" class="dash-card-link">
+          <div class="card dash-card" style="cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.13)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+            <div class="card-body" style="padding:12px 18px;">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                <div style="width:32px;height:32px;border-radius:8px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-bell" style="font-size:1.1rem;color:#d97706;"></i></div>
+                <span style="font-size:0.72rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Stock Alerts</span>
               </div>
-              <div id="summaryDivider" style="width:1px;background:#e5e7eb;"></div>
-              <div id="expensesContainer">
-                <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Expenses</div>
-                <div id="expensesSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+              <div style="display:flex;gap:18px;align-items:flex-end;">
+                <div><div style="font-size:1.4rem;font-weight:800;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div><div style="font-size:0.72rem;color:#6b7280;font-weight:600;margin-top:2px;">Low Stock</div></div>
+                <div style="width:1px;height:28px;background:#e5e7eb;"></div>
+                <div><div style="font-size:1.4rem;font-weight:800;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div><div style="font-size:0.72rem;color:#6b7280;font-weight:600;margin-top:2px;">Out of Stock</div></div>
               </div>
-            </div>
-            <div id="salesExpensesChart" style="height:350px;"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 3: Revenue Trend Chart -->
-    <div class="row mb-4">
-      <div class="col-12">
-        <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
-            <div>
-              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Revenue Trend</h6>
-              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Monthly or daily sales overview</p>
-            </div>
-            <div class="d-flex gap-2">
-              <select id="revenueYearFilter" class="form-select form-select-sm" style="width:100px;"></select>
-              <select id="revenueMonthFilter" class="form-select form-select-sm" style="width:130px;">
-                <option value="all">All Months</option>
-                <option value="01">January</option>
-                <option value="02">February</option>
-                <option value="03">March</option>
-                <option value="04">April</option>
-                <option value="05">May</option>
-                <option value="06">June</option>
-                <option value="07">July</option>
-                <option value="08">August</option>
-                <option value="09">September</option>
-                <option value="10">October</option>
-                <option value="11">November</option>
-                <option value="12">December</option>
-              </select>
-            </div>
-          </div>
-          <div class="card-body" style="padding:20px;">
-            <div style="display:flex;gap:28px;margin-bottom:14px;padding:10px 16px;background:#f9fafb;border-radius:10px;">
-              <div>
-                <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Revenue</div>
-                <div id="revenueSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
-              </div>
-            </div>
-            <div style="overflow-x:auto;">
-              <div id="revenueChangeChart" style="min-width:400px;height:350px;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Row 4: Best Sellers + Recent Sales -->
-    <div class="row g-4" style="margin-top:8px;">
-      <div class="col-lg-6">
-        <a href="{% url 'best-seller-products' %}" style="text-decoration:none;color:inherit;">
-          <div class="card h-100" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
-            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
-              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Best Sellers</h6>
-              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Top products this month</p>
-            </div>
-            <div class="card-body d-flex align-items-center justify-content-center" style="padding:20px;">
-              <div id="bestSellerChart" class="w-100" style="height:320px;"></div>
             </div>
           </div>
         </a>
-      </div>
-      <div class="col-lg-6">
-        <a href="{% url 'salesexpenses' %}" style="text-decoration:none;color:inherit;">
-          <div class="card h-100" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);cursor:pointer;">
-            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;">
-              <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Recent Sales</h6>
-              <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Latest recorded transactions</p>
+      </div><!-- /dash-col-stack -->
+
+      <!-- RIGHT column: Sales vs Expenses chart -->
+      <div class="card dash-card dash-chart-card">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:10px 18px;flex-shrink:0;">
+          <div>
+            <h6 class="mb-0" style="font-weight:700;font-size:0.9rem;">Sales vs Expenses</h6>
+            <p class="mb-0" style="font-size:0.68rem;color:#9ca3af;margin-top:1px;">Monthly profit breakdown</p>
+          </div>
+          <div class="d-flex gap-2">
+            <select id="yearFilter" class="form-select form-select-sm" style="width:100px;"></select>
+            <select id="monthFilter" class="form-select form-select-sm" style="width:110px;">
+              <option value="all">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body dash-chart-body">
+          <div style="display:flex;gap:24px;margin-bottom:8px;padding:7px 14px;background:#f9fafb;border-radius:8px;flex-shrink:0;">
+            <div id="profitContainer">
+              <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Profit</div>
+              <div id="profitSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
             </div>
-            <div class="card-body" style="padding:12px 20px;">
-              {% for w in recent_sales|slice:":6" %}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 4px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
-                  <span style="font-size:0.85rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
+            <div id="summaryDivider" style="width:1px;background:#e5e7eb;"></div>
+            <div id="expensesContainer">
+              <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Expenses</div>
+              <div id="expensesSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+            </div>
+          </div>
+          <div id="salesExpensesChart" class="dash-chart-fill"></div>
+        </div>
+      </div>
+
+    </div><!-- /dash-grid-1 -->
+    </div><!-- /dashSection1 -->
+
+    <!-- ================= SECTION 2: Performance ================= -->
+    <div class="dash-section dash-section-hidden" id="dashSection2" role="tabpanel">
+    <div class="dash-grid dash-grid-2">
+
+      <!-- LEFT column: Revenue Trend chart -->
+      <div class="card dash-card dash-chart-card">
+        <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;flex-shrink:0;">
+          <div>
+            <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Revenue Trend</h6>
+            <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Monthly or daily sales overview</p>
+          </div>
+          <div class="d-flex gap-2">
+            <select id="revenueYearFilter" class="form-select form-select-sm" style="width:100px;"></select>
+            <select id="revenueMonthFilter" class="form-select form-select-sm" style="width:130px;">
+              <option value="all">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+        </div>
+        <div class="card-body dash-chart-body">
+          <div style="display:flex;gap:28px;margin-bottom:14px;padding:10px 16px;background:#f9fafb;border-radius:10px;flex-shrink:0;">
+            <div>
+              <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Revenue</div>
+              <div id="revenueSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
+            </div>
+          </div>
+          <div id="revenueChangeChart" class="dash-chart-fill"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT column: Best Sellers + Recent Sales stacked -->
+      <div class="dash-col-stack">
+        <!-- Best Sellers -->
+        <a href="{% url 'best-seller-products' %}" class="dash-card-link">
+          <div class="card dash-card dash-chart-card" style="cursor:pointer;">
+            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:14px 18px;flex-shrink:0;">
+              <h6 class="mb-0" style="font-weight:700;font-size:0.92rem;">Best Sellers</h6>
+              <p class="mb-0" style="font-size:0.7rem;color:#9ca3af;margin-top:2px;">Top products this month</p>
+            </div>
+            <div class="card-body dash-chart-body" style="padding:14px 16px;">
+              <div id="bestSellerChart" class="dash-chart-fill"></div>
+            </div>
+          </div>
+        </a>
+
+        <!-- Recent Sales -->
+        <a href="{% url 'salesexpenses' %}" class="dash-card-link">
+          <div class="card dash-card dash-chart-card" style="cursor:pointer;">
+            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:14px 18px;flex-shrink:0;">
+              <h6 class="mb-0" style="font-weight:700;font-size:0.92rem;">Recent Sales</h6>
+              <p class="mb-0" style="font-size:0.7rem;color:#9ca3af;margin-top:2px;">Latest recorded transactions</p>
+            </div>
+            <div class="card-body dash-recent-sales-body">
+              {% for w in recent_sales|slice:":5" %}
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
+                  <span style="font-size:0.83rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
                   <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:12px;">
-                    <span style="font-size:0.75rem;color:#9ca3af;">×{{ w.quantity }}</span>
-                    <span style="font-size:0.78rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:20px;">₱{{ w.compute_revenue|floatformat:2 }}</span>
+                    <span style="font-size:0.74rem;color:#9ca3af;">×{{ w.quantity }}</span>
+                    <span style="font-size:0.77rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:20px;">₱{{ w.compute_revenue|floatformat:2 }}</span>
                   </div>
                 </div>
               {% empty %}
@@ -210,8 +266,12 @@
             </div>
           </div>
         </a>
-      </div>
-    </div>
+      </div><!-- /dash-col-stack -->
+
+    </div><!-- /dash-grid-2 -->
+    </div><!-- /dashSection2 -->
+
+    </div><!-- /dash-sections-wrap -->
 
     {% else %}
     <h4 class="page-title mb-3" style="font-weight:700;font-size:1.25rem;">Dashboard</h4>
@@ -333,6 +393,34 @@
   {{ block.super }}
   {% if is_superuser %}
     <script src="{% static 'js/dashboards-analytics.js' %}?v=6"></script>
+    <script>
+      (function(){
+        document.addEventListener('DOMContentLoaded', function(){
+          var tabs = document.querySelectorAll('.dash-tab');
+          var sections = {'1':document.getElementById('dashSection1'),'2':document.getElementById('dashSection2')};
+          if(!tabs.length || !sections['1'] || !sections['2']) return;
+          function activate(num){
+            tabs.forEach(function(t){
+              var on = t.dataset.section === num;
+              t.classList.toggle('active', on);
+              t.setAttribute('aria-selected', on?'true':'false');
+            });
+            Object.keys(sections).forEach(function(k){
+              if(sections[k]) sections[k].classList.toggle('dash-section-hidden', k !== num);
+            });
+            try{ localStorage.setItem('rfp-dash-section', num); }catch(e){}
+            // Help ApexCharts recompute size when a hidden chart becomes visible
+            setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 60);
+          }
+          tabs.forEach(function(t){ t.addEventListener('click', function(){ activate(t.dataset.section); }); });
+          var saved='1';
+          try{ saved = localStorage.getItem('rfp-dash-section') || '1'; }catch(e){}
+          if(saved !== '1' && saved !== '2') saved = '1';
+          // Defer initial activation so ApexCharts can size on visible containers first
+          setTimeout(function(){ activate(saved); }, 250);
+        });
+      })();
+    </script>
   {% else %}
     <script>
       window._inventoryData = {

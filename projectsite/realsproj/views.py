@@ -1,11 +1,8 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.views.generic.list import ListView
+﻿from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import (
     ListView, CreateView, UpdateView, DeleteView, TemplateView, View
 )
-from django.views.generic.edit import ModelFormMixin
 from django.contrib import messages
-from django.views import View
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.db import transaction, models
@@ -13,20 +10,16 @@ from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from decimal import Decimal, InvalidOperation
 from django.urls import reverse, reverse_lazy
-from django.contrib.auth.forms import AuthenticationForm, UserChangeForm
 from django.contrib.auth import login, authenticate, update_session_auth_hash
 from django.contrib.auth import get_user_model
-from .forms import CustomUserCreationForm
 from django.db.models import Avg, Count, Sum
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
-from django.forms import modelformset_factory
 import threading
 from realsproj.forms import (
     ProductsForm,
     RawMaterialsForm,
-    HistoryLogForm,
     SalesForm,
     ExpensesForm,
     SalesExpensesForm,
@@ -40,11 +33,8 @@ from realsproj.forms import (
     SizeUnitsForm,
     UnitPricesForm,
     SrpPricesForm,
-    NotificationsForm,
     BulkProductBatchForm,
-    StockChangesForm,
     BulkRawMaterialBatchForm,
-    UnifiedWithdrawForm,
     CustomUserCreationForm,
     WithdrawEditForm
 )
@@ -77,26 +67,18 @@ from realsproj.models import (
     PriceHistory
 )
 
-from django.db.models import Q, CharField
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import TemplateView
 from django.db.models.functions import TruncMonth, TruncDay
 from django.db.models.functions import Cast
 from django.contrib.auth.models import User
-import os
 from django.http import HttpResponse
 import csv
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
-from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.db.models import Q, F, CharField
-from django.db.models.functions import Cast
 import re
-from urllib.parse import urlparse, parse_qs
-from django.db.models import Count
-
 
 def get_or_create_auth_user(user):
     """
@@ -611,8 +593,8 @@ def monthly_report_export(request):
                     'total_profit': total_profit,
                     'average_profit': average_profit,
                 },
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
             }
 
@@ -2780,7 +2762,8 @@ class ProductBatchList(ListView):
             queryset = queryset.filter(
                 Q(product__product_type__name__icontains=search) |
                 Q(product__variant__name__icontains=search) |
-                Q(product__size__size_label__icontains=search)
+                Q(product__size__size_label__icontains=search) |
+                Q(packaging__name__icontains=search)
             )
 
         if date_filter:
@@ -3082,70 +3065,91 @@ class ProductInventoryList(ListView):
             # Get packaging information and stock from batches
             batches = ProductBatches.objects.filter(
                 product=inv.product,
-                is_archived=False
-            ).select_related('packaging')
+                is_archived=False,
+                quantity__gt=0  # Only show batches with stock
+            ).select_related('packaging').order_by('expiration_date', 'id')
 
-            packaging_stock = {}
-            packaging_expiring = {}
-            packaging_list = []
+            from collections import defaultdict
+            packaging_groups = defaultdict(lambda: {
+                'total_quantity': 0,
+                'expiring_quantity': 0,
+                'batch_count': 0,
+                'oldest_expiry': None,
+                'newest_expiry': None,
+                'has_expired': False,
+                'has_near_expiry': False,
+            })
 
             from django.utils import timezone
             today = timezone.localdate()
             near_expiry_cutoff = today + timezone.timedelta(days=30)
+            from datetime import date as date_type
 
             for batch in batches:
-                if batch.packaging:
-                    packaging_name = batch.packaging.name.title()
-                    if batch.packaging.size and batch.packaging.unit:
-                        unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
-                        packaging_name = f"{packaging_name} ({batch.packaging.size} {unit_name})"
+                if not batch.packaging:
+                    continue
+                    
+                packaging = batch.packaging
+                packaging_name = packaging.name.title()
+                if packaging.size and packaging.unit:
+                    unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
+                    packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
 
-                    # Group by packaging name + expiration date (no batch.id) to merge duplicates
-                    exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
-                    packaging_key = f"{packaging_name}|{exp_date_str}"
+                pg = packaging_groups[packaging_name]
+                pg['total_quantity'] += batch.quantity
+                pg['batch_count'] += 1
+                
+                # Track expiry dates
+                if batch.expiration_date:
+                    # Check for expired
+                    if batch.expiration_date < today:
+                        pg['has_expired'] = True
+                    # Check for near expiry
+                    elif batch.expiration_date <= near_expiry_cutoff:
+                        pg['has_near_expiry'] = True
+                        pg['expiring_quantity'] += batch.quantity
+                    
+                    # Track oldest and newest expiry
+                    if pg['oldest_expiry'] is None or batch.expiration_date < pg['oldest_expiry']:
+                        pg['oldest_expiry'] = batch.expiration_date
+                    if pg['newest_expiry'] is None or batch.expiration_date > pg['newest_expiry']:
+                        pg['newest_expiry'] = batch.expiration_date
 
-                    # Track total stock per packaging + expiration date combination
-                    if packaging_key not in packaging_stock:
-                        packaging_stock[packaging_key] = 0
-                    packaging_stock[packaging_key] += batch.quantity
-
-                    # Track near-expiry stock (within 30 days, not yet expired)
-                    if (batch.expiration_date and
-                        batch.expiration_date <= near_expiry_cutoff and
-                        batch.expiration_date >= today and
-                        batch.quantity > 0):
-                        if packaging_key not in packaging_expiring:
-                            packaging_expiring[packaging_key] = 0
-                        packaging_expiring[packaging_key] += batch.quantity
-
-                    if packaging_key not in packaging_list:
-                        packaging_list.append(packaging_key)
-
-            # Create formatted packaging stock breakdown with expiration status
+            # Create formatted packaging stock breakdown (grouped by packaging type)
             packaging_breakdown = []
-            for packaging_key in packaging_list:
-                stock_qty = packaging_stock.get(packaging_key, 0)
-                expiring_qty = packaging_expiring.get(packaging_key, 0)
-                packaging_name, exp_date_str = packaging_key.split('|')
-                # Determine expiry status for color-coded badge
-                if exp_date_str != 'No Date':
-                    from datetime import date as date_type
-                    exp_date_obj = date_type.fromisoformat(exp_date_str)
-                    if exp_date_obj < today:
-                        expiry_status = 'expired'
-                    elif exp_date_obj <= near_expiry_cutoff:
-                        expiry_status = 'near_expiry'
+            packaging_list = []
+            
+            for packaging_name, pg in packaging_groups.items():
+                # Format expiry range
+                if pg['oldest_expiry'] and pg['newest_expiry']:
+                    oldest_str = pg['oldest_expiry'].strftime('%Y-%m-%d')
+                    newest_str = pg['newest_expiry'].strftime('%Y-%m-%d')
+                    if oldest_str == newest_str:
+                        expiry_display = oldest_str
                     else:
-                        expiry_status = 'normal'
+                        expiry_display = f"{oldest_str} to {newest_str}"
+                elif pg['oldest_expiry']:
+                    expiry_display = pg['oldest_expiry'].strftime('%Y-%m-%d')
+                else:
+                    expiry_display = 'No Date'
+                
+                # Determine overall expiry status
+                if pg['has_expired']:
+                    expiry_status = 'expired'
+                elif pg['has_near_expiry']:
+                    expiry_status = 'near_expiry'
                 else:
                     expiry_status = 'normal'
+                    
                 packaging_breakdown.append({
                     'name': packaging_name,
-                    'stock': stock_qty,
-                    'expiring': expiring_qty,
-                    'expiration_date': exp_date_str,
+                    'stock': pg['total_quantity'],
+                    'expiring': pg['expiring_quantity'],
+                    'batch_count': pg['batch_count'],
+                    'expiration_date': expiry_display,
                     'expiry_status': expiry_status
                 })
+                packaging_list.append(packaging_name)
 
             inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
             inv.packaging_stock_breakdown = packaging_breakdown
@@ -3643,8 +3647,8 @@ def export_rawmaterial_inventory(request):
                 'total_materials': len(inventory_items),
                 'total_stock': total_stock,
                 'low_stock_count': low_stock_count,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
                 'filters': {
                     'search': q if q else None,
@@ -3721,7 +3725,7 @@ def export_rawmaterial_inventory(request):
             writer.writerow([f'An error occurred: {str(e)}'])
         return response
 
-class ProductVariantCreateView(CreateView):
+class ProductVariantCreateView(LoginRequiredMixin, CreateView):
     model = ProductVariants
     form_class = ProductVariantsForm
     template_name = "prodvar_add.html"
@@ -3733,7 +3737,7 @@ class ProductVariantCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class SizesCreateView(CreateView):
+class SizesCreateView(LoginRequiredMixin, CreateView):
     model = Sizes
     form_class = SizesForm
     template_name = "sizes_add.html"
@@ -3744,7 +3748,7 @@ class SizesCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class SizeUnitsCreateView(CreateView):
+class SizeUnitsCreateView(LoginRequiredMixin, CreateView):
     model = SizeUnits
     form_class = SizeUnitsForm
     template_name = "sizeunits_add.html"
@@ -3755,7 +3759,7 @@ class SizeUnitsCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class UnitPricesCreateView(CreateView):
+class UnitPricesCreateView(LoginRequiredMixin, CreateView):
     model = UnitPrices
     form_class = UnitPricesForm
     template_name = "unitprices_add.html"
@@ -3766,7 +3770,7 @@ class UnitPricesCreateView(CreateView):
         form.instance.created_by_admin = auth_user
         return super().form_valid(form)
 
-class SrpPricesCreateView(CreateView):
+class SrpPricesCreateView(LoginRequiredMixin, CreateView):
     model = SrpPrices
     form_class = SrpPricesForm
     template_name = "srpprices_add.html"
@@ -4205,7 +4209,7 @@ class SrpPriceDeleteView(View):
         return redirect('product-attributes')
 
 
-class WithdrawSuccessView(ListView):
+class WithdrawSuccessView(LoginRequiredMixin, ListView):
     model = Withdrawals
     context_object_name = 'withdrawals'
     template_name = "withdrawn.html"
@@ -4406,8 +4410,8 @@ def export_withdrawals(request):
                 'rawmat_withdrawals_count': rawmat_withdrawals_count,
                 'rawmat_withdrawals_qty': rawmat_withdrawals_qty,
                 'filter_info': filter_info,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
             }
             
@@ -4465,7 +4469,7 @@ def export_withdrawals(request):
             writer.writerow([f'An error occurred: {str(e)}'])
         return response
     
-class WithdrawItemView(View):
+class WithdrawItemView(LoginRequiredMixin, View):
     template_name = "withdraw_item.html"
 
     def get(self, request):
@@ -4489,47 +4493,83 @@ class WithdrawItemView(View):
         expiration_cutoff = today + timezone.timedelta(days=7)
 
         for product in products:
-            # Get batches with packaging information
+            # Get batches with packaging information, grouped by packaging type
             batches = ProductBatches.objects.filter(
                 product=product,
                 is_archived=False,
                 packaging__isnull=False
             ).select_related('packaging', 'packaging__unit', 'packaging__rawmaterialinventory')
 
-            # Create individual batch options instead of grouping by packaging
-            packaging_options = []
+            # Group batches by packaging type
+            from collections import defaultdict
+            packaging_groups = defaultdict(lambda: {
+                'batches': [],
+                'total_quantity': 0,
+                'expiring_quantity': 0,
+                'oldest_expiry': None,
+                'newest_expiry': None,
+                'packaging': None
+            })
+
             for batch in batches:
                 packaging = batch.packaging
-                if packaging:
-                    packaging_name = f"{packaging.name}"
-                    if packaging.size and packaging.unit:
-                        unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
-                        packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
-
-                    # Calculate expiring stock for this batch
-                    expiring_qty = 0
-                    if (batch.expiration_date and
-                        batch.expiration_date <= expiration_cutoff and
+                if not packaging:
+                    continue
+                    
+                group_key = packaging.id
+                pg = packaging_groups[group_key]
+                pg['packaging'] = packaging
+                pg['batches'].append(batch)
+                pg['total_quantity'] += batch.quantity
+                
+                # Track expiry info
+                if batch.expiration_date:
+                    if (batch.expiration_date <= expiration_cutoff and
                         batch.expiration_date >= today and
                         batch.quantity > 0):
-                        expiring_qty = batch.quantity
+                        pg['expiring_quantity'] += batch.quantity
+                    
+                    # Track oldest expiry (FIFO priority)
+                    if pg['oldest_expiry'] is None or batch.expiration_date < pg['oldest_expiry']:
+                        pg['oldest_expiry'] = batch.expiration_date
+                    
+                    # Track newest expiry (for display)
+                    if pg['newest_expiry'] is None or batch.expiration_date > pg['newest_expiry']:
+                        pg['newest_expiry'] = batch.expiration_date
 
-                    # Add batch as individual option
-                    exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
-                    mfg_date_str = batch.batch_date.strftime('%Y-%m-%d') if batch.batch_date else 'No Date'
+            # Build packaging options from groups
+            packaging_options = []
+            for packaging_id, pg in packaging_groups.items():
+                packaging = pg['packaging']
+                packaging_name = f"{packaging.name}"
+                if packaging.size and packaging.unit:
+                    unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
+                    packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
 
-                    packaging_options.append({
-                        'id': batch.id,  # Use batch ID instead of packaging ID
-                        'name': packaging_name,
-                        'quantity': batch.quantity,
-                        'expiring': expiring_qty,
-                        'expiration_date': exp_date_str,
-                        'manufactured_date': mfg_date_str,
-                        'packaging_id': packaging.id  # Keep packaging ID for reference
-                    })
+                # Format dates
+                oldest_exp_str = pg['oldest_expiry'].strftime('%Y-%m-%d') if pg['oldest_expiry'] else 'No Date'
+                newest_exp_str = pg['newest_expiry'].strftime('%Y-%m-%d') if pg['newest_expiry'] else 'No Date'
+                
+                expiry_display = oldest_exp_str
+                if oldest_exp_str != newest_exp_str:
+                    expiry_display = f"{oldest_exp_str} to {newest_exp_str}"
 
-            # Sort by expiration date (oldest first) then by packaging name
-            product.packaging_options = sorted(packaging_options, key=lambda x: (x['expiration_date'], x['name']))
+                packaging_options.append({
+                    'packaging_id': packaging_id,  # Use packaging ID for selection
+                    'name': packaging_name,
+                    'quantity': pg['total_quantity'],
+                    'expiring': pg['expiring_quantity'],
+                    'batch_count': len(pg['batches']),
+                    'oldest_expiry': oldest_exp_str,
+                    'expiry_range': expiry_display,
+                    'packaging_obj': packaging
+                })
+
+            # Sort by oldest expiry date (FIFO) then by packaging name
+            product.packaging_options = sorted(
+                packaging_options, 
+                key=lambda x: (x['oldest_expiry'] if x['oldest_expiry'] != 'No Date' else '9999-12-31', x['name'])
+            )
 
         return render(request, self.template_name, {
             "products": products,
@@ -4552,11 +4592,6 @@ class WithdrawItemView(View):
         payment_status = request.POST.get("payment_status", "PAID")
         paid_amount_input = request.POST.get("paid_amount")
        
-        if reason == "REPLACEMENT_FOR_RETURNED":
-            print(f"DEBUG: Processing REPLACEMENT_FOR_RETURNED withdrawal")
-            print(f"DEBUG: item_type={item_type}, reason={reason}")
-            print(f"DEBUG: POST data keys: {list(request.POST.keys())}")
-
         # Parse price input
         if price_input in ['UNIT', 'SRP']:
             price_type = price_input
@@ -4596,9 +4631,6 @@ class WithdrawItemView(View):
                         if quantity <= 0:
                             continue
                         
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: Processing product {product_id} with quantity {quantity}")
-                        
                         product = Products.objects.get(id=product_id)
                         inv = product.productinventory
 
@@ -4614,6 +4646,17 @@ class WithdrawItemView(View):
                                 discount_obj = Discounts.objects.get(value=discount_val)
                             except Discounts.DoesNotExist:
                                 custom_value = discount_val
+
+                        # Get selected packaging type from form (now packaging_id instead of batch_id)
+                        packaging_id = request.POST.get(f"packaging_{product_id}")
+                        selected_packaging = None
+
+                        if packaging_id:
+                            try:
+                                selected_packaging = RawMaterials.objects.get(id=packaging_id, category='PACKAGING')
+                            except RawMaterials.DoesNotExist:
+                                messages.error(request, f"Invalid packaging type selected for {product}")
+                                continue
 
                         # Initialize all price-related fields
                         actual_unit_price = None
@@ -4649,61 +4692,96 @@ class WithdrawItemView(View):
                             final_price_per_unit = final_price
                             total_amount = total
 
-                       
-                        # Get selected batch from form (changed from packaging to batch)
-                        batch_id = request.POST.get(f"batch_{product_id}")
-                        selected_batch = None
-                        selected_packaging = None
+                        # =====================================
+                        # FIFO AUTO-SELECTION LOGIC
+                        # =====================================
+                        remaining = quantity
+                        batches_consumed = []
 
-                        if batch_id:
-                            try:
-                                selected_batch = ProductBatches.objects.get(id=batch_id, product=product, is_archived=False)
-                                selected_packaging = selected_batch.packaging
-                            except ProductBatches.DoesNotExist:
-                                messages.error(request, f"Invalid batch selected for {product}")
-                                continue
+                        if selected_packaging:
+                            # Get batches for this product and packaging, ordered by FIFO (oldest first)
+                            fifo_batches = ProductBatches.objects.filter(
+                                product=product,
+                                packaging=selected_packaging,
+                                is_archived=False,
+                                quantity__gt=0
+                            ).order_by('expiration_date', 'id')  # FIFO: oldest expiry first
 
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: About to create withdrawal for product {product.id}, quantity {quantity}")
-                            print(f"DEBUG: Current stock before deduction: {inv.total_stock}")
-                            print(f"DEBUG: Selected batch: {selected_batch}")
-                            print(f"DEBUG: Selected packaging: {selected_packaging}")
+                            for batch in fifo_batches:
+                                if remaining <= 0:
+                                    break
+                                
+                                deduct_amount = min(remaining, batch.quantity)
+                                batches_consumed.append({
+                                    'batch': batch,
+                                    'quantity': deduct_amount,
+                                    'packaging': selected_packaging
+                                })
+                                remaining -= deduct_amount
+                        else:
+                            # No packaging selected - get all batches FIFO
+                            fifo_batches = ProductBatches.objects.filter(
+                                product=product,
+                                is_archived=False,
+                                quantity__gt=0
+                            ).order_by('expiration_date', 'id')
 
-                        withdrawal = Withdrawals.objects.create(
-                            item_id=product.id,
-                            item_type="PRODUCT",
-                            quantity=quantity,
-                            reason=reason,
-                            date=timezone.now(),
-                            created_by_admin=request.user,
-                            sales_channel=sales_channel if reason == "SOLD" else None,
-                            price_type=price_type if reason == "SOLD" and payment_status == "PAID" else None,
-                            custom_price=custom_price if custom_price else None,
-                            discount_id=discount_obj.id if discount_obj else None,
-                            custom_discount_value=custom_value,
-                            customer_name=customer_name if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else None,
-                            payment_status=payment_status if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else 'PAID',
-                            paid_amount=paid_amount if payment_status == 'PARTIAL' else None,
-                            order_group_id=order_group_id,
-                            packaging=selected_packaging,
-                            batch=selected_batch,
+                            for batch in fifo_batches:
+                                if remaining <= 0:
+                                    break
+                                
+                                deduct_amount = min(remaining, batch.quantity)
+                                batches_consumed.append({
+                                    'batch': batch,
+                                    'quantity': deduct_amount,
+                                    'packaging': batch.packaging
+                                })
+                                remaining -= deduct_amount
 
-                            actual_unit_price=actual_unit_price,
-                            actual_discount_percent=actual_discount_percent,
-                            actual_discount_amount=actual_discount_amount,
-                            final_price_per_unit=final_price_per_unit,
-                            total_amount=total_amount,
-                        )
+                        if remaining > 0:
+                            messages.error(request, f"⚠️ Insufficient stock for {product}. Could not fulfill full quantity of {quantity}.")
+                            continue
 
-                        if reason == "REPLACEMENT_FOR_RETURNED":
-                            print(f"DEBUG: Withdrawal created successfully with ID: {withdrawal.id}")
+                        # Create one Withdrawal record per batch consumed
+                        # This enables accurate restoration later
+                        for i, consumed in enumerate(batches_consumed):
+                            batch = consumed['batch']
+                            batch_qty = consumed['quantity']
+                            packaging = consumed['packaging']
+                            
+                            # For multi-batch withdrawals, only the first gets price/discount info
+                            # Others get quantity only (they're part of the same order)
+                            is_first_batch = (i == 0)
+                            
+                            withdrawal = Withdrawals.objects.create(
+                                item_id=product.id,
+                                item_type="PRODUCT",
+                                quantity=batch_qty,
+                                reason=reason,
+                                date=timezone.now(),
+                                created_by_admin=request.user,
+                                sales_channel=sales_channel if reason == "SOLD" else None,
+                                price_type=price_type if reason == "SOLD" and payment_status == "PAID" and is_first_batch else None,
+                                custom_price=custom_price if custom_price and is_first_batch else None,
+                                discount_id=discount_obj.id if discount_obj and is_first_batch else None,
+                                custom_discount_value=custom_value if is_first_batch else None,
+                                customer_name=customer_name if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else None,
+                                payment_status=payment_status if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else 'PAID',
+                                paid_amount=paid_amount if payment_status == 'PARTIAL' and is_first_batch else None,
+                                order_group_id=order_group_id,
+                                packaging=packaging,
+                                batch=batch,
+                                actual_unit_price=actual_unit_price if is_first_batch else None,
+                                actual_discount_percent=actual_discount_percent if is_first_batch else None,
+                                actual_discount_amount=actual_discount_amount if is_first_batch else None,
+                                final_price_per_unit=final_price_per_unit if is_first_batch else None,
+                                total_amount=total_amount if is_first_batch else None,
+                            )
 
                         count += 1
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                        print(f"ERROR withdrawing product {product_id}: {str(e)}")
-                        print(f"Full traceback: {error_details}")
                         messages.error(request, f"❌ Error withdrawing product: {str(e)}")
                         continue
 
@@ -4741,14 +4819,9 @@ class WithdrawItemView(View):
                     except Exception as e:
                         import traceback
                         error_details = traceback.format_exc()
-                        print(f"ERROR withdrawing raw material {material_id}: {str(e)}")
-                        print(f"Full traceback: {error_details}")
                         messages.error(request, f"❌ Error withdrawing raw material: {str(e)}")
                         continue
 
-        if reason == "REPLACEMENT_FOR_RETURNED":
-            print(f"DEBUG: Final count of processed items: {count}")
-        
         if count > 0:
             
             if reason == "SOLD" and sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and order_group_id:
@@ -4820,7 +4893,7 @@ class WithdrawItemView(View):
         return redirect("withdrawals")
 
 
-class WithdrawalsArchiveView(View):
+class WithdrawalsArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
@@ -4849,7 +4922,7 @@ class ArchivedWithdrawalsListView(ListView):
         return Withdrawals.objects.filter(is_archived=True).order_by('-date')
 
 
-class WithdrawalsUnarchiveView(View):
+class WithdrawalsUnarchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         withdrawal = get_object_or_404(Withdrawals, pk=pk)
         
@@ -4864,7 +4937,7 @@ class WithdrawalsUnarchiveView(View):
         messages.success(request, "✅ Withdrawal restored successfully.")
         return redirect('withdrawals-archived-list')
 
-class WithdrawalBulkRestoreView(View):
+class WithdrawalBulkRestoreView(LoginRequiredMixin, View):
     def post(self, request):
         import json
         try:
@@ -4879,7 +4952,7 @@ class WithdrawalBulkRestoreView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
 
-class WithdrawalBulkDeleteView(View):
+class WithdrawalBulkDeleteView(LoginRequiredMixin, View):
     def post(self, request):
         import json
         try:
@@ -4894,7 +4967,7 @@ class WithdrawalBulkDeleteView(View):
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
 
-class WithdrawalsArchiveOldView(View):
+class WithdrawalsArchiveOldView(LoginRequiredMixin, View):
     def post(self, request):
         from datetime import timedelta
         one_year_ago = timezone.now() - timedelta(days=365)
@@ -4936,7 +5009,7 @@ def withdrawals_bulk_archive(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
-class WithdrawUpdateView(UpdateView):
+class WithdrawUpdateView(LoginRequiredMixin, UpdateView):
     model = Withdrawals
     form_class = WithdrawEditForm
     template_name = "withdraw_edit.html"
@@ -4952,8 +5025,6 @@ class WithdrawUpdateView(UpdateView):
         
         original_date = withdrawal.date
         current_time = timezone.now()
-        print(f"Current time: {current_time}")
-        print(f"Original date before save: {original_date}")
 
         before = {
             'item_type': withdrawal.item_type,
@@ -5057,7 +5128,6 @@ class WithdrawUpdateView(UpdateView):
                 "✅ Withdrawal updated successfully! Inventory has been adjusted.")
 
         withdrawal.refresh_from_db()
-        print(f"Date after save: {withdrawal.date}")
 
         after = {
             'item_type': withdrawal.item_type,
@@ -5085,7 +5155,6 @@ class WithdrawUpdateView(UpdateView):
                                 before['custom_discount_value'] != after['custom_discount_value'])
 
             if quantity_changed or discount_changed:
-                print(f"🔄 Updating sales entry for order #{withdrawal.order_group_id}")
 
                 order_withdrawals = Withdrawals.objects.filter(order_group_id=withdrawal.order_group_id)
                 new_total = Decimal(0)
@@ -5129,7 +5198,7 @@ class WithdrawUpdateView(UpdateView):
         return super().form_invalid(form)
 
 
-class WithdrawDeleteView(DeleteView):
+class WithdrawDeleteView(LoginRequiredMixin, DeleteView):
     model = Withdrawals
     success_url = reverse_lazy('withdrawals')
 
@@ -5568,6 +5637,7 @@ def get_total_revenue():
     return total
 
     
+@login_required
 @require_GET
 def get_stock(request):
     item_type = request.GET.get("type")
@@ -5582,7 +5652,7 @@ def get_stock(request):
 
     return JsonResponse({"stock": inventory.total_stock if inventory else 0})
 
-class NotificationsList(ListView):
+class NotificationsList(LoginRequiredMixin, ListView):
     model = Notifications
     context_object_name = 'notifications'
     template_name = "notification.html"
@@ -5997,6 +6067,7 @@ def download_my_data(request):
     
     return response
 
+@login_required
 def best_sellers_api(request):
     from datetime import datetime
     TOP_N = 5
@@ -6004,7 +6075,7 @@ def best_sellers_api(request):
     year = request.GET.get('year')
     month = request.GET.get('month')
 
-    now = datetime.now()
+    now = timezone.now()
     if not year:
         year = now.year
     if not month:
@@ -6035,6 +6106,7 @@ def best_sellers_api(request):
 
     return JsonResponse({"labels": labels, "data": data})
 
+@login_required
 def mark_notification_read(request, pk):
     notif = get_object_or_404(Notifications, pk=pk)
     notif.is_read = True
@@ -6042,7 +6114,7 @@ def mark_notification_read(request, pk):
     return redirect('notifications')
 
 
-class StockChangesList(ListView):
+class StockChangesList(LoginRequiredMixin, ListView):
     model = StockChanges
     context_object_name = 'stock_changes'
     template_name = "stock_changes.html"
@@ -6124,7 +6196,7 @@ def export_stock_changes(request):
     
     return response
 
-class StockChangesArchiveView(View):
+class StockChangesArchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         stock_change = get_object_or_404(StockChanges, pk=pk)
         
@@ -6163,7 +6235,7 @@ def stock_changes_bulk_archive(request):
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
-class ArchivedStockChangesListView(ListView):
+class ArchivedStockChangesListView(LoginRequiredMixin, ListView):
     model = StockChanges
     template_name = 'archived_stock_changes.html'
     context_object_name = 'object_list'
@@ -6173,7 +6245,7 @@ class ArchivedStockChangesListView(ListView):
         return StockChanges.objects.filter(is_archived=True).order_by('-date')
 
 
-class StockChangesUnarchiveView(View):
+class StockChangesUnarchiveView(LoginRequiredMixin, View):
     def post(self, request, pk):
         stock_change = get_object_or_404(StockChanges, pk=pk)
         stock_change.is_archived = False
@@ -6182,7 +6254,7 @@ class StockChangesUnarchiveView(View):
         return redirect('stock-changes-archived-list')
 
 
-class StockChangesBulkRestoreView(View):
+class StockChangesBulkRestoreView(LoginRequiredMixin, View):
     def post(self, request):
         import json
         try:
@@ -6198,7 +6270,7 @@ class StockChangesBulkRestoreView(View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 
-class StockChangesArchiveOldView(View):
+class StockChangesArchiveOldView(LoginRequiredMixin, View):
     def post(self, request):
         from datetime import timedelta
         one_year_ago = timezone.now() - timedelta(days=365)
@@ -6275,54 +6347,6 @@ def get_device_info(request):
         'device_name': f"{os} - {browser}"
     }
 
-
-def send_login_notification(user, device_info, ip_address, is_new_device=False):
-    """Send email notification about login"""
-    from django.core.mail import send_mail
-    from django.conf import settings
-    from django.utils import timezone
-    
-    if is_new_device:
-        subject = '🔐 New Device Verified - Real\'s Food Products'
-        message = f'''Hello {user.username},
-
-A new device has been verified for your account.
-
-Device: {device_info['device_name']}
-IP Address: {ip_address}
-Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-This device is now trusted and will not require OTP for future logins.
-
-If this wasn't you, please secure your account immediately.
-
-Real's Food Products Security Team'''
-    else:
-        subject = '✅ Login Notification - Real\'s Food Products'
-        message = f'''Hello {user.username},
-
-You recently logged in to your account.
-
-Device: {device_info['device_name']}
-IP Address: {ip_address}
-Time: {timezone.now().strftime('%B %d, %Y at %I:%M %p')}
-
-This login was from a trusted device.
-
-If this wasn't you, please secure your account immediately.
-
-Real's Food Products Security Team'''
-    
-    try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[user.email],
-            fail_silently=True,
-        )
-    except Exception as e:
-        pass
 
 def login_view(request):
     if request.method == 'POST':
@@ -6550,15 +6574,13 @@ Real's Food Products Security Team''',
                                 recipient_list=[user.email],
                                 fail_silently=False,
                             )
-                            print(f"[OTP EMAIL] Successfully sent OTP to {user.email}")
                         except Exception as e:
-                            print(f"[OTP EMAIL ERROR] Failed to send OTP email: {e}")
+                            pass
                     
                     try:
                         from threading import Thread
                         Thread(target=send_otp_email).start()
                     except Exception as e:
-                        print(f"[THREAD ERROR] Failed to start email thread: {e}")
                         messages.error(request, "Failed to send confirmation email. Please contact support.")  
 
                     LoginAttempt.objects.create(
@@ -6740,7 +6762,7 @@ def reject_user(request, user_id):
             )
         except Exception:
             pass
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
         user.email = f"rejected_{user.id}_{timestamp}@deleted.local"
         user.username = f"rejected_user_{user.id}_{timestamp}"
         user.first_name = "Rejected"
@@ -6766,7 +6788,7 @@ def send_role_change_email_async(username, email, new_role):
             fail_silently=True,
         )
     except Exception as e:
-        print(f"[ROLE CHANGE ERROR] Failed to send email: {e}")
+        pass
 
 @login_required
 @require_http_methods(["POST"])
@@ -6879,7 +6901,7 @@ def send_deactivation_email_async(username, email):
             fail_silently=True,
         )
     except Exception as e:
-        print(f"[DEACTIVATION EMAIL ERROR] {e}")
+        pass
 
 def send_reactivation_email_async(username, email):
     from django.core.mail import send_mail
@@ -6893,7 +6915,7 @@ def send_reactivation_email_async(username, email):
             fail_silently=True,
         )
     except Exception as e:
-        print(f"[REACTIVATION EMAIL ERROR] {e}")
+        pass
 
 @login_required
 @require_http_methods(["POST"])
@@ -6907,7 +6929,7 @@ def deactivate_user(request, user_id):
             return JsonResponse({'success': False, 'message': 'Cannot deactivate your own account'})
         username = user.username
         email = user.email
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
         user.is_active = False
         user.first_name = f"ORIGINAL_USERNAME:{username}"
         user.last_name = f"ORIGINAL_EMAIL:{email}"
@@ -6965,7 +6987,7 @@ def delete_user(request, user_id):
         if user.id == request.user.id:
             return JsonResponse({'success': False, 'message': 'Cannot delete your own account'})
         username = user.username
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
         user.is_active = False
         user.email = f"deleted_{user.id}_{timestamp}@deleted.local"
         user.username = f"deleted_user_{user.id}_{timestamp}"
@@ -7148,8 +7170,8 @@ def export_product_inventory(request):
                 'total_products': len(inventory_items),
                 'total_stock': total_stock,
                 'total_available': total_available,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,  # Disabled: xhtml2pdf cannot resolve relative static paths
                 'filters': {
                     'month': month if month else None,
@@ -7239,13 +7261,18 @@ class UserActivityList(LoginRequiredMixin, ListView):
             qs = qs.filter(id__in=ids)
         return qs
 
+@login_required
 def check_account_status(request):
     if not request.user.is_authenticated:
         return JsonResponse({'is_active': False, 'deactivated': True})
     if not request.user.is_active:
         return JsonResponse({'is_active': False, 'deactivated': True})
     deactivated_flag = request.session.get('account_deactivated', False)
-    return JsonResponse({'is_active': True, 'deactivated': deactivated_flag})
+    return JsonResponse({
+        'is_active': True,
+        'deactivated': deactivated_flag,
+        'is_superuser': request.user.is_superuser,
+    })
 
 def clear_deactivation_flag(request):
     if request.method == 'POST':
@@ -7374,8 +7401,8 @@ def export_bestseller_report(request):
                 'total_products': len(bestseller_items),
                 'total_sold': total_sold,
                 'total_transactions': total_transactions,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
                 'filters': {
                     'month': month if month and not show_all else None,
@@ -7442,22 +7469,145 @@ def financial_loss(request):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
-    withdrawals = Withdrawals.objects.filter(
+    
+    # Get current month value for default filter
+    current_month = timezone.now().strftime('%Y-%m')
+    current_month_value = current_month
+    
+    # Product withdrawals with loss reasons
+    product_withdrawals_qs = Withdrawals.objects.filter(
         item_type='PRODUCT',
         reason__in=loss_reasons,
         is_archived=False
     ).order_by('-date')
-    total_loss = 0
-    losses = []
-    for w in withdrawals:
+    
+    # Apply product date filter
+    product_date_filter = request.GET.get('product_date_filter')
+    product_show_all = request.GET.get('product_show_all')
+    
+    if product_show_all:
+        # Show all data
+        pass
+    elif product_date_filter:
+        try:
+            _pd = datetime.strptime(product_date_filter, '%Y-%m')
+            product_withdrawals_qs = product_withdrawals_qs.filter(date__year=_pd.year, date__month=_pd.month)
+        except ValueError:
+            pass
+    else:
+        _now = timezone.now()
+        product_withdrawals_qs = product_withdrawals_qs.filter(date__year=_now.year, date__month=_now.month)
+    
+    # Calculate product loss and prepare withdrawal data
+    product_loss = 0
+    product_withdrawals_data = []
+    for w in product_withdrawals_qs:
         try:
             product = Products.objects.get(id=w.item_id)
-            price = float(product.unit_price or 0) if hasattr(product, 'unit_price') and product.unit_price else 0
-            loss_value = float(w.quantity or 0) * price
-            total_loss += loss_value
-            losses.append({'withdrawal': w, 'product_name': str(product), 'loss_value': loss_value})
-        except Exception:
-            losses.append({'withdrawal': w, 'product_name': f'Unknown (ID {w.item_id})', 'loss_value': 0})
+            unit_price = 0
+            if hasattr(product, 'unit_price') and product.unit_price:
+                unit_price = float(product.unit_price.unit_price) if hasattr(product.unit_price, 'unit_price') else float(product.unit_price)
+            elif hasattr(product, 'srp_price') and product.srp_price:
+                unit_price = float(product.srp_price.srp_price) if hasattr(product.srp_price, 'srp_price') else float(product.srp_price)
+            
+            loss_amount = float(w.quantity or 0) * unit_price
+            product_loss += loss_amount
+            
+            product_withdrawals_data.append({
+                'date': w.date,
+                'product_name': str(product),
+                'quantity': w.quantity,
+                'unit_price': unit_price,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display if hasattr(w, 'get_reason_display') else w.reason,
+                'loss_amount': loss_amount,
+            })
+        except Products.DoesNotExist:
+            product_withdrawals_data.append({
+                'date': w.date,
+                'product_name': f'Unknown (ID {w.item_id})',
+                'quantity': w.quantity,
+                'unit_price': 0,
+                'reason': w.reason,
+                'get_reason_display': w.reason,
+                'loss_amount': 0,
+            })
+    
+    # Raw material withdrawals with loss reasons
+    raw_material_withdrawals_qs = Withdrawals.objects.filter(
+        item_type='RAW_MATERIAL',
+        reason__in=loss_reasons,
+        is_archived=False
+    ).order_by('-date')
+    
+    # Apply raw material date filter
+    raw_material_date_filter = request.GET.get('raw_material_date_filter')
+    raw_material_show_all = request.GET.get('raw_material_show_all')
+    
+    if raw_material_show_all:
+        # Show all data
+        pass
+    elif raw_material_date_filter:
+        try:
+            _rd = datetime.strptime(raw_material_date_filter, '%Y-%m')
+            raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=_rd.year, date__month=_rd.month)
+        except ValueError:
+            pass
+    else:
+        _now2 = timezone.now()
+        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=_now2.year, date__month=_now2.month)
+    
+    # Calculate raw material loss and prepare withdrawal data
+    raw_material_loss = 0
+    raw_material_withdrawals_data = []
+    for w in raw_material_withdrawals_qs:
+        try:
+            material = RawMaterials.objects.get(id=w.item_id)
+            price_per_unit = 0
+            if hasattr(material, 'price_per_unit') and material.price_per_unit:
+                price_per_unit = float(material.price_per_unit)
+            
+            loss_amount = float(w.quantity or 0) * price_per_unit
+            raw_material_loss += loss_amount
+            
+            unit_name = ''
+            if hasattr(material, 'unit') and material.unit:
+                unit_name = material.unit.unit_name if hasattr(material.unit, 'unit_name') else str(material.unit)
+            
+            raw_material_withdrawals_data.append({
+                'date': w.date,
+                'material_name': str(material),
+                'quantity': w.quantity,
+                'unit_name': unit_name,
+                'price_per_unit': price_per_unit,
+                'reason': w.reason,
+                'get_reason_display': w.get_reason_display if hasattr(w, 'get_reason_display') else w.reason,
+                'loss_amount': loss_amount,
+            })
+        except RawMaterials.DoesNotExist:
+            raw_material_withdrawals_data.append({
+                'date': w.date,
+                'material_name': f'Unknown (ID {w.item_id})',
+                'quantity': w.quantity,
+                'unit_name': '',
+                'price_per_unit': 0,
+                'reason': w.reason,
+                'get_reason_display': w.reason,
+                'loss_amount': 0,
+            })
+    
+    # Paginate product withdrawals
+    product_paginator = Paginator(product_withdrawals_data, 10)
+    product_page_number = request.GET.get('product_page', 1)
+    product_page_obj = product_paginator.get_page(product_page_number)
+    product_is_paginated = product_paginator.num_pages > 1
+    
+    # Paginate raw material withdrawals
+    raw_material_paginator = Paginator(raw_material_withdrawals_data, 10)
+    raw_material_page_number = request.GET.get('raw_material_page', 1)
+    raw_material_page_obj = raw_material_paginator.get_page(raw_material_page_number)
+    raw_material_is_paginated = raw_material_paginator.num_pages > 1
+    
     return render(request, 'financial_loss.html', {
         'losses': losses,
         'total_loss': total_loss,
@@ -7558,8 +7708,8 @@ def financial_loss_export(request):
                 'raw_material_loss': raw_material_loss,
                 'total_loss': total_loss,
                 'filter_info': filter_info,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
             }
 
@@ -7739,7 +7889,7 @@ def delete_account(request):
             
             # Generate unique timestamp-based identifier
             from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+            timestamp = timezone.now().strftime('%Y%m%d%H%M%S')
             
             # Soft delete: Deactivate account and anonymize email/username to prevent conflicts
             user.is_active = False
@@ -7837,7 +7987,7 @@ def terms_of_use(request):
     """Display the terms of use page"""
     return render(request, 'terms_of_use.html')
 
-class PriceHistoryList(ListView):
+class PriceHistoryList(LoginRequiredMixin, ListView):
     """View for displaying price change history"""
     model = PriceHistory
     context_object_name = 'price_changes'
@@ -7880,7 +8030,7 @@ class PriceHistoryList(ListView):
                     pass
             else:
                 # Default to current month if no date selected
-                now = datetime.now()
+                now = timezone.now()
                 qs = qs.filter(
                     changed_at__year=now.year,
                     changed_at__month=now.month
@@ -7902,7 +8052,7 @@ class PriceHistoryList(ListView):
         context['products'] = Products.objects.all().order_by('product_type__name', 'variant__name')
         context['price_types'] = PriceHistory.PRICE_TYPE_CHOICES
         
-        now = datetime.now()
+        now = timezone.now()
         context['current_month_value'] = now.strftime('%Y-%m')
 
         query_params = self.request.GET.copy()
@@ -7946,7 +8096,7 @@ def export_price_history(request):
             except ValueError:
                 pass
         else:
-            now = datetime.now()
+            now = timezone.now()
             qs = qs.filter(changed_at__year=now.year, changed_at__month=now.month)
 
     # Order by latest changes first
@@ -8006,8 +8156,8 @@ def export_price_history(request):
                 'total_changes': len(price_changes),
                 'total_increases': total_increases,
                 'total_decreases': total_decreases,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
                 'logo_url': None,
                 'filters': {
                     'month': date_created if date_created and not show_all else None,
@@ -8033,7 +8183,7 @@ def export_price_history(request):
         else:  # CSV format
             # Prepare CSV response
             response = HttpResponse(content_type='text/csv')
-            filename_suffix = date_created if date_created else ('all' if show_all else datetime.now().strftime('%Y-%m'))
+            filename_suffix = date_created if date_created else ('all' if show_all else timezone.now().strftime('%Y-%m'))
             response['Content-Disposition'] = f'attachment; filename="price_history_{filename_suffix}.csv"'
 
             writer = csv.writer(response)
