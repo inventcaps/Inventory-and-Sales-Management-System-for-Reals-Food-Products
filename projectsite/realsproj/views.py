@@ -7567,7 +7567,7 @@ def financial_loss(request):
     raw_material_withdrawals_data = []
     for w in raw_material_withdrawals_qs:
         try:
-            material = RawMaterial.objects.get(id=w.item_id)
+            material = RawMaterials.objects.get(id=w.item_id)
             price_per_unit = 0
             if hasattr(material, 'price_per_unit') and material.price_per_unit:
                 price_per_unit = float(material.price_per_unit)
@@ -7589,7 +7589,7 @@ def financial_loss(request):
                 'get_reason_display': w.get_reason_display if hasattr(w, 'get_reason_display') else w.reason,
                 'loss_amount': loss_amount,
             })
-        except RawMaterial.DoesNotExist:
+        except RawMaterials.DoesNotExist:
             raw_material_withdrawals_data.append({
                 'date': w.date,
                 'material_name': f'Unknown (ID {w.item_id})',
