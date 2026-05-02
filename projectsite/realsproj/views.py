@@ -3065,70 +3065,91 @@ class ProductInventoryList(ListView):
             # Get packaging information and stock from batches
             batches = ProductBatches.objects.filter(
                 product=inv.product,
-                is_archived=False
-            ).select_related('packaging')
+                is_archived=False,
+                quantity__gt=0  # Only show batches with stock
+            ).select_related('packaging').order_by('expiration_date', 'id')
 
-            packaging_stock = {}
-            packaging_expiring = {}
-            packaging_list = []
+            from collections import defaultdict
+            packaging_groups = defaultdict(lambda: {
+                'total_quantity': 0,
+                'expiring_quantity': 0,
+                'batch_count': 0,
+                'oldest_expiry': None,
+                'newest_expiry': None,
+                'has_expired': False,
+                'has_near_expiry': False,
+            })
 
             from django.utils import timezone
             today = timezone.localdate()
             near_expiry_cutoff = today + timezone.timedelta(days=30)
+            from datetime import date as date_type
 
             for batch in batches:
-                if batch.packaging:
-                    packaging_name = batch.packaging.name.title()
-                    if batch.packaging.size and batch.packaging.unit:
-                        unit_name = batch.packaging.unit.unit_name if hasattr(batch.packaging.unit, 'unit_name') else str(batch.packaging.unit)
-                        packaging_name = f"{packaging_name} ({batch.packaging.size} {unit_name})"
+                if not batch.packaging:
+                    continue
+                    
+                packaging = batch.packaging
+                packaging_name = packaging.name.title()
+                if packaging.size and packaging.unit:
+                    unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
+                    packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
 
-                    # Group by packaging name + expiration date (no batch.id) to merge duplicates
-                    exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
-                    packaging_key = f"{packaging_name}|{exp_date_str}"
+                pg = packaging_groups[packaging_name]
+                pg['total_quantity'] += batch.quantity
+                pg['batch_count'] += 1
+                
+                # Track expiry dates
+                if batch.expiration_date:
+                    # Check for expired
+                    if batch.expiration_date < today:
+                        pg['has_expired'] = True
+                    # Check for near expiry
+                    elif batch.expiration_date <= near_expiry_cutoff:
+                        pg['has_near_expiry'] = True
+                        pg['expiring_quantity'] += batch.quantity
+                    
+                    # Track oldest and newest expiry
+                    if pg['oldest_expiry'] is None or batch.expiration_date < pg['oldest_expiry']:
+                        pg['oldest_expiry'] = batch.expiration_date
+                    if pg['newest_expiry'] is None or batch.expiration_date > pg['newest_expiry']:
+                        pg['newest_expiry'] = batch.expiration_date
 
-                    # Track total stock per packaging + expiration date combination
-                    if packaging_key not in packaging_stock:
-                        packaging_stock[packaging_key] = 0
-                    packaging_stock[packaging_key] += batch.quantity
-
-                    # Track near-expiry stock (within 30 days, not yet expired)
-                    if (batch.expiration_date and
-                        batch.expiration_date <= near_expiry_cutoff and
-                        batch.expiration_date >= today and
-                        batch.quantity > 0):
-                        if packaging_key not in packaging_expiring:
-                            packaging_expiring[packaging_key] = 0
-                        packaging_expiring[packaging_key] += batch.quantity
-
-                    if packaging_key not in packaging_list:
-                        packaging_list.append(packaging_key)
-
-            # Create formatted packaging stock breakdown with expiration status
+            # Create formatted packaging stock breakdown (grouped by packaging type)
             packaging_breakdown = []
-            for packaging_key in packaging_list:
-                stock_qty = packaging_stock.get(packaging_key, 0)
-                expiring_qty = packaging_expiring.get(packaging_key, 0)
-                packaging_name, exp_date_str = packaging_key.split('|')
-                # Determine expiry status for color-coded badge
-                if exp_date_str != 'No Date':
-                    from datetime import date as date_type
-                    exp_date_obj = date_type.fromisoformat(exp_date_str)
-                    if exp_date_obj < today:
-                        expiry_status = 'expired'
-                    elif exp_date_obj <= near_expiry_cutoff:
-                        expiry_status = 'near_expiry'
+            packaging_list = []
+            
+            for packaging_name, pg in packaging_groups.items():
+                # Format expiry range
+                if pg['oldest_expiry'] and pg['newest_expiry']:
+                    oldest_str = pg['oldest_expiry'].strftime('%Y-%m-%d')
+                    newest_str = pg['newest_expiry'].strftime('%Y-%m-%d')
+                    if oldest_str == newest_str:
+                        expiry_display = oldest_str
                     else:
-                        expiry_status = 'normal'
+                        expiry_display = f"{oldest_str} to {newest_str}"
+                elif pg['oldest_expiry']:
+                    expiry_display = pg['oldest_expiry'].strftime('%Y-%m-%d')
+                else:
+                    expiry_display = 'No Date'
+                
+                # Determine overall expiry status
+                if pg['has_expired']:
+                    expiry_status = 'expired'
+                elif pg['has_near_expiry']:
+                    expiry_status = 'near_expiry'
                 else:
                     expiry_status = 'normal'
+                    
                 packaging_breakdown.append({
                     'name': packaging_name,
-                    'stock': stock_qty,
-                    'expiring': expiring_qty,
-                    'expiration_date': exp_date_str,
+                    'stock': pg['total_quantity'],
+                    'expiring': pg['expiring_quantity'],
+                    'batch_count': pg['batch_count'],
+                    'expiration_date': expiry_display,
                     'expiry_status': expiry_status
                 })
+                packaging_list.append(packaging_name)
 
             inv.packaging_used = ', '.join(packaging_list) if packaging_list else None
             inv.packaging_stock_breakdown = packaging_breakdown
@@ -4472,47 +4493,83 @@ class WithdrawItemView(LoginRequiredMixin, View):
         expiration_cutoff = today + timezone.timedelta(days=7)
 
         for product in products:
-            # Get batches with packaging information
+            # Get batches with packaging information, grouped by packaging type
             batches = ProductBatches.objects.filter(
                 product=product,
                 is_archived=False,
                 packaging__isnull=False
             ).select_related('packaging', 'packaging__unit', 'packaging__rawmaterialinventory')
 
-            # Create individual batch options instead of grouping by packaging
-            packaging_options = []
+            # Group batches by packaging type
+            from collections import defaultdict
+            packaging_groups = defaultdict(lambda: {
+                'batches': [],
+                'total_quantity': 0,
+                'expiring_quantity': 0,
+                'oldest_expiry': None,
+                'newest_expiry': None,
+                'packaging': None
+            })
+
             for batch in batches:
                 packaging = batch.packaging
-                if packaging:
-                    packaging_name = f"{packaging.name}"
-                    if packaging.size and packaging.unit:
-                        unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
-                        packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
-
-                    # Calculate expiring stock for this batch
-                    expiring_qty = 0
-                    if (batch.expiration_date and
-                        batch.expiration_date <= expiration_cutoff and
+                if not packaging:
+                    continue
+                    
+                group_key = packaging.id
+                pg = packaging_groups[group_key]
+                pg['packaging'] = packaging
+                pg['batches'].append(batch)
+                pg['total_quantity'] += batch.quantity
+                
+                # Track expiry info
+                if batch.expiration_date:
+                    if (batch.expiration_date <= expiration_cutoff and
                         batch.expiration_date >= today and
                         batch.quantity > 0):
-                        expiring_qty = batch.quantity
+                        pg['expiring_quantity'] += batch.quantity
+                    
+                    # Track oldest expiry (FIFO priority)
+                    if pg['oldest_expiry'] is None or batch.expiration_date < pg['oldest_expiry']:
+                        pg['oldest_expiry'] = batch.expiration_date
+                    
+                    # Track newest expiry (for display)
+                    if pg['newest_expiry'] is None or batch.expiration_date > pg['newest_expiry']:
+                        pg['newest_expiry'] = batch.expiration_date
 
-                    # Add batch as individual option
-                    exp_date_str = batch.expiration_date.strftime('%Y-%m-%d') if batch.expiration_date else 'No Date'
-                    mfg_date_str = batch.batch_date.strftime('%Y-%m-%d') if batch.batch_date else 'No Date'
+            # Build packaging options from groups
+            packaging_options = []
+            for packaging_id, pg in packaging_groups.items():
+                packaging = pg['packaging']
+                packaging_name = f"{packaging.name}"
+                if packaging.size and packaging.unit:
+                    unit_name = packaging.unit.unit_name if hasattr(packaging.unit, 'unit_name') else str(packaging.unit)
+                    packaging_name = f"{packaging_name} ({packaging.size} {unit_name})"
 
-                    packaging_options.append({
-                        'id': batch.id,  # Use batch ID instead of packaging ID
-                        'name': packaging_name,
-                        'quantity': batch.quantity,
-                        'expiring': expiring_qty,
-                        'expiration_date': exp_date_str,
-                        'manufactured_date': mfg_date_str,
-                        'packaging_id': packaging.id  # Keep packaging ID for reference
-                    })
+                # Format dates
+                oldest_exp_str = pg['oldest_expiry'].strftime('%Y-%m-%d') if pg['oldest_expiry'] else 'No Date'
+                newest_exp_str = pg['newest_expiry'].strftime('%Y-%m-%d') if pg['newest_expiry'] else 'No Date'
+                
+                expiry_display = oldest_exp_str
+                if oldest_exp_str != newest_exp_str:
+                    expiry_display = f"{oldest_exp_str} to {newest_exp_str}"
 
-            # Sort by expiration date (oldest first) then by packaging name
-            product.packaging_options = sorted(packaging_options, key=lambda x: (x['expiration_date'], x['name']))
+                packaging_options.append({
+                    'packaging_id': packaging_id,  # Use packaging ID for selection
+                    'name': packaging_name,
+                    'quantity': pg['total_quantity'],
+                    'expiring': pg['expiring_quantity'],
+                    'batch_count': len(pg['batches']),
+                    'oldest_expiry': oldest_exp_str,
+                    'expiry_range': expiry_display,
+                    'packaging_obj': packaging
+                })
+
+            # Sort by oldest expiry date (FIFO) then by packaging name
+            product.packaging_options = sorted(
+                packaging_options, 
+                key=lambda x: (x['oldest_expiry'] if x['oldest_expiry'] != 'No Date' else '9999-12-31', x['name'])
+            )
 
         return render(request, self.template_name, {
             "products": products,
@@ -4590,6 +4647,17 @@ class WithdrawItemView(LoginRequiredMixin, View):
                             except Discounts.DoesNotExist:
                                 custom_value = discount_val
 
+                        # Get selected packaging type from form (now packaging_id instead of batch_id)
+                        packaging_id = request.POST.get(f"packaging_{product_id}")
+                        selected_packaging = None
+
+                        if packaging_id:
+                            try:
+                                selected_packaging = RawMaterials.objects.get(id=packaging_id, category='PACKAGING')
+                            except RawMaterials.DoesNotExist:
+                                messages.error(request, f"Invalid packaging type selected for {product}")
+                                continue
+
                         # Initialize all price-related fields
                         actual_unit_price = None
                         actual_discount_percent = None
@@ -4624,45 +4692,91 @@ class WithdrawItemView(LoginRequiredMixin, View):
                             final_price_per_unit = final_price
                             total_amount = total
 
-                       
-                        # Get selected batch from form (changed from packaging to batch)
-                        batch_id = request.POST.get(f"batch_{product_id}")
-                        selected_batch = None
-                        selected_packaging = None
+                        # =====================================
+                        # FIFO AUTO-SELECTION LOGIC
+                        # =====================================
+                        remaining = quantity
+                        batches_consumed = []
 
-                        if batch_id:
-                            try:
-                                selected_batch = ProductBatches.objects.get(id=batch_id, product=product, is_archived=False)
-                                selected_packaging = selected_batch.packaging
-                            except ProductBatches.DoesNotExist:
-                                messages.error(request, f"Invalid batch selected for {product}")
-                                continue
+                        if selected_packaging:
+                            # Get batches for this product and packaging, ordered by FIFO (oldest first)
+                            fifo_batches = ProductBatches.objects.filter(
+                                product=product,
+                                packaging=selected_packaging,
+                                is_archived=False,
+                                quantity__gt=0
+                            ).order_by('expiration_date', 'id')  # FIFO: oldest expiry first
 
-                        withdrawal = Withdrawals.objects.create(
-                            item_id=product.id,
-                            item_type="PRODUCT",
-                            quantity=quantity,
-                            reason=reason,
-                            date=timezone.now(),
-                            created_by_admin=request.user,
-                            sales_channel=sales_channel if reason == "SOLD" else None,
-                            price_type=price_type if reason == "SOLD" and payment_status == "PAID" else None,
-                            custom_price=custom_price if custom_price else None,
-                            discount_id=discount_obj.id if discount_obj else None,
-                            custom_discount_value=custom_value,
-                            customer_name=customer_name if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else None,
-                            payment_status=payment_status if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else 'PAID',
-                            paid_amount=paid_amount if payment_status == 'PARTIAL' else None,
-                            order_group_id=order_group_id,
-                            packaging=selected_packaging,
-                            batch=selected_batch,
+                            for batch in fifo_batches:
+                                if remaining <= 0:
+                                    break
+                                
+                                deduct_amount = min(remaining, batch.quantity)
+                                batches_consumed.append({
+                                    'batch': batch,
+                                    'quantity': deduct_amount,
+                                    'packaging': selected_packaging
+                                })
+                                remaining -= deduct_amount
+                        else:
+                            # No packaging selected - get all batches FIFO
+                            fifo_batches = ProductBatches.objects.filter(
+                                product=product,
+                                is_archived=False,
+                                quantity__gt=0
+                            ).order_by('expiration_date', 'id')
 
-                            actual_unit_price=actual_unit_price,
-                            actual_discount_percent=actual_discount_percent,
-                            actual_discount_amount=actual_discount_amount,
-                            final_price_per_unit=final_price_per_unit,
-                            total_amount=total_amount,
-                        )
+                            for batch in fifo_batches:
+                                if remaining <= 0:
+                                    break
+                                
+                                deduct_amount = min(remaining, batch.quantity)
+                                batches_consumed.append({
+                                    'batch': batch,
+                                    'quantity': deduct_amount,
+                                    'packaging': batch.packaging
+                                })
+                                remaining -= deduct_amount
+
+                        if remaining > 0:
+                            messages.error(request, f"⚠️ Insufficient stock for {product}. Could not fulfill full quantity of {quantity}.")
+                            continue
+
+                        # Create one Withdrawal record per batch consumed
+                        # This enables accurate restoration later
+                        for i, consumed in enumerate(batches_consumed):
+                            batch = consumed['batch']
+                            batch_qty = consumed['quantity']
+                            packaging = consumed['packaging']
+                            
+                            # For multi-batch withdrawals, only the first gets price/discount info
+                            # Others get quantity only (they're part of the same order)
+                            is_first_batch = (i == 0)
+                            
+                            withdrawal = Withdrawals.objects.create(
+                                item_id=product.id,
+                                item_type="PRODUCT",
+                                quantity=batch_qty,
+                                reason=reason,
+                                date=timezone.now(),
+                                created_by_admin=request.user,
+                                sales_channel=sales_channel if reason == "SOLD" else None,
+                                price_type=price_type if reason == "SOLD" and payment_status == "PAID" and is_first_batch else None,
+                                custom_price=custom_price if custom_price and is_first_batch else None,
+                                discount_id=discount_obj.id if discount_obj and is_first_batch else None,
+                                custom_discount_value=custom_value if is_first_batch else None,
+                                customer_name=customer_name if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else None,
+                                payment_status=payment_status if sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] else 'PAID',
+                                paid_amount=paid_amount if payment_status == 'PARTIAL' and is_first_batch else None,
+                                order_group_id=order_group_id,
+                                packaging=packaging,
+                                batch=batch,
+                                actual_unit_price=actual_unit_price if is_first_batch else None,
+                                actual_discount_percent=actual_discount_percent if is_first_batch else None,
+                                actual_discount_amount=actual_discount_amount if is_first_batch else None,
+                                final_price_per_unit=final_price_per_unit if is_first_batch else None,
+                                total_amount=total_amount if is_first_batch else None,
+                            )
 
                         count += 1
                     except Exception as e:
