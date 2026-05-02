@@ -30,39 +30,19 @@ function getThemeColors() {
       }
       bestSellerChart = new ApexCharts(el, {
         chart: {
-          type: 'bar',
-          height: '100%',
-          foreColor: t.text,
-          toolbar: { show: false },
-          animations: { enabled: false }
+          type: 'pie',
+          height: 300,
+          foreColor: t.text
         },
-        series: [{ name: 'Units Sold', data: data.data }],
-        colors: ['#2563eb', '#22c55e', '#f59e0b', '#ef4444', '#7c3aed'],
-        plotOptions: {
-          bar: {
-            horizontal: true,
-            barHeight: '55%',
-            borderRadius: 4,
-            distributed: true
-          }
+        series: data.data,
+        labels: data.labels,
+        legend: {
+          position: 'bottom',
+          labels: { colors: t.text }
         },
-        dataLabels: {
-          enabled: true,
-          style: { fontSize: '11px', fontWeight: 600, colors: ['#fff'] }
-        },
-        xaxis: {
-          categories: data.labels,
-          labels: { style: { colors: t.text, fontSize: '11px' } }
-        },
-        yaxis: {
-          labels: { style: { colors: t.text, fontSize: '11px' }, maxWidth: 150 }
-        },
-        grid: { borderColor: t.grid },
         tooltip: {
-          theme: isDarkMode() ? 'dark' : 'light',
-          y: { formatter: function (val) { return val + ' units'; } }
-        },
-        legend: { show: false }
+          theme: isDarkMode() ? 'dark' : 'light'
+        }
       });
       bestSellerChart.render();
     })
@@ -80,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function () {
   inventoryChart = new ApexCharts(el, {
     chart: {
       type: 'bar',
-      height: '100%',
+      height: 380,
       foreColor: t.text,
       toolbar: { show: false },
       animations: { enabled: false }
@@ -98,13 +78,13 @@ document.addEventListener('DOMContentLoaded', function () {
     dataLabels: {
       enabled: true,
       formatter: function (val) { return val > 0 ? val : 'Out'; },
-      style: { fontSize: '10px', fontWeight: 600 },
+      style: { fontSize: '13px', fontWeight: 700 },
       offsetY: -2
     },
     xaxis: {
       categories: d.labels,
       labels: {
-        style: { colors: t.text, fontSize: '10px' },
+        style: { colors: t.text, fontSize: '12px', fontWeight: 600 },
         rotate: -42,
         hideOverlappingLabels: true,
         trim: true,
@@ -112,8 +92,8 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     },
     yaxis: {
-      title: { text: 'Units', style: { color: t.text } },
-      labels: { style: { colors: t.text, fontSize: '10px' } }
+      title: { text: 'Units', style: { color: t.text, fontSize: '13px', fontWeight: 700 } },
+      labels: { style: { colors: t.text, fontSize: '12px', fontWeight: 600 } }
     },
     grid: { borderColor: t.grid },
     tooltip: {

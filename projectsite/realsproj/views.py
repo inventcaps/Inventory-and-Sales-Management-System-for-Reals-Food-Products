@@ -7353,15 +7353,10 @@ def financial_loss(request):
     if not request.user.is_superuser:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
-    
-    from django.core.paginator import Paginator
-    from datetime import datetime
-    import calendar
-    
     loss_reasons = ['EXPIRED', 'DAMAGED', 'SPOILED', 'WASTED', 'LOSS']
     
     # Get current month value for default filter
-    current_month = timezone.now().strftime('%Y-%m')
+    current_month = datetime.now().strftime('%Y-%m')
     current_month_value = current_month
     
     # Product withdrawals with loss reasons
@@ -7379,14 +7374,11 @@ def financial_loss(request):
         # Show all data
         pass
     elif product_date_filter:
-        try:
-            _pd = datetime.strptime(product_date_filter, '%Y-%m')
-            product_withdrawals_qs = product_withdrawals_qs.filter(date__year=_pd.year, date__month=_pd.month)
-        except ValueError:
-            pass
+        # Filter by selected month
+        product_withdrawals_qs = product_withdrawals_qs.filter(date__startswith=product_date_filter)
     else:
-        _now = timezone.now()
-        product_withdrawals_qs = product_withdrawals_qs.filter(date__year=_now.year, date__month=_now.month)
+        # Default to current month
+        product_withdrawals_qs = product_withdrawals_qs.filter(date__startswith=current_month)
     
     # Calculate product loss and prepare withdrawal data
     product_loss = 0
@@ -7438,14 +7430,11 @@ def financial_loss(request):
         # Show all data
         pass
     elif raw_material_date_filter:
-        try:
-            _rd = datetime.strptime(raw_material_date_filter, '%Y-%m')
-            raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=_rd.year, date__month=_rd.month)
-        except ValueError:
-            pass
+        # Filter by selected month
+        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__startswith=raw_material_date_filter)
     else:
-        _now2 = timezone.now()
-        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__year=_now2.year, date__month=_now2.month)
+        # Default to current month
+        raw_material_withdrawals_qs = raw_material_withdrawals_qs.filter(date__startswith=current_month)
     
     # Calculate raw material loss and prepare withdrawal data
     raw_material_loss = 0
@@ -7499,17 +7488,8 @@ def financial_loss(request):
     raw_material_is_paginated = raw_material_paginator.num_pages > 1
     
     return render(request, 'financial_loss.html', {
-        'product_loss': product_loss,
-        'raw_material_loss': raw_material_loss,
-        'product_withdrawals': product_page_obj,
-        'raw_material_withdrawals': raw_material_page_obj,
-        'product_paginator': product_paginator,
-        'raw_material_paginator': raw_material_paginator,
-        'product_page_obj': product_page_obj,
-        'raw_material_page_obj': raw_material_page_obj,
-        'product_is_paginated': product_is_paginated,
-        'raw_material_is_paginated': raw_material_is_paginated,
-        'current_month_value': current_month_value,
+        'losses': losses,
+        'total_loss': total_loss,
     })
 
 @login_required
