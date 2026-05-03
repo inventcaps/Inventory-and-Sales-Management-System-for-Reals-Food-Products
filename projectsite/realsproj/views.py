@@ -7292,39 +7292,77 @@ class BestSellerProductsView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from django.db.models import Sum, Count
-        sales_by_item = Withdrawals.objects.filter(
-            item_type='PRODUCT',
-            reason='SOLD'
-        ).values('item_id').annotate(
-            total_quantity=Sum('quantity'),
-            total_transactions=Count('id')
-        ).order_by('-total_quantity')[:20]
+        from django.db.models import Sum, Count, Avg
 
-        bestsellers = []
-        for entry in sales_by_item:
-            try:
-                product = Products.objects.select_related(
-                    'product_type', 'variant', 'size', 'size_unit'
-                ).get(id=entry['item_id'])
-                bestsellers.append({
-                    'product_name': str(product),
-                    'product_type': product.product_type.name if product.product_type else '',
-                    'variant': product.variant.name if product.variant else '',
-                    'size': str(product.size) if product.size else '',
-                    'total_quantity': entry['total_quantity'],
-                    'total_transactions': entry['total_transactions'],
-                })
-            except Products.DoesNotExist:
-                bestsellers.append({
-                    'product_name': f'Unknown Product (ID {entry["item_id"]})',
-                    'product_type': '',
-                    'variant': '',
-                    'size': '',
-                    'total_quantity': entry['total_quantity'],
-                    'total_transactions': entry['total_transactions'],
-                })
-        context['bestsellers'] = bestsellers
+        request = self.request
+        show_all = request.GET.get('show_all', '').lower() == 'true'
+        month_param = request.GET.get('month', '').strip()
+
+        now = timezone.now()
+        current_month_value = now.strftime('%Y-%m')
+
+        base_qs = Withdrawals.objects.filter(
+            item_type='PRODUCT',
+            reason='SOLD',
+            is_archived=False,
+        )
+
+        if not show_all:
+            if month_param:
+                try:
+                    year_str, month_str = month_param.split('-')
+                    base_qs = base_qs.filter(date__year=int(year_str), date__month=int(month_str))
+                except (ValueError, IndexError):
+                    base_qs = base_qs.filter(date__year=now.year, date__month=now.month)
+            else:
+                base_qs = base_qs.filter(date__year=now.year, date__month=now.month)
+
+        sales_qs = base_qs.values('item_id').annotate(
+            total_quantity=Sum('quantity'),
+            total_revenue=Sum('total_amount'),
+        )
+
+        all_totals = sales_qs.aggregate(
+            grand_total_quantity=Sum('total_quantity'),
+            grand_total_revenue=Sum('total_revenue'),
+        )
+        total_quantity = all_totals['grand_total_quantity'] or 0
+        total_revenue = all_totals['grand_total_revenue'] or 0
+        total_products = sales_qs.count()
+        average_revenue = (Decimal(str(total_revenue)) / total_products) if total_products else 0
+
+        sorted_asc = list(sales_qs.filter(total_quantity__gt=0).order_by('total_quantity')[:20])
+        sorted_desc = list(sales_qs.order_by('-total_quantity')[:20])
+
+        all_item_ids = set(e['item_id'] for e in sorted_desc + sorted_asc)
+        products_map = {
+            p.id: p
+            for p in Products.objects.select_related(
+                'product_type', 'variant', 'size', 'size_unit'
+            ).filter(id__in=all_item_ids)
+        }
+
+        def build_row(entry):
+            p = products_map.get(entry['item_id'])
+            return {
+                'product__product_type__name': p.product_type.name if p and p.product_type else '',
+                'product__variant__name': p.variant.name if p and p.variant else '',
+                'product__size__size_label': str(p.size) if p and p.size else '',
+                'product__size_unit__unit_name': p.size_unit.unit_name if p and p.size_unit else '',
+                'total_quantity': entry['total_quantity'],
+                'total_revenue': entry['total_revenue'] or 0,
+            }
+
+        best_sellers = [build_row(e) for e in sorted_desc]
+        low_sellers = [build_row(e) for e in sorted_asc]
+
+        context['best_sellers'] = best_sellers
+        context['low_sellers'] = low_sellers
+        context['total_quantity'] = total_quantity
+        context['total_revenue'] = total_revenue
+        context['total_products'] = total_products
+        context['average_revenue'] = average_revenue
+        context['current_month_value'] = current_month_value
         return context
 
 @login_required
