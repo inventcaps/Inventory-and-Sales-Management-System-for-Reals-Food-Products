@@ -8,6 +8,7 @@ from django.views.decorators.http import require_GET
 from django.db import transaction, models
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from decimal import Decimal, InvalidOperation
 from django.urls import reverse, reverse_lazy
 from django.contrib.auth import login, authenticate, update_session_auth_hash
@@ -7603,8 +7604,17 @@ def financial_loss(request):
     raw_material_is_paginated = raw_material_paginator.num_pages > 1
     
     return render(request, 'financial_loss.html', {
-        'losses': losses,
-        'total_loss': total_loss,
+        'product_loss': product_loss,
+        'raw_material_loss': raw_material_loss,
+        'product_withdrawals': product_page_obj,
+        'raw_material_withdrawals': raw_material_page_obj,
+        'product_is_paginated': product_is_paginated,
+        'raw_material_is_paginated': raw_material_is_paginated,
+        'product_page_obj': product_page_obj,
+        'raw_material_page_obj': raw_material_page_obj,
+        'product_paginator': product_paginator,
+        'raw_material_paginator': raw_material_paginator,
+        'current_month_value': current_month_value,
     })
 
 @login_required
