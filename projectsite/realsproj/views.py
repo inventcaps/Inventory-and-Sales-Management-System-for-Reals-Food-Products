@@ -217,6 +217,9 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         context['out_of_stock_count'] = sum(
             1 for inv in all_inv if inv.total_stock <= 0
         )
+        context['healthy_stock_count'] = sum(
+            1 for inv in all_inv if inv.total_stock > inv.restock_threshold
+        )
 
         if not self.request.user.is_superuser:
             inv_labels, inv_stocks, inv_colors = [], [], []
@@ -235,6 +238,253 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             context['inv_labels'] = json.dumps(inv_labels)
             context['inv_stocks'] = json.dumps(inv_stocks)
             context['inv_colors'] = json.dumps(inv_colors)
+            return context
+
+        # ===== Superuser-only: extended dashboard data =====
+        today = timezone.localdate()
+        now = timezone.now()
+        cy, cm = now.year, now.month
+        py, pm = (cy - 1, 12) if cm == 1 else (cy, cm - 1)
+
+        # --- Units Sold MTD (with prev-month comparison) ---
+        def _units(y, m):
+            return float(Withdrawals.objects.filter(
+                reason='SOLD', item_type='PRODUCT',
+                date__year=y, date__month=m
+            ).aggregate(t=Sum('quantity'))['t'] or 0)
+        cur_units = _units(cy, cm)
+        prev_units = _units(py, pm)
+        context['cur_units'] = cur_units
+        context['prev_units'] = prev_units
+        if prev_units > 0:
+            pct = round((cur_units - prev_units) / prev_units * 100, 1)
+            context['units_badge'] = {'text': f"{'+' if pct >= 0 else ''}{pct}%", 'up': pct >= 0}
+        else:
+            context['units_badge'] = None
+
+        # --- Sales vs Expenses: last 12 months (combo chart) ---
+        months_labels = []
+        months_sales = []
+        months_expenses = []
+        months_profit = []
+        for i in range(11, -1, -1):
+            yy = cy
+            mm = cm - i
+            while mm <= 0:
+                mm += 12
+                yy -= 1
+            s = float(Sales.objects.filter(date__year=yy, date__month=mm).aggregate(t=Sum('amount'))['t'] or 0)
+            e = float(Expenses.objects.filter(date__year=yy, date__month=mm).aggregate(t=Sum('amount'))['t'] or 0)
+            months_labels.append(f"{yy}-{mm:02d}")
+            months_sales.append(s)
+            months_expenses.append(e)
+            months_profit.append(s - e)
+        context['chart_12mo_labels'] = json.dumps(months_labels)
+        context['chart_12mo_sales'] = json.dumps(months_sales)
+        context['chart_12mo_expenses'] = json.dumps(months_expenses)
+        context['chart_12mo_profit'] = json.dumps(months_profit)
+
+        # --- Stock Health doughnut (already have counts above) ---
+        context['stock_health_json'] = json.dumps([
+            context['healthy_stock_count'],
+            context['low_stock_count'],
+            context['out_of_stock_count'],
+        ])
+
+        # --- Expiring Soon (<=7 days) ---
+        cutoff = today + timedelta(days=7)
+        expiring_batches = list(ProductBatches.objects.filter(
+            is_archived=False,
+            quantity__gt=0,
+            expiration_date__isnull=False,
+            expiration_date__lte=cutoff,
+            expiration_date__gte=today,
+        ).exclude(is_expired=True).select_related('product', 'product__product_type', 'product__variant').order_by('expiration_date')[:8])
+        expiring_list = []
+        for b in expiring_batches:
+            try:
+                days_left = (b.expiration_date - today).days
+            except Exception:
+                days_left = 0
+            expiring_list.append({
+                'label': str(b.product),
+                'qty': float(b.quantity),
+                'days_left': days_left,
+                'exp_date': b.expiration_date.strftime('%b %d') if b.expiration_date else '',
+            })
+        context['expiring_soon'] = expiring_list
+        context['expiring_count'] = ProductBatches.objects.filter(
+            is_archived=False, quantity__gt=0,
+            expiration_date__isnull=False,
+            expiration_date__lte=cutoff, expiration_date__gte=today,
+        ).exclude(is_expired=True).count()
+
+        # --- Revenue Trend last 30 days + 7-day MA ---
+        start_30 = today - timedelta(days=29)
+        daily_rev_qs = (
+            Withdrawals.objects.filter(
+                reason='SOLD', date__date__gte=start_30, date__date__lte=today
+            )
+            .annotate(day=TruncDay('date'))
+            .values('day')
+            .annotate(total=Sum('total_amount'))
+        )
+        daily_map = {row['day'].date().isoformat(): float(row['total'] or 0) for row in daily_rev_qs if row['day']}
+        rev_labels = []
+        rev_values = []
+        for i in range(30):
+            d = start_30 + timedelta(days=i)
+            rev_labels.append(d.strftime('%b %d'))
+            rev_values.append(daily_map.get(d.isoformat(), 0.0))
+        ma7 = []
+        for i in range(len(rev_values)):
+            lo = max(0, i - 6)
+            window = rev_values[lo:i+1]
+            ma7.append(round(sum(window) / len(window), 2))
+        context['rev30_labels'] = json.dumps(rev_labels)
+        context['rev30_values'] = json.dumps(rev_values)
+        context['rev30_ma7'] = json.dumps(ma7)
+
+        # --- Top 10 Best Sellers (this month, by revenue) ---
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        top_qs = (
+            Withdrawals.objects.filter(
+                reason='SOLD', item_type='PRODUCT', date__gte=month_start
+            )
+            .values('item_id')
+            .annotate(qty=Sum('quantity'), revenue=Sum('total_amount'))
+            .order_by('-revenue')[:10]
+        )
+        top_list = list(top_qs)
+        product_ids = [r['item_id'] for r in top_list]
+        prod_map = {p.id: str(p) for p in Products.objects.filter(id__in=product_ids).select_related('product_type', 'variant', 'size', 'size_unit')}
+        best_labels = []
+        best_revenue = []
+        best_qty = []
+        for r in top_list:
+            name = prod_map.get(r['item_id'], f"Product #{r['item_id']}")
+            if len(name) > 28:
+                name = name[:25] + '...'
+            best_labels.append(name)
+            best_revenue.append(float(r['revenue'] or 0))
+            best_qty.append(float(r['qty'] or 0))
+        context['best_labels'] = json.dumps(best_labels)
+        context['best_revenue'] = json.dumps(best_revenue)
+        context['best_qty'] = json.dumps(best_qty)
+
+        # --- Sales Channel breakdown (SOLD, all-time or MTD?) -> MTD ---
+        channel_qs = (
+            Withdrawals.objects.filter(reason='SOLD', date__gte=month_start)
+            .values('sales_channel')
+            .annotate(total=Sum('total_amount'))
+        )
+        channel_labels_map = dict(Withdrawals.SALES_CHANNEL_CHOICES)
+        ch_labels = []
+        ch_values = []
+        for row in channel_qs:
+            key = row['sales_channel'] or 'UNSPECIFIED'
+            ch_labels.append(channel_labels_map.get(key, key.title()))
+            ch_values.append(float(row['total'] or 0))
+        context['channel_labels'] = json.dumps(ch_labels)
+        context['channel_values'] = json.dumps(ch_values)
+
+        # --- Withdrawal Reasons stacked (last 6 months, by qty) ---
+        reason_labels_map = dict(Withdrawals.REASON_CHOICES)
+        reason_months = []
+        for i in range(5, -1, -1):
+            yy = cy
+            mm = cm - i
+            while mm <= 0:
+                mm += 12
+                yy -= 1
+            reason_months.append((yy, mm))
+        reason_data = {key: [0] * 6 for key, _ in Withdrawals.REASON_CHOICES}
+        for idx, (yy, mm) in enumerate(reason_months):
+            rows = (
+                Withdrawals.objects.filter(date__year=yy, date__month=mm)
+                .values('reason')
+                .annotate(q=Sum('quantity'))
+            )
+            for r in rows:
+                if r['reason'] in reason_data:
+                    reason_data[r['reason']][idx] = float(r['q'] or 0)
+        context['reason_labels'] = json.dumps([f"{yy}-{mm:02d}" for yy, mm in reason_months])
+        context['reason_datasets'] = json.dumps([
+            {'label': reason_labels_map.get(k, k), 'key': k, 'data': v}
+            for k, v in reason_data.items()
+        ])
+
+        # --- Expenses by Category (MTD) ---
+        exp_cat_qs = (
+            Expenses.objects.filter(date__year=cy, date__month=cm, is_archived=False)
+            .values('category')
+            .annotate(t=Sum('amount'))
+            .order_by('-t')
+        )
+        context['exp_cat_labels'] = json.dumps([r['category'] for r in exp_cat_qs])
+        context['exp_cat_values'] = json.dumps([float(r['t'] or 0) for r in exp_cat_qs])
+
+        # --- Payment Status (MTD) ---
+        pay_qs = (
+            Withdrawals.objects.filter(reason='SOLD', date__gte=month_start)
+            .values('payment_status')
+            .annotate(total=Sum('total_amount'), paid=Sum('paid_amount'))
+        )
+        pay_map = {'PAID': 0.0, 'UNPAID': 0.0, 'PARTIAL': 0.0}
+        outstanding = 0.0
+        for row in pay_qs:
+            key = row['payment_status'] or 'PAID'
+            amt = float(row['total'] or 0)
+            paid = float(row['paid'] or 0)
+            pay_map[key] = pay_map.get(key, 0.0) + amt
+            if key == 'UNPAID':
+                outstanding += amt
+            elif key == 'PARTIAL':
+                outstanding += max(0.0, amt - paid)
+        context['pay_labels'] = json.dumps(['Paid', 'Partial', 'Unpaid'])
+        context['pay_values'] = json.dumps([pay_map.get('PAID', 0), pay_map.get('PARTIAL', 0), pay_map.get('UNPAID', 0)])
+        context['pay_outstanding'] = outstanding
+
+        # --- Low-Stock Watchlist (top 10 closest to/below threshold) ---
+        watchlist = sorted(
+            [inv for inv in all_inv if inv.total_stock <= inv.restock_threshold * Decimal('1.5')],
+            key=lambda x: float(x.total_stock) - float(x.restock_threshold)
+        )[:10]
+        wl_labels, wl_stock, wl_threshold, wl_colors = [], [], [], []
+        for inv in watchlist:
+            name = str(inv.product)
+            if len(name) > 30:
+                name = name[:27] + '...'
+            wl_labels.append(name)
+            wl_stock.append(float(inv.total_stock))
+            wl_threshold.append(float(inv.restock_threshold))
+            if inv.total_stock <= 0:
+                wl_colors.append('#ef4444')
+            elif inv.total_stock <= inv.restock_threshold:
+                wl_colors.append('#f59e0b')
+            else:
+                wl_colors.append('#22c55e')
+        context['wl_labels'] = json.dumps(wl_labels)
+        context['wl_stock'] = json.dumps(wl_stock)
+        context['wl_threshold'] = json.dumps(wl_threshold)
+        context['wl_colors'] = json.dumps(wl_colors)
+
+        # --- Raw Materials / Packaging Stock ---
+        rm_inv = list(
+            RawMaterialInventory.objects.select_related('material').order_by('-total_stock')[:12]
+        )
+        rm_labels, rm_stock, rm_colors = [], [], []
+        for inv in rm_inv:
+            name = inv.material.name if hasattr(inv.material, 'name') else str(inv.material)
+            if len(name) > 28:
+                name = name[:25] + '...'
+            rm_labels.append(name)
+            rm_stock.append(float(inv.total_stock))
+            cat = (getattr(inv.material, 'category', '') or '').upper()
+            rm_colors.append('#8b5cf6' if cat == 'PACKAGING' else '#0ea5e9')
+        context['rm_labels'] = json.dumps(rm_labels)
+        context['rm_stock'] = json.dumps(rm_stock)
+        context['rm_colors'] = json.dumps(rm_colors)
 
         return context
 
@@ -6464,18 +6714,25 @@ def login_view(request):
         lockout_duration = timedelta(minutes=5)
         max_attempts = 5
         
-        # Check failed attempts in the last 5 minutes from this IP address (regardless of username)
-        # This prevents someone from trying random usernames
+        # Check failed attempts in the last 5 minutes from this IP address for THIS username.
+        # Excludes OTP-pending rows (required_otp=True) — those represent CORRECT password
+        # entries that just need 2FA, not credential failures, so they must not contribute
+        # to lockout. Scoping by username also prevents one user's failures from locking
+        # out others sharing the same IP (e.g., office network).
         recent_failed_attempts = LoginAttempt.objects.filter(
             ip_address=ip_address,
+            username=username,
             success=False,
+            required_otp=False,
             timestamp__gte=timezone.now() - lockout_duration
         ).count()
-        
+
         if recent_failed_attempts >= max_attempts:
             last_attempt = LoginAttempt.objects.filter(
                 ip_address=ip_address,
+                username=username,
                 success=False,
+                required_otp=False,
                 timestamp__gte=timezone.now() - lockout_duration
             ).order_by('-timestamp').first()
             
@@ -6491,6 +6748,16 @@ def login_view(request):
                 return render(request, 'login.html')
         
         user = authenticate(request, username=username, password=password)
+
+        # Fallback: allow login by email address. Many users type their email instead of
+        # their username on the login form, which previously surfaced as "Invalid
+        # username or password" and inflated failure metrics.
+        if user is None and '@' in username:
+            try:
+                candidate = User.objects.get(email__iexact=username.strip())
+                user = authenticate(request, username=candidate.username, password=password)
+            except (User.DoesNotExist, User.MultipleObjectsReturned):
+                user = None
 
         if user is not None:
             if user.is_active:
@@ -6633,7 +6900,9 @@ Real's Food Products Security Team''',
             
             attempts_count = LoginAttempt.objects.filter(
                 ip_address=ip_address,
+                username=username,
                 success=False,
+                required_otp=False,
                 timestamp__gte=timezone.now() - lockout_duration
             ).count()
             
@@ -7020,7 +7289,7 @@ def edit_profile(request):
         user.save()
         messages.success(request, 'Profile updated successfully.')
         return redirect('profile')
-    return render(request, 'edit_profile.html')
+    return render(request, 'editprofile.html')
 
 @login_required
 def export_sales(request):

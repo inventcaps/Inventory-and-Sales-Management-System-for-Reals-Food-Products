@@ -2,382 +2,261 @@
 {% load static i18n %}
 {% load humanize %}
 
-{% block vendor_css %}
-  {{ block.super }}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0/dist/apexcharts.css">
-{% endblock vendor_css %}
-
 {% block vendor_js %}
   {{ block.super }}
-  <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.44.0"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 {% endblock vendor_js %}
 
 {% block page_css %}
 <style>
-  .dash-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:4px 0 10px;}
-  .dash-title{font-weight:700;margin:0;font-size:1.3rem;}
-  .dash-tabs{display:inline-flex;background:rgba(255,255,255,0.5);border-radius:14px;padding:4px;gap:4px;border:1px solid rgba(255,255,255,0.55);box-shadow:0 1px 4px rgba(0,0,0,0.05);}
-  .dash-tab{background:transparent;border:none;padding:8px 18px;border-radius:10px;font-weight:600;font-size:0.85rem;color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .2s ease;outline:none;white-space:nowrap;}
-  .dash-tab:hover:not(.active){background:rgba(255,255,255,0.6);color:var(--primary-600);}
-  .dash-tab.active{background:var(--primary-500);color:#fff;box-shadow:0 2px 8px rgba(119,178,84,0.3);}
-  .dash-tab i{font-size:1.05rem;}
+  :root{
+    --card-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+    --muted:#9ca3af;
+  }
+  html[data-theme="dark"]{ --muted:#9aa3ae; }
+
+  /* Header row (title + tab bar) */
+  .dash-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin:0 0 10px;}
+  .dash-title{font-weight:700;margin:0;font-size:1.2rem;}
+  .dash-tabs{display:inline-flex;background:rgba(255,255,255,0.6);border-radius:12px;padding:4px;gap:4px;border:1px solid rgba(0,0,0,0.05);box-shadow:var(--card-shadow);}
   html[data-theme="dark"] .dash-tabs{background:rgba(119,178,84,0.1);border-color:rgba(119,178,84,0.2);}
-  html[data-theme="dark"] .dash-tab{color:#f1f8f4;}
-  html[data-theme="dark"] .dash-tab:hover:not(.active){background:rgba(119,178,84,0.18);}
-  html[data-theme="dark"] .dash-tab.active{color:#0a0e0f;}
+  .dash-tab{background:transparent;border:none;padding:7px 16px;border-radius:9px;font-weight:600;font-size:0.82rem;color:#374151;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:all .2s ease;white-space:nowrap;}
+  html[data-theme="dark"] .dash-tab{color:#e5e7eb;}
+  .dash-tab:hover:not(.active){background:rgba(0,0,0,0.04);}
+  html[data-theme="dark"] .dash-tab:hover:not(.active){background:rgba(255,255,255,0.06);}
+  .dash-tab.active{background:#77b254;color:#fff;box-shadow:0 2px 6px rgba(119,178,84,0.3);}
+  .dash-tab i{font-size:1rem;}
+
+  /* KPI strip (always visible) */
+  .kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:10px;}
+  .kpi{padding:11px 14px;border-radius:12px;box-shadow:var(--card-shadow);background:#fff;}
+  html[data-theme="dark"] .kpi{background:#1b2228;}
+  .kpi-head{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .kpi-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:0.95rem;}
+  .kpi-label{font-size:0.64rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:0.04em;}
+  .kpi-value{font-size:1.2rem;font-weight:800;line-height:1;margin-bottom:5px;}
+  .kpi-badge{display:inline-flex;align-items:center;gap:5px;font-size:0.66rem;}
+  .kpi-pill{font-size:0.67rem;font-weight:700;padding:1px 7px;border-radius:20px;}
+  .kpi-pill.up{background:#dcfce7;color:#16a34a;} .kpi-pill.down{background:#fee2e2;color:#dc2626;}
+  .kpi-ctx{font-size:0.65rem;color:var(--muted);}
+  @media (max-width:991.98px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:575.98px){.kpi-grid{grid-template-columns:1fr;}}
+
+  /* Tab panel = fit-to-viewport grid */
   .dash-sections-wrap{position:relative;}
-  .dash-section{width:100%;animation:dashFade .25s ease;}
+  .dash-section{width:100%;animation:dashFade .22s ease;}
   .dash-section.dash-section-hidden{position:absolute;top:0;left:0;right:0;visibility:hidden;pointer-events:none;opacity:0;}
   @keyframes dashFade{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
-  .dash-grid{display:grid;gap:10px;}
-  .dash-col-stack{display:flex;flex-direction:column;gap:10px;min-height:0;}
-  .dash-col-stack > *{flex:1 1 0;min-height:0;}
-  .dash-card-link{text-decoration:none !important;color:inherit !important;display:block;}
-  .dash-card-link > .card{height:100%;}
-  .dash-card{border:none !important;border-radius:14px !important;box-shadow:0 1px 4px rgba(0,0,0,0.08) !important;height:100%;}
-  .dash-chart-card{display:flex;flex-direction:column;}
-  .dash-chart-body{padding:10px 16px;flex:1 1 0;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
-  .dash-chart-fill{flex:1 1 0;min-height:0;width:100%;position:relative;}
-  .dash-chart-fill > div{height:100% !important;}
-  .dash-recent-sales-body{padding:4px 16px;overflow-y:auto;flex:1 1 0;min-height:0;}
-  /* Pie chart container: cap the pie size so it doesn't get clipped */
-  #bestSellerChart{display:flex;align-items:center;justify-content:center;}
-  #bestSellerChart > div{max-width:100%;max-height:100%;}
-  @media (min-width:992px){
-    .dash-sections-wrap{overflow:hidden;}
-    .dash-grid-1{grid-template-columns:minmax(220px,0.75fr) 2fr;height:calc(100vh - 155px);min-height:400px;overflow:hidden;}
-    .dash-grid-2{grid-template-columns:1.7fr minmax(290px,1fr);height:calc(100vh - 155px);min-height:400px;overflow:hidden;}
+
+  .panel-grid{display:grid;gap:10px;}
+  @media (min-width:1200px){
+    .panel-grid{
+      grid-template-columns:1.6fr 1fr;
+      grid-template-rows:1fr 1fr;
+      height:calc(100vh - 220px);
+      min-height:480px;
+    }
   }
-  @media (max-width:991.98px){
-    .dash-grid-1,.dash-grid-2{grid-template-columns:1fr;}
-    .dash-grid-1 .dash-col-stack > *,.dash-grid-2 .dash-col-stack > *{flex:none;}
-    .dash-chart-fill{min-height:260px;}
-    .dash-recent-sales-body{max-height:300px;}
+  @media (max-width:1199.98px){
+    .panel-grid{grid-template-columns:1fr;}
+    .panel-grid .chart-wrap{height:260px;}
   }
+
+  .dash-card{border:none !important;border-radius:12px !important;box-shadow:var(--card-shadow) !important;background:#fff;display:flex;flex-direction:column;min-height:0;overflow:hidden;}
+  html[data-theme="dark"] .dash-card{background:#1b2228;}
+  .dash-card .card-header{background:transparent !important;border-bottom:1px solid rgba(0,0,0,0.05);padding:9px 14px;flex-shrink:0;}
+  .dash-card .card-body{padding:10px 14px;flex:1 1 0;min-height:0;display:flex;flex-direction:column;overflow:hidden;}
+  .dash-h{font-weight:700;font-size:0.85rem;margin:0;}
+  .dash-sub{font-size:0.68rem;color:var(--muted);margin:1px 0 0;}
+  .chart-wrap{position:relative;flex:1 1 0;min-height:0;width:100%;}
+
+  /* Expiring list */
+  .exp-list{display:flex;flex-direction:column;gap:5px;overflow-y:auto;flex:1 1 0;padding-right:2px;}
+  .exp-item{display:flex;align-items:center;justify-content:space-between;padding:6px 9px;background:#fef3c7;border-radius:7px;font-size:0.76rem;flex-shrink:0;}
+  .exp-item.urgent{background:#fee2e2;}
+  .exp-item .days{font-weight:700;font-size:0.68rem;padding:1px 7px;border-radius:20px;background:rgba(0,0,0,0.07);}
+  html[data-theme="dark"] .exp-item{background:rgba(217,119,6,0.2);}
+  html[data-theme="dark"] .exp-item.urgent{background:rgba(220,38,38,0.25);}
+
+  /* Recent sales list */
+  .recent-list{overflow-y:auto;flex:1 1 0;padding-right:2px;}
+  .recent-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px solid rgba(0,0,0,0.05);font-size:0.79rem;}
+  .recent-row:last-child{border-bottom:none;}
+  .recent-row .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;}
+  .recent-row .price{font-size:0.72rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 9px;border-radius:20px;margin-left:6px;}
+  html[data-theme="dark"] .recent-row .price{background:rgba(34,197,94,0.15);color:#4ade80;}
+
+  .empty-ph{display:flex;align-items:center;justify-content:center;flex:1 1 0;color:var(--muted);font-size:0.82rem;}
 </style>
 {% endblock page_css %}
 
 {% block content %}
 <div class="content">
   <div class="container-fluid">
-    {% if is_superuser %}
-    <!-- Header with section tabs -->
+  {% if is_superuser %}
+
+    <!-- Header + tab bar -->
     <div class="dash-header">
       <h4 class="dash-title">Dashboard</h4>
-      <div class="dash-tabs" role="tablist" aria-label="Dashboard sections">
-        <button type="button" class="dash-tab active" data-section="1" role="tab" aria-selected="true"><i class="la la-th-large"></i><span>Overview</span></button>
-        <button type="button" class="dash-tab" data-section="2" role="tab" aria-selected="false"><i class="la la-chart-line"></i><span>Performance</span></button>
+      <div class="dash-tabs" role="tablist">
+        <button type="button" class="dash-tab active" data-section="1" role="tab"><i class="la la-th-large"></i>Overview</button>
+        <button type="button" class="dash-tab" data-section="2" role="tab"><i class="la la-chart-line"></i>Sales</button>
+        <button type="button" class="dash-tab" data-section="3" role="tab"><i class="la la-boxes"></i>Inventory</button>
+      </div>
+    </div>
+
+    <!-- Pinned KPI strip -->
+    <div class="kpi-grid">
+      <div class="kpi">
+        <div class="kpi-head"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><i class="la la-chart-bar"></i></div><span class="kpi-label">Revenue (MTD)</span></div>
+        <div class="kpi-value">&#8369;{{ cur_sales|floatformat:2|intcomma }}</div>
+        {% if revenue_badge %}<div class="kpi-badge"><span class="kpi-pill {% if revenue_badge.up %}up{% else %}down{% endif %}">{% if revenue_badge.up %}&#9650;{% else %}&#9660;{% endif %} {{ revenue_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><div class="kpi-icon" style="background:#f0fdf4;color:#16a34a;"><i class="la la-dollar-sign"></i></div><span class="kpi-label">Profit (MTD)</span></div>
+        <div class="kpi-value" {% if cur_profit < 0 %}style="color:#dc2626;"{% endif %}>&#8369;{{ cur_profit|floatformat:2|intcomma }}</div>
+        {% if profit_badge %}<div class="kpi-badge"><span class="kpi-pill {% if profit_badge.up %}up{% else %}down{% endif %}">{% if profit_badge.up %}&#9650;{% else %}&#9660;{% endif %} {{ profit_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><div class="kpi-icon" style="background:#fff7ed;color:#ea580c;"><i class="la la-file-invoice"></i></div><span class="kpi-label">Expenses (MTD)</span></div>
+        <div class="kpi-value">&#8369;{{ cur_expenses|floatformat:2|intcomma }}</div>
+        {% if expenses_badge %}<div class="kpi-badge"><span class="kpi-pill {% if expenses_badge.up %}up{% else %}down{% endif %}">{% if expenses_badge.up %}&#9660;{% else %}&#9650;{% endif %} {{ expenses_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
+      </div>
+      <div class="kpi">
+        <div class="kpi-head"><div class="kpi-icon" style="background:#fdf4ff;color:#9333ea;"><i class="la la-cubes"></i></div><span class="kpi-label">Units Sold (MTD)</span></div>
+        <div class="kpi-value">{{ cur_units|floatformat:0|intcomma }}</div>
+        {% if units_badge %}<div class="kpi-badge"><span class="kpi-pill {% if units_badge.up %}up{% else %}down{% endif %}">{% if units_badge.up %}&#9650;{% else %}&#9660;{% endif %} {{ units_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
       </div>
     </div>
 
     <div class="dash-sections-wrap">
 
-    <!-- ================= SECTION 1: Overview ================= -->
+    <!-- ==================== TAB 1: Overview ==================== -->
     <div class="dash-section" id="dashSection1" role="tabpanel">
-    <div class="dash-grid dash-grid-1">
-
-      <!-- LEFT column: stacked KPI cards -->
-      <div class="dash-col-stack">
-      {% comment "Revenue/Profit/Expenses KPI cards — disabled, metrics shown in chart strips instead" %}
-      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;">
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
-            <div style="width:34px;height:34px;border-radius:9px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-chart-bar" style="font-size:1.1rem;color:#2563eb;"></i></div>
-            <span style="font-size:0.66rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Revenue</span>
-          </div>
-          <div style="font-size:1.3rem;font-weight:700;line-height:1.1;margin-bottom:7px;">₱{{ cur_sales|floatformat:2 }}</div>
-          {% if revenue_badge %}<div style="display:flex;align-items:center;gap:5px;"><span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:{% if revenue_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if revenue_badge.up %}#16a34a{% else %}#dc2626{% endif %};">{% if revenue_badge.up %}▲{% else %}▼{% endif %} {{ revenue_badge.text }}</span><span style="font-size:0.67rem;color:#9ca3af;">vs last mo.</span></div>
-          {% else %}<span style="font-size:0.67rem;color:#9ca3af;">No prior data</span>{% endif %}
+      <div class="panel-grid">
+        <!-- Row 1 Left: Sales vs Expenses (spans 1 row) -->
+        <div class="card dash-card" style="grid-row:span 1;">
+          <div class="card-header"><h6 class="dash-h">Sales vs Expenses</h6><p class="dash-sub">Last 12 months · bars = amounts, line = profit</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartSalesExpenses"></canvas></div></div>
         </div>
-      </div>
-      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;">
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
-            <div style="width:34px;height:34px;border-radius:9px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-dollar-sign" style="font-size:1.1rem;color:#16a34a;"></i></div>
-            <span style="font-size:0.66rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Profit</span>
-          </div>
-          <div style="font-size:1.3rem;font-weight:700;line-height:1.1;margin-bottom:7px;{% if cur_profit < 0 %}color:#dc2626;{% endif %}">₱{{ cur_profit|floatformat:2 }}</div>
-          {% if profit_badge %}<div style="display:flex;align-items:center;gap:5px;"><span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:{% if profit_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if profit_badge.up %}#16a34a{% else %}#dc2626{% endif %};">{% if profit_badge.up %}▲{% else %}▼{% endif %} {{ profit_badge.text }}</span><span style="font-size:0.67rem;color:#9ca3af;">vs last mo.</span></div>
-          {% else %}<span style="font-size:0.67rem;color:#9ca3af;">No prior data</span>{% endif %}
-        </div>
-      </div>
-      <div class="card" style="border:none;border-radius:14px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;">
-          <div style="display:flex;align-items:center;gap:9px;margin-bottom:10px;">
-            <div style="width:34px;height:34px;border-radius:9px;background:#fff7ed;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-file-invoice" style="font-size:1.1rem;color:#ea580c;"></i></div>
-            <span style="font-size:0.66rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Expenses</span>
-          </div>
-          <div style="font-size:1.3rem;font-weight:700;line-height:1.1;margin-bottom:7px;">₱{{ cur_expenses|floatformat:2 }}</div>
-          {% if expenses_badge %}<div style="display:flex;align-items:center;gap:5px;"><span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:20px;background:{% if expenses_badge.up %}#dcfce7{% else %}#fee2e2{% endif %};color:{% if expenses_badge.up %}#16a34a{% else %}#dc2626{% endif %};">{% if expenses_badge.up %}▼{% else %}▲{% endif %} {{ expenses_badge.text }}</span><span style="font-size:0.67rem;color:#9ca3af;">vs last mo.</span></div>
-          {% else %}<span style="font-size:0.67rem;color:#9ca3af;">No prior data</span>{% endif %}
-        </div>
-      </div>
-      {% endcomment %}
-        <!-- Products card -->
+        <!-- Row 1 Right: Stock Health -->
         <div class="card dash-card">
-          <div class="card-body" style="padding:12px 18px;">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-              <div style="width:32px;height:32px;border-radius:8px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-box" style="font-size:1.1rem;color:#2563eb;"></i></div>
-              <span style="font-size:0.72rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Products</span>
-            </div>
-            <div style="font-size:1.4rem;font-weight:800;line-height:1.1;margin-bottom:4px;">{{ total_products }}</div>
-            <span style="font-size:0.75rem;color:#6b7280;font-weight:600;">{{ total_stocks|floatformat:0 }} units in stock</span>
-          </div>
+          <div class="card-header"><h6 class="dash-h">Stock Health</h6><p class="dash-sub">{{ total_products }} products · {{ total_stocks|floatformat:0|intcomma }} units</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartStockHealth"></canvas></div></div>
         </div>
-
-        <!-- Stock Alerts card -->
-        <a href="{% url 'product-inventory' %}" class="dash-card-link">
-          <div class="card dash-card" style="cursor:pointer;transition:box-shadow 0.2s,transform 0.15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.13)';this.style.transform='translateY(-2px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
-            <div class="card-body" style="padding:12px 18px;">
-              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                <div style="width:32px;height:32px;border-radius:8px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="la la-bell" style="font-size:1.1rem;color:#d97706;"></i></div>
-                <span style="font-size:0.72rem;color:#6b7280;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">Stock Alerts</span>
-              </div>
-              <div style="display:flex;gap:18px;align-items:flex-end;">
-                <div><div style="font-size:1.4rem;font-weight:800;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div><div style="font-size:0.72rem;color:#6b7280;font-weight:600;margin-top:2px;">Low Stock</div></div>
-                <div style="width:1px;height:28px;background:#e5e7eb;"></div>
-                <div><div style="font-size:1.4rem;font-weight:800;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div><div style="font-size:0.72rem;color:#6b7280;font-weight:600;margin-top:2px;">Out of Stock</div></div>
-              </div>
-            </div>
-          </div>
-        </a>
-      </div><!-- /dash-col-stack -->
-
-      <!-- RIGHT column: Sales vs Expenses chart -->
-      <div class="card dash-card dash-chart-card">
-        <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:10px 18px;flex-shrink:0;">
-          <div>
-            <h6 class="mb-0" style="font-weight:700;font-size:0.9rem;">Sales vs Expenses</h6>
-            <p class="mb-0" style="font-size:0.68rem;color:#9ca3af;margin-top:1px;">Monthly profit breakdown</p>
-          </div>
-          <div class="d-flex gap-2">
-            <select id="yearFilter" class="form-select form-select-sm" style="width:100px;"></select>
-            <select id="monthFilter" class="form-select form-select-sm" style="width:110px;">
-              <option value="all">All Months</option>
-              <option value="01">January</option>
-              <option value="02">February</option>
-              <option value="03">March</option>
-              <option value="04">April</option>
-              <option value="05">May</option>
-              <option value="06">June</option>
-              <option value="07">July</option>
-              <option value="08">August</option>
-              <option value="09">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
-            </select>
-          </div>
-        </div>
-        <div class="card-body dash-chart-body">
-          <div style="display:flex;gap:24px;margin-bottom:8px;padding:7px 14px;background:#f9fafb;border-radius:8px;flex-shrink:0;">
-            <div id="profitContainer">
-              <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Profit</div>
-              <div id="profitSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_profit|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
-            </div>
-            <div id="summaryDivider" style="width:1px;background:#e5e7eb;"></div>
-            <div id="expensesContainer">
-              <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Expenses</div>
-              <div id="expensesSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_expenses|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
-            </div>
-          </div>
-          <div id="salesExpensesChart" class="dash-chart-fill"></div>
-        </div>
-      </div>
-
-    </div><!-- /dash-grid-1 -->
-    </div><!-- /dashSection1 -->
-
-    <!-- ================= SECTION 2: Performance ================= -->
-    <div class="dash-section dash-section-hidden" id="dashSection2" role="tabpanel">
-    <div class="dash-grid dash-grid-2">
-
-      <!-- LEFT column: Revenue Trend chart -->
-      <div class="card dash-card dash-chart-card">
-        <div class="card-header d-flex justify-content-between align-items-center" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:16px 20px;flex-shrink:0;">
-          <div>
-            <h6 class="mb-0" style="font-weight:700;font-size:0.95rem;">Revenue Trend</h6>
-            <p class="mb-0" style="font-size:0.72rem;color:#9ca3af;margin-top:2px;">Monthly or daily sales overview</p>
-          </div>
-          <div class="d-flex gap-2">
-            <select id="revenueYearFilter" class="form-select form-select-sm" style="width:100px;"></select>
-            <select id="revenueMonthFilter" class="form-select form-select-sm" style="width:130px;">
-              <option value="all">All Months</option>
-              <option value="01">January</option>
-              <option value="02">February</option>
-              <option value="03">March</option>
-              <option value="04">April</option>
-              <option value="05">May</option>
-              <option value="06">June</option>
-              <option value="07">July</option>
-              <option value="08">August</option>
-              <option value="09">September</option>
-              <option value="10">October</option>
-              <option value="11">November</option>
-              <option value="12">December</option>
-            </select>
-          </div>
-        </div>
-        <div class="card-body dash-chart-body">
-          <div style="display:flex;gap:28px;margin-bottom:14px;padding:10px 16px;background:#f9fafb;border-radius:10px;flex-shrink:0;">
-            <div>
-              <div style="font-size:0.64rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:3px;">Revenue</div>
-              <div id="revenueSummary" style="font-size:0.82rem;font-weight:600;">₱{{ cur_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">this month</span> &nbsp;·&nbsp; ₱{{ prev_sales|floatformat:2 }} <span style="color:#b0b8c1;font-weight:400;">last month</span></div>
-            </div>
-          </div>
-          <div id="revenueChangeChart" class="dash-chart-fill"></div>
-        </div>
-      </div>
-
-      <!-- RIGHT column: Best Sellers + Recent Sales stacked -->
-      <div class="dash-col-stack">
-        <!-- Best Sellers -->
-        <a href="{% url 'best-seller-products' %}" class="dash-card-link">
-          <div class="card dash-card dash-chart-card" style="cursor:pointer;">
-            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:14px 18px;flex-shrink:0;">
-              <h6 class="mb-0" style="font-weight:700;font-size:0.92rem;">Best Sellers</h6>
-              <p class="mb-0" style="font-size:0.7rem;color:#9ca3af;margin-top:2px;">Top products this month</p>
-            </div>
-            <div class="card-body dash-chart-body" style="padding:14px 16px;">
-              <div id="bestSellerChart" class="dash-chart-fill"></div>
-            </div>
-          </div>
-        </a>
-
-        <!-- Recent Sales -->
-        <a href="{% url 'salesexpenses' %}" class="dash-card-link">
-          <div class="card dash-card dash-chart-card" style="cursor:pointer;">
-            <div class="card-header" style="background:transparent;border-bottom:1px solid rgba(0,0,0,0.06);padding:14px 18px;flex-shrink:0;">
-              <h6 class="mb-0" style="font-weight:700;font-size:0.92rem;">Recent Sales</h6>
-              <p class="mb-0" style="font-size:0.7rem;color:#9ca3af;margin-top:2px;">Latest recorded transactions</p>
-            </div>
-            <div class="card-body dash-recent-sales-body">
-              {% for w in recent_sales|slice:":5" %}
-                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 4px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
-                  <span style="font-size:0.83rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
-                  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:12px;">
-                    <span style="font-size:0.74rem;color:#9ca3af;">×{{ w.quantity }}</span>
-                    <span style="font-size:0.77rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:3px 10px;border-radius:20px;">₱{{ w.compute_revenue|floatformat:2 }}</span>
+        <!-- Row 2 Left: Recent Sales -->
+        <a href="{% url 'salesexpenses' %}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;min-height:0;">
+          <div class="card dash-card" style="cursor:pointer;height:100%;">
+            <div class="card-header"><h6 class="dash-h">Recent Sales</h6><p class="dash-sub">Latest transactions</p></div>
+            <div class="card-body">
+              <div class="recent-list">
+                {% for w in recent_sales|slice:":6" %}
+                  <div class="recent-row">
+                    <span class="name">{{ w.get_item_display }}</span>
+                    <span style="font-size:0.7rem;color:var(--muted);">&times;{{ w.quantity }}</span>
+                    <span class="price">&#8369;{{ w.compute_revenue|floatformat:2|intcomma }}</span>
                   </div>
-                </div>
-              {% empty %}
-                <div style="display:flex;align-items:center;justify-content:center;height:100px;color:#9ca3af;font-size:0.85rem;">No recent sales yet.</div>
-              {% endfor %}
+                {% empty %}<div class="empty-ph">No recent sales yet.</div>{% endfor %}
+              </div>
             </div>
           </div>
         </a>
-      </div><!-- /dash-col-stack -->
+        <!-- Row 2 Right: Expiring Soon -->
+        <div class="card dash-card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div><h6 class="dash-h">Expiring Soon</h6><p class="dash-sub">{{ expiring_count }} batch(es) within 7 days</p></div>
+            <a href="{% url 'product-batch' %}" style="font-size:0.7rem;color:#2563eb;text-decoration:none;">View all &rarr;</a>
+          </div>
+          <div class="card-body">
+            {% if expiring_soon %}
+              <div class="exp-list">
+                {% for e in expiring_soon %}
+                  <div class="exp-item {% if e.days_left <= 2 %}urgent{% endif %}">
+                    <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ e.label }} <span style="color:var(--muted);font-size:0.68rem;">&middot; &times;{{ e.qty|floatformat:0 }}</span></div>
+                    <div style="display:flex;align-items:center;gap:5px;flex-shrink:0;">
+                      <span style="font-size:0.66rem;color:var(--muted);">{{ e.exp_date }}</span>
+                      <span class="days">{{ e.days_left }}d</span>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            {% else %}<div class="empty-ph">No batches expiring in 7 days.</div>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
 
-    </div><!-- /dash-grid-2 -->
-    </div><!-- /dashSection2 -->
+    <!-- ==================== TAB 2: Sales Performance ==================== -->
+    <div class="dash-section dash-section-hidden" id="dashSection2" role="tabpanel">
+      <div class="panel-grid">
+        <div class="card dash-card">
+          <div class="card-header"><h6 class="dash-h">Revenue Trend (Last 30 Days)</h6><p class="dash-sub">Daily revenue with 7-day moving average</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartRevenue30"></canvas></div></div>
+        </div>
+        <a href="{% url 'best-seller-products' %}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;min-height:0;">
+          <div class="card dash-card" style="cursor:pointer;height:100%;">
+            <div class="card-header"><h6 class="dash-h">Top 10 Best Sellers</h6><p class="dash-sub">This month, by revenue</p></div>
+            <div class="card-body"><div class="chart-wrap"><canvas id="chartBestSellers"></canvas></div></div>
+          </div>
+        </a>
+        <div class="card dash-card">
+          <div class="card-header"><h6 class="dash-h">Sales Channels</h6><p class="dash-sub">MTD revenue split</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartChannels"></canvas></div></div>
+        </div>
+        <div class="card dash-card">
+          <div class="card-header"><h6 class="dash-h">Payment Status</h6><p class="dash-sub">MTD &middot; outstanding &#8369;{{ pay_outstanding|floatformat:2|intcomma }}</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartPayment"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== TAB 3: Inventory & Operations ==================== -->
+    <div class="dash-section dash-section-hidden" id="dashSection3" role="tabpanel">
+      <div class="panel-grid">
+        <a href="{% url 'product-inventory' %}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;min-height:0;">
+          <div class="card dash-card" style="cursor:pointer;height:100%;">
+            <div class="card-header"><h6 class="dash-h">Low-Stock Watchlist</h6><p class="dash-sub">Products at or near reorder threshold</p></div>
+            <div class="card-body"><div class="chart-wrap"><canvas id="chartLowStock"></canvas></div></div>
+          </div>
+        </a>
+        <div class="card dash-card">
+          <div class="card-header"><h6 class="dash-h">Withdrawal Reasons</h6><p class="dash-sub">Stacked qty &middot; last 6 months</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartReasons"></canvas></div></div>
+        </div>
+        <div class="card dash-card">
+          <div class="card-header"><h6 class="dash-h">Raw Materials &amp; Packaging</h6><p class="dash-sub">Top 12 by current stock</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartRawMats"></canvas></div></div>
+        </div>
+        <div class="card dash-card">
+          <div class="card-header"><h6 class="dash-h">Expenses by Category</h6><p class="dash-sub">This month</p></div>
+          <div class="card-body"><div class="chart-wrap"><canvas id="chartExpCat"></canvas></div></div>
+        </div>
+      </div>
+    </div>
 
     </div><!-- /dash-sections-wrap -->
 
-    {% else %}
-    <h4 class="page-title mb-3" style="font-weight:700;font-size:1.25rem;">Dashboard</h4>
-
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;">
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;gap:14px;">
-          <div style="width:44px;height:44px;border-radius:10px;background:#eff6ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="la la-box" style="font-size:1.4rem;color:#2563eb;"></i>
-          </div>
-          <div>
-            <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Products</div>
-            <div style="font-size:1.65rem;font-weight:700;line-height:1;">{{ total_products }}</div>
-          </div>
-        </div>
+  {% else %}
+    {# ===== Staff view (compact, unchanged layout — still Chart.js) ===== #}
+    <h4 class="dash-title">Dashboard</h4>
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="kpi"><div class="kpi-head"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><i class="la la-box"></i></div><span class="kpi-label">Total Products</span></div><div class="kpi-value">{{ total_products }}</div></div>
+      <div class="kpi"><div class="kpi-head"><div class="kpi-icon" style="background:#f0fdf4;color:#16a34a;"><i class="la la-cubes"></i></div><span class="kpi-label">Total Stock</span></div><div class="kpi-value">{{ total_stocks|floatformat:0|intcomma }}</div></div>
+      <div class="kpi"><div class="kpi-head"><div class="kpi-icon" style="background:#fffbeb;color:#d97706;"><i class="la la-exclamation-triangle"></i></div><span class="kpi-label">Stock Alerts</span></div><div class="kpi-value">{{ low_stock_count }} <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">low</span> &nbsp; {{ out_of_stock_count }} <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">out</span></div></div>
+    </div>
+    <div class="panel-grid" style="grid-template-columns:1.5fr 1fr;grid-template-rows:1fr;height:calc(100vh - 200px);min-height:420px;">
+      <div class="card dash-card">
+        <div class="card-header"><h6 class="dash-h">Inventory Overview (Top 15)</h6></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="chartStaffInventory"></canvas></div></div>
       </div>
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;gap:14px;">
-          <div style="width:44px;height:44px;border-radius:10px;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-            <i class="la la-cubes" style="font-size:1.4rem;color:#16a34a;"></i>
-          </div>
-          <div>
-            <div style="font-size:0.68rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px;">Total Stock</div>
-            <div style="font-size:1.65rem;font-weight:700;line-height:1;">{{ total_stocks|floatformat:0 }}</div>
-          </div>
-        </div>
-      </div>
-      <div class="card" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-        <div class="card-body" style="padding:18px 20px;display:flex;align-items:center;justify-content:space-around;gap:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:#fffbeb;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i class="la la-exclamation-triangle" style="font-size:1.2rem;color:#d97706;"></i>
-            </div>
-            <div>
-              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Low Stock</div>
-              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if low_stock_count > 0 %}color:#d97706;{% endif %}">{{ low_stock_count }}</div>
-            </div>
-          </div>
-          <div style="width:1px;height:36px;background:rgba(0,0,0,0.08);"></div>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:40px;height:40px;border-radius:10px;background:#fef2f2;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <i class="la la-times-circle" style="font-size:1.2rem;color:#dc2626;"></i>
-            </div>
-            <div>
-              <div style="font-size:0.65rem;color:#9ca3af;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:1px;">Out of Stock</div>
-              <div style="font-size:1.5rem;font-weight:700;line-height:1;{% if out_of_stock_count > 0 %}color:#dc2626;{% endif %}">{{ out_of_stock_count }}</div>
-            </div>
-          </div>
-        </div>
+      <div class="card dash-card">
+        <div class="card-header"><h6 class="dash-h">Recent Sales</h6></div>
+        <div class="card-body"><div class="recent-list">
+          {% for w in recent_sales %}<div class="recent-row"><span class="name">{{ w.get_item_display }}</span><span class="price">&times; {{ w.quantity }}</span></div>{% empty %}<div class="empty-ph">No recent sales.</div>{% endfor %}
+        </div></div>
       </div>
     </div>
-
-    <div style="display:flex;flex-direction:column;gap:14px;height:calc(100vh - 140px);">
-
-      <div style="display:flex;gap:14px;height:320px;flex-shrink:0;">
-        <div style="flex:1;min-width:0;">
-          <div class="card" style="height:100%;border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-            <div class="card-header" style="padding:13px 18px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.05);border-radius:12px 12px 0 0;">
-              <h6 class="mb-0" style="font-weight:600;font-size:0.88rem;">Recent Sales</h6>
-            </div>
-            <div class="card-body" style="padding:8px 14px;overflow-y:auto;height:calc(320px - 47px);">
-              {% if recent_sales %}
-              <ul class="list-unstyled mb-0">
-                {% for w in recent_sales %}
-                <li style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:1px solid rgba(0,0,0,0.05);{% if forloop.last %}border-bottom:none;{% endif %}">
-                  <span style="font-size:0.83rem;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ w.get_item_display }}</span>
-                  <span style="font-size:0.78rem;font-weight:600;background:#f0fdf4;color:#15803d;padding:2px 10px;border-radius:20px;white-space:nowrap;margin-left:10px;">× {{ w.quantity }}</span>
-                </li>
-                {% endfor %}
-              </ul>
-              {% else %}
-              <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9ca3af;font-size:0.85rem;">No recent sales.</div>
-              {% endif %}
-            </div>
-          </div>
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div class="card" style="height:100%;border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-            <div class="card-header" style="padding:13px 18px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.05);border-radius:12px 12px 0 0;">
-              <h6 class="mb-0" style="font-weight:600;font-size:0.88rem;">Best Selling Products</h6>
-            </div>
-            <div class="card-body" style="padding:10px 12px;overflow:hidden;height:calc(320px - 47px);">
-              <div id="bestSellerChart" style="height:100%;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="flex:1;min-height:0;">
-        <div class="card h-100" style="border:none;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);">
-          <div class="card-header" style="padding:13px 18px;background:transparent;border-bottom:1px solid rgba(0,0,0,0.05);border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:space-between;">
-            <h6 class="mb-0" style="font-weight:600;font-size:0.88rem;">Inventory Overview</h6>
-            <div style="display:flex;gap:8px;">
-              <span style="font-size:0.68rem;font-weight:600;color:#fff;background:#22c55e;padding:2px 10px;border-radius:20px;">Healthy</span>
-              <span style="font-size:0.68rem;font-weight:600;color:#fff;background:#f59e0b;padding:2px 10px;border-radius:20px;">Low</span>
-              <span style="font-size:0.68rem;font-weight:600;color:#fff;background:#ef4444;padding:2px 10px;border-radius:20px;">Out</span>
-            </div>
-          </div>
-          <div class="card-body" style="padding:10px 12px;overflow:hidden;">
-            <div id="inventoryChart" style="height:100%;"></div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-    {% endif %}
+  {% endif %}
   </div>
 </div>
 {% endblock content %}
@@ -385,43 +264,45 @@
 {% block page_js %}
   {{ block.super }}
   {% if is_superuser %}
-    <script src="{% static 'js/dashboards-analytics.js' %}?v=6"></script>
+    <script id="dashData" type="application/json">
+    {
+      "s12": {"labels": {{ chart_12mo_labels|safe }}, "sales": {{ chart_12mo_sales|safe }}, "expenses": {{ chart_12mo_expenses|safe }}, "profit": {{ chart_12mo_profit|safe }}},
+      "stock": {{ stock_health_json|safe }},
+      "rev30": {"labels": {{ rev30_labels|safe }}, "values": {{ rev30_values|safe }}, "ma7": {{ rev30_ma7|safe }}},
+      "best": {"labels": {{ best_labels|safe }}, "revenue": {{ best_revenue|safe }}, "qty": {{ best_qty|safe }}},
+      "channels": {"labels": {{ channel_labels|safe }}, "values": {{ channel_values|safe }}},
+      "reasons": {"labels": {{ reason_labels|safe }}, "datasets": {{ reason_datasets|safe }}},
+      "expcat": {"labels": {{ exp_cat_labels|safe }}, "values": {{ exp_cat_values|safe }}},
+      "payment": {"labels": {{ pay_labels|safe }}, "values": {{ pay_values|safe }}},
+      "lowstock": {"labels": {{ wl_labels|safe }}, "stock": {{ wl_stock|safe }}, "threshold": {{ wl_threshold|safe }}, "colors": {{ wl_colors|safe }}},
+      "rawmats": {"labels": {{ rm_labels|safe }}, "stock": {{ rm_stock|safe }}, "colors": {{ rm_colors|safe }}}
+    }
+    </script>
+    <script src="{% static 'js/dashboards-chartjs.js' %}?v=2"></script>
     <script>
       (function(){
         document.addEventListener('DOMContentLoaded', function(){
           var tabs = document.querySelectorAll('.dash-tab');
-          var sections = {'1':document.getElementById('dashSection1'),'2':document.getElementById('dashSection2')};
-          if(!tabs.length || !sections['1'] || !sections['2']) return;
+          var sections = {'1':document.getElementById('dashSection1'),'2':document.getElementById('dashSection2'),'3':document.getElementById('dashSection3')};
+          if(!tabs.length) return;
           function activate(num){
-            tabs.forEach(function(t){
-              var on = t.dataset.section === num;
-              t.classList.toggle('active', on);
-              t.setAttribute('aria-selected', on?'true':'false');
-            });
-            Object.keys(sections).forEach(function(k){
-              if(sections[k]) sections[k].classList.toggle('dash-section-hidden', k !== num);
-            });
+            tabs.forEach(function(t){ var on = t.dataset.section === num; t.classList.toggle('active', on); t.setAttribute('aria-selected', on?'true':'false'); });
+            Object.keys(sections).forEach(function(k){ if(sections[k]) sections[k].classList.toggle('dash-section-hidden', k !== num); });
             try{ localStorage.setItem('rfp-dash-section', num); }catch(e){}
-            // Help ApexCharts recompute size when a hidden chart becomes visible
             setTimeout(function(){ window.dispatchEvent(new Event('resize')); }, 60);
           }
           tabs.forEach(function(t){ t.addEventListener('click', function(){ activate(t.dataset.section); }); });
           var saved='1';
           try{ saved = localStorage.getItem('rfp-dash-section') || '1'; }catch(e){}
-          if(saved !== '1' && saved !== '2') saved = '1';
-          // Defer initial activation so ApexCharts can size on visible containers first
-          setTimeout(function(){ activate(saved); }, 250);
+          if(!['1','2','3'].includes(saved)) saved = '1';
+          setTimeout(function(){ activate(saved); }, 200);
         });
       })();
     </script>
   {% else %}
-    <script>
-      window._inventoryData = {
-        labels: {{ inv_labels|safe }},
-        stocks: {{ inv_stocks|safe }},
-        colors: {{ inv_colors|safe }}
-      };
+    <script id="staffInvData" type="application/json">
+    {"labels": {{ inv_labels|safe }}, "stocks": {{ inv_stocks|safe }}, "colors": {{ inv_colors|safe }}}
     </script>
-    <script src="{% static 'js/dashboards-staff.js' %}"></script>
+    <script src="{% static 'js/dashboards-staff-chartjs.js' %}?v=1"></script>
   {% endif %}
 {% endblock page_js %}
