@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Backup Database - Real's Food Products{% endblock %}
+{% block content %}
+<div class="content">
+  <div class="container-fluid">
+    <h4 class="page-title">Backup Database</h4>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="close" data-dismiss="alert">&times;</button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="row">
+      <div class="col-md-12">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <div class="card-title">Database Backup</div>
+            <form method="post" action="{% url 'database-backup' %}" id="backupForm">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-primary btn-rounded" id="downloadBackupBtn">
+                <i class="la la-download"></i> Download Backup
+              </button>
+            </form>
+          </div>
+          <div class="card-body">
+            <p class="text-muted mb-3">
+              Creates a full JSON snapshot of all database records and downloads it to your computer.
+              A copy is also saved in the server's <code>backups/</code> folder automatically.
+            </p>
+
+            <h5 class="mt-4 mb-3">Previous Backups</h5>
+            {% if backups %}
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead>
+                    <tr>
+                      <th><i class="la la-file"></i> Filename</th>
+                      <th><i class="la la-calendar"></i> Created</th>
+                      <th><i class="la la-hdd-o"></i> Size</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for backup in backups %}
+                    <tr>
+                      <td><code>{{ backup.filename }}</code></td>
+                      <td>{{ backup.created_at }}</td>
+                      <td>{{ backup.size_kb }} KB</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="text-center text-muted py-4">
+                <i class="la la-inbox" style="font-size: 2rem;"></i>
+                <p class="mt-2">No backups found yet. Click <strong>Download Backup</strong> to create one.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('backupForm').addEventListener('submit', function() {
+    const btn = document.getElementById('downloadBackupBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="la la-spinner la-spin"></i> Preparing...';
+    setTimeout(function() {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="la la-download"></i> Download Backup';
+    }, 5000);
+  });
+</script>
+{% endblock %}

@@ -317,6 +317,10 @@ document.addEventListener('DOMContentLoaded', function() {
             <label for="exportMonth">Select Month</label>
             <input type="month" class="form-control" id="exportMonth" name="month" 
               value="{{ export_month|default:'' }}">
+            <div class="form-check mt-2">
+              <input class="form-check-input" type="checkbox" id="allMonthsCheck">
+              <label class="form-check-label text-muted" for="allMonthsCheck">All Months</label>
+            </div>
           </div>
           
           <div class="form-group">
@@ -353,6 +357,8 @@ document.addEventListener('DOMContentLoaded', function() {
   const formatSelect = document.getElementById('exportFormat');
   const exportButton = document.getElementById('exportButton');
   
+  const allMonthsCheck = document.getElementById('allMonthsCheck');
+
   // Set default month to current month if not set
   if (!monthInput.value) {
     const now = new Date();
@@ -360,11 +366,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     monthInput.value = `${year}-${month}`;
   }
-  
+
+  // All Months toggle
+  allMonthsCheck.addEventListener('change', function() {
+    if (this.checked) {
+      monthInput.value = '';
+      monthInput.disabled = true;
+    } else {
+      monthInput.disabled = false;
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      monthInput.value = `${year}-${month}`;
+    }
+  });
+
   // Update button text based on format selection
   formatSelect.addEventListener('change', function() {
     const format = this.value.toUpperCase();
     exportButton.innerHTML = `<i class="la la-download mr-1"></i> Export ${format}`;
+  });
+
+  // Close modal after export is triggered
+  document.getElementById('exportInventoryForm').addEventListener('submit', function() {
+    setTimeout(function() {
+      $('#exportInventoryModal').modal('hide');
+    }, 1000);
   });
 });
 </script>

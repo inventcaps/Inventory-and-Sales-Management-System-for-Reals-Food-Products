@@ -15,6 +15,27 @@ from django.forms import inlineformset_factory
 
 # ... (rest of the code remains the same)
 
+class UserEditForm(forms.Form):
+    username = forms.CharField(
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter username'})
+    )
+    first_name = forms.CharField(
+        required=False,
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter first name'})
+    )
+    last_name = forms.CharField(
+        required=False,
+        max_length=150,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Enter last name'})
+    )
+    email = forms.EmailField(
+        required=False,
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Enter email address'})
+    )
+
+
 class ProductsForm(forms.ModelForm):
     # ADD THIS - Barcode field
     barcode = forms.CharField(

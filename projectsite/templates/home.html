@@ -108,22 +108,22 @@
     <!-- Pinned KPI strip -->
     <div class="kpi-grid">
       <div class="kpi">
-        <div class="kpi-head"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><i class="la la-chart-bar"></i></div><span class="kpi-label">Revenue (MTD)</span></div>
+        <div class="kpi-head"><div class="kpi-icon kpi-icon-blue"><i class="la la-bar-chart"></i></div><span class="kpi-label">Revenue (MTD)</span></div>
         <div class="kpi-value">&#8369;{{ cur_sales|floatformat:2|intcomma }}</div>
         {% if revenue_badge %}<div class="kpi-badge"><span class="kpi-pill {% if revenue_badge.up %}up{% else %}down{% endif %}">{% if revenue_badge.up %}&#9650;{% else %}&#9660;{% endif %} {{ revenue_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
       </div>
       <div class="kpi">
-        <div class="kpi-head"><div class="kpi-icon" style="background:#f0fdf4;color:#16a34a;"><i class="la la-dollar-sign"></i></div><span class="kpi-label">Profit (MTD)</span></div>
-        <div class="kpi-value" {% if cur_profit < 0 %}style="color:#dc2626;"{% endif %}>&#8369;{{ cur_profit|floatformat:2|intcomma }}</div>
+        <div class="kpi-head"><div class="kpi-icon kpi-icon-green"><i class="la la-dollar"></i></div><span class="kpi-label">Profit (MTD)</span></div>
+        <div class="kpi-value {% if cur_profit < 0 %}metric-red{% endif %}">&#8369;{{ cur_profit|floatformat:2|intcomma }}</div>
         {% if profit_badge %}<div class="kpi-badge"><span class="kpi-pill {% if profit_badge.up %}up{% else %}down{% endif %}">{% if profit_badge.up %}&#9650;{% else %}&#9660;{% endif %} {{ profit_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
       </div>
       <div class="kpi">
-        <div class="kpi-head"><div class="kpi-icon" style="background:#fff7ed;color:#ea580c;"><i class="la la-file-invoice"></i></div><span class="kpi-label">Expenses (MTD)</span></div>
+        <div class="kpi-head"><div class="kpi-icon kpi-icon-orange"><i class="la la-file-text"></i></div><span class="kpi-label">Expenses (MTD)</span></div>
         <div class="kpi-value">&#8369;{{ cur_expenses|floatformat:2|intcomma }}</div>
         {% if expenses_badge %}<div class="kpi-badge"><span class="kpi-pill {% if expenses_badge.up %}up{% else %}down{% endif %}">{% if expenses_badge.up %}&#9660;{% else %}&#9650;{% endif %} {{ expenses_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
       </div>
       <div class="kpi">
-        <div class="kpi-head"><div class="kpi-icon" style="background:#fdf4ff;color:#9333ea;"><i class="la la-cubes"></i></div><span class="kpi-label">Units Sold (MTD)</span></div>
+        <div class="kpi-head"><div class="kpi-icon kpi-icon-purple"><i class="la la-cubes"></i></div><span class="kpi-label">Units Sold (MTD)</span></div>
         <div class="kpi-value">{{ cur_units|floatformat:0|intcomma }}</div>
         {% if units_badge %}<div class="kpi-badge"><span class="kpi-pill {% if units_badge.up %}up{% else %}down{% endif %}">{% if units_badge.up %}&#9650;{% else %}&#9660;{% endif %} {{ units_badge.text }}</span><span class="kpi-ctx">vs last mo.</span></div>{% else %}<span class="kpi-ctx">No prior data</span>{% endif %}
       </div>
@@ -165,7 +165,7 @@
         <div class="card dash-card">
           <div class="card-header d-flex justify-content-between align-items-center">
             <div><h6 class="dash-h">Expiring Soon</h6><p class="dash-sub">{{ expiring_count }} batch(es) within 7 days</p></div>
-            <a href="{% url 'product-batch' %}" style="font-size:0.7rem;color:#2563eb;text-decoration:none;">View all &rarr;</a>
+            <a href="{% url 'product-batch' %}" style="font-size:0.7rem;color:var(--c-blue);text-decoration:none;">View all &rarr;</a>
           </div>
           <div class="card-body">
             {% if expiring_soon %}
@@ -240,9 +240,9 @@
     {# ===== Staff view (compact, unchanged layout — still Chart.js) ===== #}
     <h4 class="dash-title">Dashboard</h4>
     <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
-      <div class="kpi"><div class="kpi-head"><div class="kpi-icon" style="background:#eff6ff;color:#2563eb;"><i class="la la-box"></i></div><span class="kpi-label">Total Products</span></div><div class="kpi-value">{{ total_products }}</div></div>
-      <div class="kpi"><div class="kpi-head"><div class="kpi-icon" style="background:#f0fdf4;color:#16a34a;"><i class="la la-cubes"></i></div><span class="kpi-label">Total Stock</span></div><div class="kpi-value">{{ total_stocks|floatformat:0|intcomma }}</div></div>
-      <div class="kpi"><div class="kpi-head"><div class="kpi-icon" style="background:#fffbeb;color:#d97706;"><i class="la la-exclamation-triangle"></i></div><span class="kpi-label">Stock Alerts</span></div><div class="kpi-value">{{ low_stock_count }} <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">low</span> &nbsp; {{ out_of_stock_count }} <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">out</span></div></div>
+      <div class="kpi"><div class="kpi-head"><div class="kpi-icon kpi-icon-blue"><i class="la la-box"></i></div><span class="kpi-label">Total Products</span></div><div class="kpi-value">{{ total_products }}</div></div>
+      <div class="kpi"><div class="kpi-head"><div class="kpi-icon kpi-icon-green"><i class="la la-cubes"></i></div><span class="kpi-label">Total Stock</span></div><div class="kpi-value">{{ total_stocks|floatformat:0|intcomma }}</div></div>
+      <div class="kpi"><div class="kpi-head"><div class="kpi-icon kpi-icon-amber"><i class="la la-exclamation-triangle"></i></div><span class="kpi-label">Stock Alerts</span></div><div class="kpi-value">{{ low_stock_count }} <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">low</span> &nbsp; {{ out_of_stock_count }} <span style="font-size:0.7rem;color:var(--muted);font-weight:500;">out</span></div></div>
     </div>
     <div class="panel-grid" style="grid-template-columns:1.5fr 1fr;grid-template-rows:1fr;height:calc(100vh - 200px);min-height:420px;">
       <div class="card dash-card">

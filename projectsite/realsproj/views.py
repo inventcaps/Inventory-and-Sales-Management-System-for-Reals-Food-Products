@@ -17,6 +17,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 import threading
+import os
+import json
 from realsproj.forms import (
     ProductsForm,
     RawMaterialsForm,
@@ -36,7 +38,8 @@ from realsproj.forms import (
     BulkProductBatchForm,
     BulkRawMaterialBatchForm,
     CustomUserCreationForm,
-    WithdrawEditForm
+    WithdrawEditForm,
+    UserEditForm
 )
 
 from realsproj.models import (
@@ -1582,12 +1585,13 @@ class RawMaterialsCreateView(CreateView):
         try:
             auth_user = AuthUser.objects.get(id=self.request.user.id)
             form.instance.created_by_admin = auth_user
+            form.instance.category = 'PACKAGING'
             self.object = form.save()
         except Exception as e:
             transaction.set_rollback(True)
             messages.error(self.request, f"Raw material creation failed: {e}")
-            return redirect(self.request.path)  
-        messages.success(self.request, "Raw material created successfully.")
+            return redirect(self.request.path)
+        messages.success(self.request, "Packaging material created successfully.")
         return redirect(self.success_url)
 
     def form_invalid(self, form):
@@ -6084,12 +6088,6 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
         form = BulkRawMaterialBatchForm(initial={'category': category})
         return render(request, self.template_name, {'form': form, 'raw_materials': form.rawmaterials})
 
-    def get_queryset(self):
-        queryset = (
-            super()
-            .order_by('material_id')
-        )
-
     def post(self, request):
         form = BulkRawMaterialBatchForm(request.POST)
         if form.is_valid():
@@ -7129,26 +7127,21 @@ def create_admin_user(request):
         if deactivated_user:
             return JsonResponse({'success': False, 'message': f'Email "{email}" belongs to a deactivated account. Please reactivate it or use a different email.'})
         
-        # Create user
-        user = User.objects.create(
+        # Set role
+        is_superuser = (user_type == 'superuser')
+        role_name = 'Administrator' if is_superuser else 'Staff'
+
+        # Create user with hashed password in a single save
+        user = User.objects.create_user(
             username=username,
             first_name=first_name,
             last_name=last_name,
             email=email,
-            is_active=True,  # Immediately active
-            is_staff=True
+            password=password1,
+            is_active=True,
+            is_staff=True,
+            is_superuser=is_superuser,
         )
-        user.set_password(password1)
-        
-        # Set role
-        if user_type == 'superuser':
-            user.is_superuser = True
-            role_name = 'Administrator'
-        else:
-            user.is_superuser = False
-            role_name = 'Staff'
-        
-        user.save()
         
         return JsonResponse({
             'success': True,
@@ -7289,39 +7282,173 @@ def edit_profile(request):
         user.save()
         messages.success(request, 'Profile updated successfully.')
         return redirect('profile')
-    return render(request, 'editprofile.html')
+    form = UserEditForm(initial={
+        'username': request.user.username,
+        'first_name': request.user.first_name,
+        'last_name': request.user.last_name,
+        'email': request.user.email,
+    })
+    return render(request, 'editprofile.html', {'form': form, 'active_tab': 'account-general'})
 
 @login_required
 def export_sales(request):
+    if not request.user.is_superuser:
+        return HttpResponse("Permission denied", status=403)
     import csv
-    from django.http import HttpResponse
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Amount', 'Notes'])
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    filter_type = request.GET.get('filter', 'date')
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    qs = Sales.objects.filter(is_archived=False).order_by('-date')
+
+    filter_info = 'All Data'
+    if filter_type == 'date' and start:
+        qs = qs.filter(date=start)
+        filter_info = f'Date: {start}'
+    elif filter_type == 'month' and start:
+        try:
+            year, month = start.split('-')
+            qs = qs.filter(date__year=year, date__month=month)
+            filter_info = f'Month: {start}'
+        except ValueError:
+            pass
+    elif filter_type == 'year' and start:
+        qs = qs.filter(date__year=start)
+        filter_info = f'Year: {start}'
+    elif filter_type == 'range' and start and end:
+        qs = qs.filter(date__range=[start, end])
+        filter_info = f'Range: {start} to {end}'
+
     try:
-        sales = Sales.objects.all().order_by('-date')
-        for sale in sales:
-            writer.writerow([getattr(sale, 'date', ''), getattr(sale, 'amount', ''), getattr(sale, 'notes', '')])
-    except Exception:
-        writer.writerow(['No data available'])
-    return response
+        if format_type == 'pdf':
+            from decimal import Decimal
+            total_amount = sum(s.amount for s in qs) or Decimal('0.00')
+            context = {
+                'sales': qs,
+                'total_amount': total_amount,
+                'filter_info': filter_info,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+            }
+            html = render_to_string('exports/sales_pdf.html', context)
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="sales_export.pdf"'
+                return response
+            raise Exception('PDF generation failed')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Date', 'Category', 'Amount', 'Description'])
+            for sale in qs:
+                writer.writerow([
+                    sale.date,
+                    getattr(sale, 'category', ''),
+                    sale.amount,
+                    getattr(sale, 'description', ''),
+                ])
+            return response
+    except Exception as e:
+        if format_type == 'pdf':
+            resp = HttpResponse(content_type='text/plain')
+            resp['Content-Disposition'] = 'attachment; filename="sales_error.txt"'
+            resp.write(f'An error occurred: {str(e)}')
+        else:
+            resp = HttpResponse(content_type='text/csv')
+            resp['Content-Disposition'] = 'attachment; filename="sales_error.csv"'
+            writer = csv.writer(resp)
+            writer.writerow(['Error'])
+            writer.writerow([str(e)])
+        return resp
 
 @login_required
 def export_expenses(request):
+    if not request.user.is_superuser:
+        return HttpResponse("Permission denied", status=403)
     import csv
-    from django.http import HttpResponse
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="expenses_export.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Amount', 'Notes'])
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    filter_type = request.GET.get('filter', 'date')
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    qs = Expenses.objects.filter(is_archived=False).order_by('-date')
+
+    filter_info = 'All Data'
+    if filter_type == 'date' and start:
+        qs = qs.filter(date=start)
+        filter_info = f'Date: {start}'
+    elif filter_type == 'month' and start:
+        try:
+            year, month = start.split('-')
+            qs = qs.filter(date__year=year, date__month=month)
+            filter_info = f'Month: {start}'
+        except ValueError:
+            pass
+    elif filter_type == 'year' and start:
+        qs = qs.filter(date__year=start)
+        filter_info = f'Year: {start}'
+    elif filter_type == 'range' and start and end:
+        qs = qs.filter(date__range=[start, end])
+        filter_info = f'Range: {start} to {end}'
+
     try:
-        expenses = Expenses.objects.all().order_by('-date')
-        for expense in expenses:
-            writer.writerow([getattr(expense, 'date', ''), getattr(expense, 'amount', ''), getattr(expense, 'notes', '')])
-    except Exception:
-        writer.writerow(['No data available'])
-    return response
+        if format_type == 'pdf':
+            from decimal import Decimal
+            total_amount = sum(e.amount for e in qs) or Decimal('0.00')
+            context = {
+                'expenses': qs,
+                'total_amount': total_amount,
+                'filter_info': filter_info,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+            }
+            html = render_to_string('exports/expenses_pdf.html', context)
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="expenses_export.pdf"'
+                return response
+            raise Exception('PDF generation failed')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="expenses_export.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Date', 'Category', 'Amount', 'Description'])
+            for expense in qs:
+                writer.writerow([
+                    expense.date,
+                    getattr(expense, 'category', ''),
+                    expense.amount,
+                    getattr(expense, 'description', ''),
+                ])
+            return response
+    except Exception as e:
+        if format_type == 'pdf':
+            resp = HttpResponse(content_type='text/plain')
+            resp['Content-Disposition'] = 'attachment; filename="expenses_error.txt"'
+            resp.write(f'An error occurred: {str(e)}')
+        else:
+            resp = HttpResponse(content_type='text/csv')
+            resp['Content-Disposition'] = 'attachment; filename="expenses_error.csv"'
+            writer = csv.writer(resp)
+            writer.writerow(['Error'])
+            writer.writerow([str(e)])
+        return resp
 
 @login_required
 def export_product_inventory(request):
@@ -7374,9 +7501,9 @@ def export_product_inventory(request):
         
         # Apply month filter if provided
         month = request.GET.get('month', '').strip()
+        from django.utils import timezone
         if month:
             from django.db.models import Sum
-            from django.utils import timezone
             try:
                 year, month_num = month.split('-')
                 # Filter batches that have activity in the specified month
@@ -7543,18 +7670,83 @@ def check_account_status(request):
         'is_superuser': request.user.is_superuser,
     })
 
+@require_http_methods(["POST"])
 def clear_deactivation_flag(request):
-    if request.method == 'POST':
-        request.session.pop('account_deactivated', None)
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False})
+    request.session.pop('account_deactivated', None)
+    return JsonResponse({'success': True})
 
 @login_required
 def database_backup(request):
+    from django.conf import settings
+    from django.apps import apps
+    from django.core import serializers as dj_serializers
+    import datetime as dt
+
     if not request.user.is_superuser:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
-    return render(request, 'database_backup.html')
+
+    backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+
+    if request.method == 'POST':
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            timestamp = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"reals_backup_{timestamp}.json"
+            backup_path = os.path.join(backup_dir, filename)
+
+            app_models = apps.get_app_config('realsproj').get_models()
+            backup_data = {}
+            total_records = 0
+
+            for model in app_models:
+                model_name = model._meta.label
+                try:
+                    queryset = model.objects.all()
+                    count = queryset.count()
+                    if count > 0:
+                        serialized_data = dj_serializers.serialize('json', queryset)
+                        backup_data[model_name] = {
+                            'count': count,
+                            'data': json.loads(serialized_data),
+                        }
+                        total_records += count
+                except Exception:
+                    pass
+
+            backup_data['_metadata'] = {
+                'created_at': dt.datetime.now().isoformat(),
+                'total_records': total_records,
+                'backup_type': 'python_serialization',
+            }
+
+            content = json.dumps(backup_data, indent=2, ensure_ascii=False)
+
+            with open(backup_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            response = HttpResponse(content, content_type='application/json')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
+        except Exception as e:
+            messages.error(request, f"Backup failed: {str(e)}")
+            return redirect('home')
+
+    # GET: list existing backups
+    backups = []
+    if os.path.exists(backup_dir):
+        for fname in sorted(os.listdir(backup_dir), reverse=True):
+            if fname.startswith('reals_backup_') and (fname.endswith('.json') or fname.endswith('.sql')):
+                fpath = os.path.join(backup_dir, fname)
+                fstats = os.stat(fpath)
+                backups.append({
+                    'filename': fname,
+                    'size_kb': round(fstats.st_size / 1024, 1),
+                    'created_at': dt.datetime.fromtimestamp(fstats.st_ctime).strftime('%b %d, %Y %I:%M %p'),
+                })
+
+    return render(request, 'database_backup.html', {'backups': backups})
 
 class BestSellerProductsView(LoginRequiredMixin, TemplateView):
     template_name = 'bestseller_products.html'
@@ -8174,9 +8366,9 @@ def disable_2fa(request):
             return redirect('profile')
         
         try:
-            settings = User2FASettings.objects.get(user=request.user)
-            settings.is_enabled = False
-            settings.save()
+            twofa_settings = User2FASettings.objects.get(user=request.user)
+            twofa_settings.is_enabled = False
+            twofa_settings.save()
             messages.success(request, "✅ Two-Factor Authentication has been disabled.")
         except User2FASettings.DoesNotExist:
             messages.info(request, "2FA was not enabled.")
@@ -8300,6 +8492,28 @@ Real's Food Products Team''',
         return redirect('profile')
     
     return render(request, 'direct_password_reset.html')
+
+@login_required
+@require_http_methods(["POST"])
+def verify_current_password(request):
+    MAX_ATTEMPTS = 5
+    SESSION_KEY = 'pw_verify_attempts'
+
+    attempts = request.session.get(SESSION_KEY, 0)
+
+    if attempts >= MAX_ATTEMPTS:
+        return JsonResponse({'valid': False, 'locked': True, 'attempts': attempts})
+
+    password = request.POST.get('password', '')
+    if request.user.check_password(password):
+        request.session[SESSION_KEY] = 0
+        return JsonResponse({'valid': True, 'locked': False, 'attempts': 0})
+
+    attempts += 1
+    request.session[SESSION_KEY] = attempts
+    remaining = MAX_ATTEMPTS - attempts
+    return JsonResponse({'valid': False, 'locked': attempts >= MAX_ATTEMPTS, 'attempts': attempts, 'remaining': remaining})
+
 
 def privacy_policy(request):
     return render(request, 'privacy_policy.html')
