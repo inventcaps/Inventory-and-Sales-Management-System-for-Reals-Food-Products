@@ -12,35 +12,64 @@
         Edit Profile
     </h4>
 
+    <!-- Profile Banner -->
+    <div class="profile-header mb-3">
+        <div class="profile-avatar-wrapper">
+            <div class="profile-avatar">
+                {{ request.user.username|slice:":1"|upper }}
+            </div>
+            <div class="profile-avatar-info">
+                <h2 class="profile-name">
+                    {% if request.user.get_full_name %}{{ request.user.get_full_name }}{% else %}{{ request.user.username }}{% endif %}
+                </h2>
+                <p class="profile-role">
+                    <i class="bi bi-shield-check" style="margin-right:4px;"></i>
+                    {% if request.user.is_superuser %}Administrator{% else %}Staff{% endif %}
+                </p>
+            </div>
+        </div>
+    </div>
+
     <div class="card overflow-hidden edit-profile-card">
         <div class="row no-gutters row-bordered row-border-light">
+
+            <!-- Left tab navigation -->
             <div class="col-md-3 pt-0">
                 <div class="edit-profile-sidebar">
-                    <h6 class="sidebar-title">Settings</h6>
+                    <h6 class="sidebar-title">Account Settings</h6>
                     <div class="list-group list-group-flush account-settings-links">
                         <a class="list-group-item list-group-item-action {% if active_tab == 'account-general' %}active{% endif %}" data-toggle="list" href="#account-general">
-                            <i class="bi bi-person-circle"></i>
-                            <span>General</span>
+                            <div class="ep-tab-icon"><i class="bi bi-person-circle"></i></div>
+                            <div class="ep-tab-text">
+                                <span class="ep-tab-title">General</span>
+                                <small class="ep-tab-sub">Name, email &amp; username</small>
+                            </div>
                         </a>
                         <a class="list-group-item list-group-item-action {% if active_tab == 'account-change-password' %}active{% endif %}" data-toggle="list" href="#account-change-password">
-                            <i class="bi bi-shield-lock"></i>
-                            <span>Change Password</span>
+                            <div class="ep-tab-icon"><i class="bi bi-shield-lock"></i></div>
+                            <div class="ep-tab-text">
+                                <span class="ep-tab-title">Password</span>
+                                <small class="ep-tab-sub">Change your password</small>
+                            </div>
                         </a>
                     </div>
                 </div>
             </div>
 
+            <!-- Right form content -->
             <div class="col-md-9">
                 <div class="card-body edit-profile-content">
                     <form method="POST" id="edit-profile-form" onsubmit="return validateForm()">
                         {% csrf_token %}
                         <div class="tab-content">
+
+                            <!-- General Tab -->
                             <div class="tab-pane fade {% if active_tab == 'account-general' %}show active{% endif %}" id="account-general">
                                 <h5 class="section-title">
                                     <i class="bi bi-person-badge"></i> Account Information
                                 </h5>
                                 <p class="text-muted mb-4">Update your personal information and email address.</p>
-                                
+
                                 <div class="form-group-modern">
                                     <label class="form-label-modern">
                                         <i class="bi bi-person-circle"></i>
@@ -49,23 +78,28 @@
                                     {{ form.username }}
                                     <small class="form-text text-muted">Your unique username for login.</small>
                                 </div>
-                                
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">
-                                        <i class="bi bi-person"></i>
-                                        <span>First Name</span>
-                                    </label>
-                                    {{ form.first_name }}
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">
+                                                <i class="bi bi-person"></i>
+                                                <span>First Name</span>
+                                            </label>
+                                            {{ form.first_name }}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">
+                                                <i class="bi bi-person-fill"></i>
+                                                <span>Last Name</span>
+                                            </label>
+                                            {{ form.last_name }}
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">
-                                        <i class="bi bi-person-fill"></i>
-                                        <span>Last Name</span>
-                                    </label>
-                                    {{ form.last_name }}
-                                </div>
-                                
                                 <div class="form-group-modern">
                                     <label class="form-label-modern">
                                         <i class="bi bi-envelope"></i>
@@ -82,97 +116,192 @@
                                 </div>
                             </div>
 
+                            <!-- Change Password Tab -->
                             <div class="tab-pane fade {% if active_tab == 'account-change-password' %}show active{% endif %}" id="account-change-password">
                                 <h5 class="section-title">
                                     <i class="bi bi-shield-lock"></i> Change Password
                                 </h5>
                                 <p class="text-muted mb-4">Ensure your account is using a strong password to stay secure.</p>
-                                
-                                <div class="password-requirements">
-                                    <div class="requirements-header">
-                                        <i class="bi bi-info-circle"></i>
-                                        <strong>Password Requirements:</strong>
-                                    </div>
-                                    <ul class="requirements-list">
-                                        <li id="req-length" class="requirement-item">
-                                            <i class="bi bi-circle"></i>
-                                            <span>At least 8 characters long</span>
-                                        </li>
-                                        <li id="req-uppercase" class="requirement-item">
-                                            <i class="bi bi-circle"></i>
-                                            <span>Contains uppercase letter (A-Z)</span>
-                                        </li>
-                                        <li id="req-lowercase" class="requirement-item">
-                                            <i class="bi bi-circle"></i>
-                                            <span>Contains lowercase letter (a-z)</span>
-                                        </li>
-                                        <li id="req-number" class="requirement-item">
-                                            <i class="bi bi-circle"></i>
-                                            <span>Contains number (0-9)</span>
-                                        </li>
-                                        <li id="req-special" class="requirement-item">
-                                            <i class="bi bi-circle"></i>
-                                            <span>Contains special character (!@#$%^&*)</span>
-                                        </li>
-                                    </ul>
-                                </div>
-                                
+
                                 <div class="form-group-modern">
                                     <label class="form-label-modern">
                                         <i class="bi bi-lock"></i>
                                         <span>Current Password</span>
                                     </label>
-                                    <input type="password" class="form-control" name="current_password" id="current_password" placeholder="Enter your current password">
+                                    <div class="ep-pw-wrap">
+                                        <input type="password" class="form-control" name="current_password" id="current_password" placeholder="Enter your current password" autocomplete="current-password">
+                                        <button type="button" class="ep-eye-btn" onclick="togglePw('current_password', this)"><i class="bi bi-eye"></i></button>
+                                    </div>
                                     <div class="d-flex justify-content-between align-items-center mt-2">
-                                        <small class="form-text text-muted">Enter your current password to verify it's you.</small>
+                                        <div id="pw-verify-status"></div>
                                         <a href="javascript:void(0);" onclick="handleForgotPassword()" class="forgot-password-link">
-                                            <i class="bi bi-question-circle"></i> Forgot Password?
+                                            <i></i> Forgot Password?
                                         </a>
                                     </div>
+                                    <button type="button" id="verifyPwBtn" class="btn btn-sm btn-outline-secondary mt-2" onclick="verifyCurrentPassword()">
+                                        <i class="bi bi-shield-check"></i> Verify Password
+                                    </button>
                                 </div>
-                                
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">
-                                        <i class="bi bi-key"></i>
-                                        <span>New Password</span>
-                                    </label>
-                                    <input type="password" class="form-control" name="new_password" id="new_password" placeholder="Enter your new password">
+
+                                <div class="row" id="newPasswordRow" style="display:none;">
+                                    <div class="col-md-6">
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">
+                                                <i class="bi bi-key"></i>
+                                                <span>New Password</span>
+                                            </label>
+                                            <div class="ep-pw-wrap">
+                                                <input type="password" class="form-control" name="new_password" id="new_password" placeholder="New password">
+                                                <button type="button" class="ep-eye-btn" onclick="togglePw('new_password', this)"><i class="bi bi-eye"></i></button>
+                                            </div>
+                                            <div class="password-requirements mt-2" id="pwRequirementsBox" style="display:none;">
+                                                <ul class="requirements-list">
+                                                    <li id="req-length" class="requirement-item"><i class="bi bi-circle"></i><span>At least 8 characters</span></li>
+                                                    <li id="req-uppercase" class="requirement-item"><i class="bi bi-circle"></i><span>Uppercase letter (A-Z)</span></li>
+                                                    <li id="req-lowercase" class="requirement-item"><i class="bi bi-circle"></i><span>Lowercase letter (a-z)</span></li>
+                                                    <li id="req-number" class="requirement-item"><i class="bi bi-circle"></i><span>Number (0-9)</span></li>
+                                                    <li id="req-special" class="requirement-item"><i class="bi bi-circle"></i><span>Special character (!@#$%^&*)</span></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group-modern">
+                                            <label class="form-label-modern">
+                                                <i class="bi bi-key-fill"></i>
+                                                <span>Confirm New Password</span>
+                                            </label>
+                                            <div class="ep-pw-wrap">
+                                                <input type="password" class="form-control" name="repeat_new_password" id="repeat_new_password" placeholder="Confirm password">
+                                                <button type="button" class="ep-eye-btn" onclick="togglePw('repeat_new_password', this)"><i class="bi bi-eye"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                
-                                <div class="form-group-modern">
-                                    <label class="form-label-modern">
-                                        <i class="bi bi-key-fill"></i>
-                                        <span>Confirm New Password</span>
-                                    </label>
-                                    <input type="password" class="form-control" name="repeat_new_password" id="repeat_new_password" placeholder="Confirm your new password">
-                                </div>
-                                
+
                                 <div id="password-error" class="alert alert-danger" style="display: none;">
                                     <i class="bi bi-exclamation-circle"></i>
                                     <span id="password-error-text">Please fill out all password fields correctly.</span>
                                 </div>
                             </div>
 
+                            <!-- Form Actions -->
                             <div class="form-actions">
-                                <button type="submit" class="btn btn-primary btn-rounded">Save</button>
+                                <button type="submit" class="btn btn-primary btn-rounded">
+                                    <i class="bi bi-check-lg"></i> Save Changes
+                                </button>
+                                <a href="{% url 'profile' %}" class="btn btn-secondary btn-rounded">
+                                    <i class="bi bi-x-lg"></i> Cancel
+                                </a>
                             </div>
+
                         </div>
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
 
 <script>
+    var FORGOT_PW_URL = "{% url 'direct_password_reset' %}";
+    var VERIFY_PW_URL = "{% url 'verify_current_password' %}";
+
     function handleForgotPassword() {
-        window.location.href = "{% url 'direct_password_reset' %}"; 
+        window.location.href = FORGOT_PW_URL;
+    }
+
+    function verifyCurrentPassword() {
+        var pw = document.getElementById('current_password').value;
+        var btn = document.getElementById('verifyPwBtn');
+        var status = document.getElementById('pw-verify-status');
+        var newRow = document.getElementById('newPasswordRow');
+
+        if (!pw) {
+            status.innerHTML = '<small class="text-danger"><i class="bi bi-exclamation-circle"></i> Please enter your current password first.</small>';
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Verifying...';
+        status.innerHTML = '';
+
+        var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch(VERIFY_PW_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrfToken },
+            body: 'password=' + encodeURIComponent(pw)
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.valid) {
+                status.innerHTML = '<small class="text-success"><i class="bi bi-check-circle-fill"></i> Password verified!</small>';
+                btn.innerHTML = '<i class="bi bi-check-lg"></i> Verified';
+                btn.className = 'btn btn-sm btn-success mt-2';
+                btn.disabled = true;
+                document.getElementById('current_password').readOnly = true;
+                newRow.style.display = 'flex';
+                newRow.style.animation = 'fadeSlideDown .25s ease';
+                var reqBox = document.getElementById('pwRequirementsBox');
+                if (reqBox) { reqBox.style.display = 'block'; }
+            } else if (data.locked) {
+                status.innerHTML = '<small class="text-danger"><i class="bi bi-shield-x"></i> Too many failed attempts. Please use <a href="' + FORGOT_PW_URL + '" class="text-danger fw-bold">Forgot Password</a> to reset.</small>';
+                btn.innerHTML = '<i class="bi bi-lock-fill"></i> Locked';
+                btn.className = 'btn btn-sm btn-danger mt-2';
+                btn.disabled = true;
+                document.getElementById('current_password').disabled = true;
+            } else {
+                var remaining = data.remaining;
+                status.innerHTML = '<small class="text-danger"><i class="bi bi-x-circle-fill"></i> Incorrect password. ' + remaining + ' attempt' + (remaining === 1 ? '' : 's') + ' remaining.</small>';
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Password';
+                btn.className = 'btn btn-sm btn-outline-danger mt-2';
+            }
+        })
+        .catch(function() {
+            status.innerHTML = '<small class="text-danger">Something went wrong. Please try again.</small>';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Password';
+        });
+    }
+
+    function togglePw(fieldId, btn) {
+        var input = document.getElementById(fieldId);
+        var icon = btn.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
     }
 
     // Real-time password validation
     document.addEventListener('DOMContentLoaded', function() {
         const newPasswordInput = document.getElementById('new_password');
         const repeatPasswordInput = document.getElementById('repeat_new_password');
+        const currentPasswordInput = document.getElementById('current_password');
+        const newPasswordRow = document.getElementById('newPasswordRow');
+        const verifyBtn = document.getElementById('verifyPwBtn');
+        const verifyStatus = document.getElementById('pw-verify-status');
+
+        // Reset new password fields when current password is changed after verification
+        if (currentPasswordInput) {
+            currentPasswordInput.addEventListener('input', function () {
+                if (newPasswordRow.style.display === 'flex') {
+                    newPasswordRow.style.display = 'none';
+                    if (newPasswordInput) newPasswordInput.value = '';
+                    if (repeatPasswordInput) repeatPasswordInput.value = '';
+                }
+                verifyStatus.innerHTML = '';
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Password';
+                verifyBtn.className = 'btn btn-sm btn-outline-secondary mt-2';
+            });
+        }
         
         // Password requirements validation
         function validatePasswordRequirements(password) {
@@ -210,18 +339,32 @@
             }
         }
         
-        // Add event listener for real-time validation
+        const reqBox = document.getElementById('pwRequirementsBox');
+
+        function resetRequirements() {
+            ['req-length', 'req-uppercase', 'req-lowercase', 'req-number', 'req-special'].forEach(id => {
+                const el = document.getElementById(id);
+                el.classList.remove('requirement-met', 'requirement-unmet');
+                el.querySelector('i').className = 'bi bi-circle';
+            });
+        }
+
         if (newPasswordInput) {
+            newPasswordInput.addEventListener('focus', function() {
+                reqBox.style.display = 'block';
+                reqBox.style.animation = 'fadeSlideDown .2s ease';
+            });
+            newPasswordInput.addEventListener('blur', function() {
+                if (this.value.length === 0) {
+                    reqBox.style.display = 'none';
+                    resetRequirements();
+                }
+            });
             newPasswordInput.addEventListener('input', function() {
                 if (this.value.length > 0) {
                     validatePasswordRequirements(this.value);
                 } else {
-                    // Reset all requirements to default state
-                    ['req-length', 'req-uppercase', 'req-lowercase', 'req-number', 'req-special'].forEach(id => {
-                        const element = document.getElementById(id);
-                        element.classList.remove('requirement-met', 'requirement-unmet');
-                        element.querySelector('i').className = 'bi bi-circle';
-                    });
+                    resetRequirements();
                 }
             });
         }

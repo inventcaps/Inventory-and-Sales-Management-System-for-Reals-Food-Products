@@ -266,8 +266,6 @@ urlpatterns = [
     path('financial-loss/', a.financial_loss, name='financial-loss'),
     path('financial-loss/export/', a.financial_loss_export, name='financial-loss-export'),
 
-    path('user-activity/', a.UserActivityList.as_view(), name='user-activity'),
-
     path("api/check-account-status/", a.check_account_status, name="check-account-status"),
     path("api/clear-deactivation-flag/", a.clear_deactivation_flag, name="clear-deactivation-flag"),
 
@@ -277,6 +275,7 @@ urlpatterns = [
     path('2fa-disable/', a.disable_2fa, name='2fa_disable'),
     path('account/delete/', a.delete_account, name='delete_account'),
     path('direct-password-reset/', a.direct_password_reset, name='direct_password_reset'),
+    path('profile/verify-password/', a.verify_current_password, name='verify_current_password'),
     path('privacy-policy/', a.privacy_policy, name='privacy_policy'),
     path('terms-of-use/', a.terms_of_use, name='terms_of_use'),
 
