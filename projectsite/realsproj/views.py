@@ -17,6 +17,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 import threading
+import os
+import json
 from realsproj.forms import (
     ProductsForm,
     RawMaterialsForm,
@@ -36,7 +38,8 @@ from realsproj.forms import (
     BulkProductBatchForm,
     BulkRawMaterialBatchForm,
     CustomUserCreationForm,
-    WithdrawEditForm
+    WithdrawEditForm,
+    UserEditForm
 )
 
 from realsproj.models import (
@@ -217,6 +220,9 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         context['out_of_stock_count'] = sum(
             1 for inv in all_inv if inv.total_stock <= 0
         )
+        context['healthy_stock_count'] = sum(
+            1 for inv in all_inv if inv.total_stock > inv.restock_threshold
+        )
 
         if not self.request.user.is_superuser:
             inv_labels, inv_stocks, inv_colors = [], [], []
@@ -235,6 +241,253 @@ class HomePageView(LoginRequiredMixin, TemplateView):
             context['inv_labels'] = json.dumps(inv_labels)
             context['inv_stocks'] = json.dumps(inv_stocks)
             context['inv_colors'] = json.dumps(inv_colors)
+            return context
+
+        # ===== Superuser-only: extended dashboard data =====
+        today = timezone.localdate()
+        now = timezone.now()
+        cy, cm = now.year, now.month
+        py, pm = (cy - 1, 12) if cm == 1 else (cy, cm - 1)
+
+        # --- Units Sold MTD (with prev-month comparison) ---
+        def _units(y, m):
+            return float(Withdrawals.objects.filter(
+                reason='SOLD', item_type='PRODUCT',
+                date__year=y, date__month=m
+            ).aggregate(t=Sum('quantity'))['t'] or 0)
+        cur_units = _units(cy, cm)
+        prev_units = _units(py, pm)
+        context['cur_units'] = cur_units
+        context['prev_units'] = prev_units
+        if prev_units > 0:
+            pct = round((cur_units - prev_units) / prev_units * 100, 1)
+            context['units_badge'] = {'text': f"{'+' if pct >= 0 else ''}{pct}%", 'up': pct >= 0}
+        else:
+            context['units_badge'] = None
+
+        # --- Sales vs Expenses: last 12 months (combo chart) ---
+        months_labels = []
+        months_sales = []
+        months_expenses = []
+        months_profit = []
+        for i in range(11, -1, -1):
+            yy = cy
+            mm = cm - i
+            while mm <= 0:
+                mm += 12
+                yy -= 1
+            s = float(Sales.objects.filter(date__year=yy, date__month=mm).aggregate(t=Sum('amount'))['t'] or 0)
+            e = float(Expenses.objects.filter(date__year=yy, date__month=mm).aggregate(t=Sum('amount'))['t'] or 0)
+            months_labels.append(f"{yy}-{mm:02d}")
+            months_sales.append(s)
+            months_expenses.append(e)
+            months_profit.append(s - e)
+        context['chart_12mo_labels'] = json.dumps(months_labels)
+        context['chart_12mo_sales'] = json.dumps(months_sales)
+        context['chart_12mo_expenses'] = json.dumps(months_expenses)
+        context['chart_12mo_profit'] = json.dumps(months_profit)
+
+        # --- Stock Health doughnut (already have counts above) ---
+        context['stock_health_json'] = json.dumps([
+            context['healthy_stock_count'],
+            context['low_stock_count'],
+            context['out_of_stock_count'],
+        ])
+
+        # --- Expiring Soon (<=7 days) ---
+        cutoff = today + timedelta(days=7)
+        expiring_batches = list(ProductBatches.objects.filter(
+            is_archived=False,
+            quantity__gt=0,
+            expiration_date__isnull=False,
+            expiration_date__lte=cutoff,
+            expiration_date__gte=today,
+        ).exclude(is_expired=True).select_related('product', 'product__product_type', 'product__variant').order_by('expiration_date')[:8])
+        expiring_list = []
+        for b in expiring_batches:
+            try:
+                days_left = (b.expiration_date - today).days
+            except Exception:
+                days_left = 0
+            expiring_list.append({
+                'label': str(b.product),
+                'qty': float(b.quantity),
+                'days_left': days_left,
+                'exp_date': b.expiration_date.strftime('%b %d') if b.expiration_date else '',
+            })
+        context['expiring_soon'] = expiring_list
+        context['expiring_count'] = ProductBatches.objects.filter(
+            is_archived=False, quantity__gt=0,
+            expiration_date__isnull=False,
+            expiration_date__lte=cutoff, expiration_date__gte=today,
+        ).exclude(is_expired=True).count()
+
+        # --- Revenue Trend last 30 days + 7-day MA ---
+        start_30 = today - timedelta(days=29)
+        daily_rev_qs = (
+            Withdrawals.objects.filter(
+                reason='SOLD', date__date__gte=start_30, date__date__lte=today
+            )
+            .annotate(day=TruncDay('date'))
+            .values('day')
+            .annotate(total=Sum('total_amount'))
+        )
+        daily_map = {row['day'].date().isoformat(): float(row['total'] or 0) for row in daily_rev_qs if row['day']}
+        rev_labels = []
+        rev_values = []
+        for i in range(30):
+            d = start_30 + timedelta(days=i)
+            rev_labels.append(d.strftime('%b %d'))
+            rev_values.append(daily_map.get(d.isoformat(), 0.0))
+        ma7 = []
+        for i in range(len(rev_values)):
+            lo = max(0, i - 6)
+            window = rev_values[lo:i+1]
+            ma7.append(round(sum(window) / len(window), 2))
+        context['rev30_labels'] = json.dumps(rev_labels)
+        context['rev30_values'] = json.dumps(rev_values)
+        context['rev30_ma7'] = json.dumps(ma7)
+
+        # --- Top 10 Best Sellers (this month, by revenue) ---
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        top_qs = (
+            Withdrawals.objects.filter(
+                reason='SOLD', item_type='PRODUCT', date__gte=month_start
+            )
+            .values('item_id')
+            .annotate(qty=Sum('quantity'), revenue=Sum('total_amount'))
+            .order_by('-revenue')[:10]
+        )
+        top_list = list(top_qs)
+        product_ids = [r['item_id'] for r in top_list]
+        prod_map = {p.id: str(p) for p in Products.objects.filter(id__in=product_ids).select_related('product_type', 'variant', 'size', 'size_unit')}
+        best_labels = []
+        best_revenue = []
+        best_qty = []
+        for r in top_list:
+            name = prod_map.get(r['item_id'], f"Product #{r['item_id']}")
+            if len(name) > 28:
+                name = name[:25] + '...'
+            best_labels.append(name)
+            best_revenue.append(float(r['revenue'] or 0))
+            best_qty.append(float(r['qty'] or 0))
+        context['best_labels'] = json.dumps(best_labels)
+        context['best_revenue'] = json.dumps(best_revenue)
+        context['best_qty'] = json.dumps(best_qty)
+
+        # --- Sales Channel breakdown (SOLD, all-time or MTD?) -> MTD ---
+        channel_qs = (
+            Withdrawals.objects.filter(reason='SOLD', date__gte=month_start)
+            .values('sales_channel')
+            .annotate(total=Sum('total_amount'))
+        )
+        channel_labels_map = dict(Withdrawals.SALES_CHANNEL_CHOICES)
+        ch_labels = []
+        ch_values = []
+        for row in channel_qs:
+            key = row['sales_channel'] or 'UNSPECIFIED'
+            ch_labels.append(channel_labels_map.get(key, key.title()))
+            ch_values.append(float(row['total'] or 0))
+        context['channel_labels'] = json.dumps(ch_labels)
+        context['channel_values'] = json.dumps(ch_values)
+
+        # --- Withdrawal Reasons stacked (last 6 months, by qty) ---
+        reason_labels_map = dict(Withdrawals.REASON_CHOICES)
+        reason_months = []
+        for i in range(5, -1, -1):
+            yy = cy
+            mm = cm - i
+            while mm <= 0:
+                mm += 12
+                yy -= 1
+            reason_months.append((yy, mm))
+        reason_data = {key: [0] * 6 for key, _ in Withdrawals.REASON_CHOICES}
+        for idx, (yy, mm) in enumerate(reason_months):
+            rows = (
+                Withdrawals.objects.filter(date__year=yy, date__month=mm)
+                .values('reason')
+                .annotate(q=Sum('quantity'))
+            )
+            for r in rows:
+                if r['reason'] in reason_data:
+                    reason_data[r['reason']][idx] = float(r['q'] or 0)
+        context['reason_labels'] = json.dumps([f"{yy}-{mm:02d}" for yy, mm in reason_months])
+        context['reason_datasets'] = json.dumps([
+            {'label': reason_labels_map.get(k, k), 'key': k, 'data': v}
+            for k, v in reason_data.items()
+        ])
+
+        # --- Expenses by Category (MTD) ---
+        exp_cat_qs = (
+            Expenses.objects.filter(date__year=cy, date__month=cm, is_archived=False)
+            .values('category')
+            .annotate(t=Sum('amount'))
+            .order_by('-t')
+        )
+        context['exp_cat_labels'] = json.dumps([r['category'] for r in exp_cat_qs])
+        context['exp_cat_values'] = json.dumps([float(r['t'] or 0) for r in exp_cat_qs])
+
+        # --- Payment Status (MTD) ---
+        pay_qs = (
+            Withdrawals.objects.filter(reason='SOLD', date__gte=month_start)
+            .values('payment_status')
+            .annotate(total=Sum('total_amount'), paid=Sum('paid_amount'))
+        )
+        pay_map = {'PAID': 0.0, 'UNPAID': 0.0, 'PARTIAL': 0.0}
+        outstanding = 0.0
+        for row in pay_qs:
+            key = row['payment_status'] or 'PAID'
+            amt = float(row['total'] or 0)
+            paid = float(row['paid'] or 0)
+            pay_map[key] = pay_map.get(key, 0.0) + amt
+            if key == 'UNPAID':
+                outstanding += amt
+            elif key == 'PARTIAL':
+                outstanding += max(0.0, amt - paid)
+        context['pay_labels'] = json.dumps(['Paid', 'Partial', 'Unpaid'])
+        context['pay_values'] = json.dumps([pay_map.get('PAID', 0), pay_map.get('PARTIAL', 0), pay_map.get('UNPAID', 0)])
+        context['pay_outstanding'] = outstanding
+
+        # --- Low-Stock Watchlist (top 10 closest to/below threshold) ---
+        watchlist = sorted(
+            [inv for inv in all_inv if inv.total_stock <= inv.restock_threshold * Decimal('1.5')],
+            key=lambda x: float(x.total_stock) - float(x.restock_threshold)
+        )[:10]
+        wl_labels, wl_stock, wl_threshold, wl_colors = [], [], [], []
+        for inv in watchlist:
+            name = str(inv.product)
+            if len(name) > 30:
+                name = name[:27] + '...'
+            wl_labels.append(name)
+            wl_stock.append(float(inv.total_stock))
+            wl_threshold.append(float(inv.restock_threshold))
+            if inv.total_stock <= 0:
+                wl_colors.append('#ef4444')
+            elif inv.total_stock <= inv.restock_threshold:
+                wl_colors.append('#f59e0b')
+            else:
+                wl_colors.append('#22c55e')
+        context['wl_labels'] = json.dumps(wl_labels)
+        context['wl_stock'] = json.dumps(wl_stock)
+        context['wl_threshold'] = json.dumps(wl_threshold)
+        context['wl_colors'] = json.dumps(wl_colors)
+
+        # --- Raw Materials / Packaging Stock ---
+        rm_inv = list(
+            RawMaterialInventory.objects.select_related('material').order_by('-total_stock')[:12]
+        )
+        rm_labels, rm_stock, rm_colors = [], [], []
+        for inv in rm_inv:
+            name = inv.material.name if hasattr(inv.material, 'name') else str(inv.material)
+            if len(name) > 28:
+                name = name[:25] + '...'
+            rm_labels.append(name)
+            rm_stock.append(float(inv.total_stock))
+            cat = (getattr(inv.material, 'category', '') or '').upper()
+            rm_colors.append('#8b5cf6' if cat == 'PACKAGING' else '#0ea5e9')
+        context['rm_labels'] = json.dumps(rm_labels)
+        context['rm_stock'] = json.dumps(rm_stock)
+        context['rm_colors'] = json.dumps(rm_colors)
 
         return context
 
@@ -1332,12 +1585,13 @@ class RawMaterialsCreateView(CreateView):
         try:
             auth_user = AuthUser.objects.get(id=self.request.user.id)
             form.instance.created_by_admin = auth_user
+            form.instance.category = 'PACKAGING'
             self.object = form.save()
         except Exception as e:
             transaction.set_rollback(True)
             messages.error(self.request, f"Raw material creation failed: {e}")
-            return redirect(self.request.path)  
-        messages.success(self.request, "Raw material created successfully.")
+            return redirect(self.request.path)
+        messages.success(self.request, "Packaging material created successfully.")
         return redirect(self.success_url)
 
     def form_invalid(self, form):
@@ -5834,12 +6088,6 @@ class BulkRawMaterialBatchCreateView(LoginRequiredMixin, View):
         form = BulkRawMaterialBatchForm(initial={'category': category})
         return render(request, self.template_name, {'form': form, 'raw_materials': form.rawmaterials})
 
-    def get_queryset(self):
-        queryset = (
-            super()
-            .order_by('material_id')
-        )
-
     def post(self, request):
         form = BulkRawMaterialBatchForm(request.POST)
         if form.is_valid():
@@ -6464,18 +6712,25 @@ def login_view(request):
         lockout_duration = timedelta(minutes=5)
         max_attempts = 5
         
-        # Check failed attempts in the last 5 minutes from this IP address (regardless of username)
-        # This prevents someone from trying random usernames
+        # Check failed attempts in the last 5 minutes from this IP address for THIS username.
+        # Excludes OTP-pending rows (required_otp=True) — those represent CORRECT password
+        # entries that just need 2FA, not credential failures, so they must not contribute
+        # to lockout. Scoping by username also prevents one user's failures from locking
+        # out others sharing the same IP (e.g., office network).
         recent_failed_attempts = LoginAttempt.objects.filter(
             ip_address=ip_address,
+            username=username,
             success=False,
+            required_otp=False,
             timestamp__gte=timezone.now() - lockout_duration
         ).count()
-        
+
         if recent_failed_attempts >= max_attempts:
             last_attempt = LoginAttempt.objects.filter(
                 ip_address=ip_address,
+                username=username,
                 success=False,
+                required_otp=False,
                 timestamp__gte=timezone.now() - lockout_duration
             ).order_by('-timestamp').first()
             
@@ -6491,6 +6746,16 @@ def login_view(request):
                 return render(request, 'login.html')
         
         user = authenticate(request, username=username, password=password)
+
+        # Fallback: allow login by email address. Many users type their email instead of
+        # their username on the login form, which previously surfaced as "Invalid
+        # username or password" and inflated failure metrics.
+        if user is None and '@' in username:
+            try:
+                candidate = User.objects.get(email__iexact=username.strip())
+                user = authenticate(request, username=candidate.username, password=password)
+            except (User.DoesNotExist, User.MultipleObjectsReturned):
+                user = None
 
         if user is not None:
             if user.is_active:
@@ -6633,7 +6898,9 @@ Real's Food Products Security Team''',
             
             attempts_count = LoginAttempt.objects.filter(
                 ip_address=ip_address,
+                username=username,
                 success=False,
+                required_otp=False,
                 timestamp__gte=timezone.now() - lockout_duration
             ).count()
             
@@ -6860,26 +7127,21 @@ def create_admin_user(request):
         if deactivated_user:
             return JsonResponse({'success': False, 'message': f'Email "{email}" belongs to a deactivated account. Please reactivate it or use a different email.'})
         
-        # Create user
-        user = User.objects.create(
+        # Set role
+        is_superuser = (user_type == 'superuser')
+        role_name = 'Administrator' if is_superuser else 'Staff'
+
+        # Create user with hashed password in a single save
+        user = User.objects.create_user(
             username=username,
             first_name=first_name,
             last_name=last_name,
             email=email,
-            is_active=True,  # Immediately active
-            is_staff=True
+            password=password1,
+            is_active=True,
+            is_staff=True,
+            is_superuser=is_superuser,
         )
-        user.set_password(password1)
-        
-        # Set role
-        if user_type == 'superuser':
-            user.is_superuser = True
-            role_name = 'Administrator'
-        else:
-            user.is_superuser = False
-            role_name = 'Staff'
-        
-        user.save()
         
         return JsonResponse({
             'success': True,
@@ -7020,39 +7282,173 @@ def edit_profile(request):
         user.save()
         messages.success(request, 'Profile updated successfully.')
         return redirect('profile')
-    return render(request, 'edit_profile.html')
+    form = UserEditForm(initial={
+        'username': request.user.username,
+        'first_name': request.user.first_name,
+        'last_name': request.user.last_name,
+        'email': request.user.email,
+    })
+    return render(request, 'editprofile.html', {'form': form, 'active_tab': 'account-general'})
 
 @login_required
 def export_sales(request):
+    if not request.user.is_superuser:
+        return HttpResponse("Permission denied", status=403)
     import csv
-    from django.http import HttpResponse
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Amount', 'Notes'])
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    filter_type = request.GET.get('filter', 'date')
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    qs = Sales.objects.filter(is_archived=False).order_by('-date')
+
+    filter_info = 'All Data'
+    if filter_type == 'date' and start:
+        qs = qs.filter(date=start)
+        filter_info = f'Date: {start}'
+    elif filter_type == 'month' and start:
+        try:
+            year, month = start.split('-')
+            qs = qs.filter(date__year=year, date__month=month)
+            filter_info = f'Month: {start}'
+        except ValueError:
+            pass
+    elif filter_type == 'year' and start:
+        qs = qs.filter(date__year=start)
+        filter_info = f'Year: {start}'
+    elif filter_type == 'range' and start and end:
+        qs = qs.filter(date__range=[start, end])
+        filter_info = f'Range: {start} to {end}'
+
     try:
-        sales = Sales.objects.all().order_by('-date')
-        for sale in sales:
-            writer.writerow([getattr(sale, 'date', ''), getattr(sale, 'amount', ''), getattr(sale, 'notes', '')])
-    except Exception:
-        writer.writerow(['No data available'])
-    return response
+        if format_type == 'pdf':
+            from decimal import Decimal
+            total_amount = sum(s.amount for s in qs) or Decimal('0.00')
+            context = {
+                'sales': qs,
+                'total_amount': total_amount,
+                'filter_info': filter_info,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+            }
+            html = render_to_string('exports/sales_pdf.html', context)
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="sales_export.pdf"'
+                return response
+            raise Exception('PDF generation failed')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Date', 'Category', 'Amount', 'Description'])
+            for sale in qs:
+                writer.writerow([
+                    sale.date,
+                    getattr(sale, 'category', ''),
+                    sale.amount,
+                    getattr(sale, 'description', ''),
+                ])
+            return response
+    except Exception as e:
+        if format_type == 'pdf':
+            resp = HttpResponse(content_type='text/plain')
+            resp['Content-Disposition'] = 'attachment; filename="sales_error.txt"'
+            resp.write(f'An error occurred: {str(e)}')
+        else:
+            resp = HttpResponse(content_type='text/csv')
+            resp['Content-Disposition'] = 'attachment; filename="sales_error.csv"'
+            writer = csv.writer(resp)
+            writer.writerow(['Error'])
+            writer.writerow([str(e)])
+        return resp
 
 @login_required
 def export_expenses(request):
+    if not request.user.is_superuser:
+        return HttpResponse("Permission denied", status=403)
     import csv
-    from django.http import HttpResponse
-    response = HttpResponse(content_type='text/csv')
-    response['Content-Disposition'] = 'attachment; filename="expenses_export.csv"'
-    writer = csv.writer(response)
-    writer.writerow(['Date', 'Amount', 'Notes'])
+    from django.template.loader import render_to_string
+    from xhtml2pdf import pisa
+    from io import BytesIO
+    from datetime import datetime
+
+    format_type = request.GET.get('format', 'csv').lower()
+    filter_type = request.GET.get('filter', 'date')
+    start = request.GET.get('start', '')
+    end = request.GET.get('end', '')
+
+    qs = Expenses.objects.filter(is_archived=False).order_by('-date')
+
+    filter_info = 'All Data'
+    if filter_type == 'date' and start:
+        qs = qs.filter(date=start)
+        filter_info = f'Date: {start}'
+    elif filter_type == 'month' and start:
+        try:
+            year, month = start.split('-')
+            qs = qs.filter(date__year=year, date__month=month)
+            filter_info = f'Month: {start}'
+        except ValueError:
+            pass
+    elif filter_type == 'year' and start:
+        qs = qs.filter(date__year=start)
+        filter_info = f'Year: {start}'
+    elif filter_type == 'range' and start and end:
+        qs = qs.filter(date__range=[start, end])
+        filter_info = f'Range: {start} to {end}'
+
     try:
-        expenses = Expenses.objects.all().order_by('-date')
-        for expense in expenses:
-            writer.writerow([getattr(expense, 'date', ''), getattr(expense, 'amount', ''), getattr(expense, 'notes', '')])
-    except Exception:
-        writer.writerow(['No data available'])
-    return response
+        if format_type == 'pdf':
+            from decimal import Decimal
+            total_amount = sum(e.amount for e in qs) or Decimal('0.00')
+            context = {
+                'expenses': qs,
+                'total_amount': total_amount,
+                'filter_info': filter_info,
+                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': datetime.now().year,
+            }
+            html = render_to_string('exports/expenses_pdf.html', context)
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+            if not pisa_status.err:
+                response = HttpResponse(pdf_buffer.getvalue(), content_type='application/pdf')
+                response['Content-Disposition'] = 'attachment; filename="expenses_export.pdf"'
+                return response
+            raise Exception('PDF generation failed')
+        else:
+            response = HttpResponse(content_type='text/csv')
+            response['Content-Disposition'] = 'attachment; filename="expenses_export.csv"'
+            writer = csv.writer(response)
+            writer.writerow(['Date', 'Category', 'Amount', 'Description'])
+            for expense in qs:
+                writer.writerow([
+                    expense.date,
+                    getattr(expense, 'category', ''),
+                    expense.amount,
+                    getattr(expense, 'description', ''),
+                ])
+            return response
+    except Exception as e:
+        if format_type == 'pdf':
+            resp = HttpResponse(content_type='text/plain')
+            resp['Content-Disposition'] = 'attachment; filename="expenses_error.txt"'
+            resp.write(f'An error occurred: {str(e)}')
+        else:
+            resp = HttpResponse(content_type='text/csv')
+            resp['Content-Disposition'] = 'attachment; filename="expenses_error.csv"'
+            writer = csv.writer(resp)
+            writer.writerow(['Error'])
+            writer.writerow([str(e)])
+        return resp
 
 @login_required
 def export_product_inventory(request):
@@ -7105,9 +7501,9 @@ def export_product_inventory(request):
         
         # Apply month filter if provided
         month = request.GET.get('month', '').strip()
+        from django.utils import timezone
         if month:
             from django.db.models import Sum
-            from django.utils import timezone
             try:
                 year, month_num = month.split('-')
                 # Filter batches that have activity in the specified month
@@ -7274,57 +7670,160 @@ def check_account_status(request):
         'is_superuser': request.user.is_superuser,
     })
 
+@require_http_methods(["POST"])
 def clear_deactivation_flag(request):
-    if request.method == 'POST':
-        request.session.pop('account_deactivated', None)
-        return JsonResponse({'success': True})
-    return JsonResponse({'success': False})
+    request.session.pop('account_deactivated', None)
+    return JsonResponse({'success': True})
 
 @login_required
 def database_backup(request):
+    from django.conf import settings
+    from django.apps import apps
+    from django.core import serializers as dj_serializers
+    import datetime as dt
+
     if not request.user.is_superuser:
         messages.error(request, "You don't have permission to access this page.")
         return redirect('home')
-    return render(request, 'database_backup.html')
+
+    backup_dir = os.path.join(settings.BASE_DIR, 'backups')
+
+    if request.method == 'POST':
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            timestamp = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"reals_backup_{timestamp}.json"
+            backup_path = os.path.join(backup_dir, filename)
+
+            app_models = apps.get_app_config('realsproj').get_models()
+            backup_data = {}
+            total_records = 0
+
+            for model in app_models:
+                model_name = model._meta.label
+                try:
+                    queryset = model.objects.all()
+                    count = queryset.count()
+                    if count > 0:
+                        serialized_data = dj_serializers.serialize('json', queryset)
+                        backup_data[model_name] = {
+                            'count': count,
+                            'data': json.loads(serialized_data),
+                        }
+                        total_records += count
+                except Exception:
+                    pass
+
+            backup_data['_metadata'] = {
+                'created_at': dt.datetime.now().isoformat(),
+                'total_records': total_records,
+                'backup_type': 'python_serialization',
+            }
+
+            content = json.dumps(backup_data, indent=2, ensure_ascii=False)
+
+            with open(backup_path, 'w', encoding='utf-8') as f:
+                f.write(content)
+
+            response = HttpResponse(content, content_type='application/json')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
+        except Exception as e:
+            messages.error(request, f"Backup failed: {str(e)}")
+            return redirect('home')
+
+    # GET: list existing backups
+    backups = []
+    if os.path.exists(backup_dir):
+        for fname in sorted(os.listdir(backup_dir), reverse=True):
+            if fname.startswith('reals_backup_') and (fname.endswith('.json') or fname.endswith('.sql')):
+                fpath = os.path.join(backup_dir, fname)
+                fstats = os.stat(fpath)
+                backups.append({
+                    'filename': fname,
+                    'size_kb': round(fstats.st_size / 1024, 1),
+                    'created_at': dt.datetime.fromtimestamp(fstats.st_ctime).strftime('%b %d, %Y %I:%M %p'),
+                })
+
+    return render(request, 'database_backup.html', {'backups': backups})
 
 class BestSellerProductsView(LoginRequiredMixin, TemplateView):
     template_name = 'bestseller_products.html'
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        from django.db.models import Sum, Count
-        sales_by_item = Withdrawals.objects.filter(
-            item_type='PRODUCT',
-            reason='SOLD'
-        ).values('item_id').annotate(
-            total_quantity=Sum('quantity'),
-            total_transactions=Count('id')
-        ).order_by('-total_quantity')[:20]
+        from django.db.models import Sum, Count, Avg
 
-        bestsellers = []
-        for entry in sales_by_item:
-            try:
-                product = Products.objects.select_related(
-                    'product_type', 'variant', 'size', 'size_unit'
-                ).get(id=entry['item_id'])
-                bestsellers.append({
-                    'product_name': str(product),
-                    'product_type': product.product_type.name if product.product_type else '',
-                    'variant': product.variant.name if product.variant else '',
-                    'size': str(product.size) if product.size else '',
-                    'total_quantity': entry['total_quantity'],
-                    'total_transactions': entry['total_transactions'],
-                })
-            except Products.DoesNotExist:
-                bestsellers.append({
-                    'product_name': f'Unknown Product (ID {entry["item_id"]})',
-                    'product_type': '',
-                    'variant': '',
-                    'size': '',
-                    'total_quantity': entry['total_quantity'],
-                    'total_transactions': entry['total_transactions'],
-                })
-        context['bestsellers'] = bestsellers
+        request = self.request
+        show_all = request.GET.get('show_all', '').lower() == 'true'
+        month_param = request.GET.get('month', '').strip()
+
+        now = timezone.now()
+        current_month_value = now.strftime('%Y-%m')
+
+        base_qs = Withdrawals.objects.filter(
+            item_type='PRODUCT',
+            reason='SOLD',
+            is_archived=False,
+        )
+
+        if not show_all:
+            if month_param:
+                try:
+                    year_str, month_str = month_param.split('-')
+                    base_qs = base_qs.filter(date__year=int(year_str), date__month=int(month_str))
+                except (ValueError, IndexError):
+                    base_qs = base_qs.filter(date__year=now.year, date__month=now.month)
+            else:
+                base_qs = base_qs.filter(date__year=now.year, date__month=now.month)
+
+        sales_qs = base_qs.values('item_id').annotate(
+            total_quantity=Sum('quantity'),
+            total_revenue=Sum('total_amount'),
+        )
+
+        all_totals = sales_qs.aggregate(
+            grand_total_quantity=Sum('total_quantity'),
+            grand_total_revenue=Sum('total_revenue'),
+        )
+        total_quantity = all_totals['grand_total_quantity'] or 0
+        total_revenue = all_totals['grand_total_revenue'] or 0
+        total_products = sales_qs.count()
+        average_revenue = (Decimal(str(total_revenue)) / total_products) if total_products else 0
+
+        sorted_asc = list(sales_qs.filter(total_quantity__gt=0).order_by('total_quantity')[:20])
+        sorted_desc = list(sales_qs.order_by('-total_quantity')[:20])
+
+        all_item_ids = set(e['item_id'] for e in sorted_desc + sorted_asc)
+        products_map = {
+            p.id: p
+            for p in Products.objects.select_related(
+                'product_type', 'variant', 'size', 'size_unit'
+            ).filter(id__in=all_item_ids)
+        }
+
+        def build_row(entry):
+            p = products_map.get(entry['item_id'])
+            return {
+                'product__product_type__name': p.product_type.name if p and p.product_type else '',
+                'product__variant__name': p.variant.name if p and p.variant else '',
+                'product__size__size_label': str(p.size) if p and p.size else '',
+                'product__size_unit__unit_name': p.size_unit.unit_name if p and p.size_unit else '',
+                'total_quantity': entry['total_quantity'],
+                'total_revenue': entry['total_revenue'] or 0,
+            }
+
+        best_sellers = [build_row(e) for e in sorted_desc]
+        low_sellers = [build_row(e) for e in sorted_asc]
+
+        context['best_sellers'] = best_sellers
+        context['low_sellers'] = low_sellers
+        context['total_quantity'] = total_quantity
+        context['total_revenue'] = total_revenue
+        context['total_products'] = total_products
+        context['average_revenue'] = average_revenue
+        context['current_month_value'] = current_month_value
         return context
 
 @login_required
@@ -7853,9 +8352,9 @@ def disable_2fa(request):
             return redirect('profile')
         
         try:
-            settings = User2FASettings.objects.get(user=request.user)
-            settings.is_enabled = False
-            settings.save()
+            twofa_settings = User2FASettings.objects.get(user=request.user)
+            twofa_settings.is_enabled = False
+            twofa_settings.save()
             messages.success(request, "✅ Two-Factor Authentication has been disabled.")
         except User2FASettings.DoesNotExist:
             messages.info(request, "2FA was not enabled.")
@@ -7979,6 +8478,28 @@ Real's Food Products Team''',
         return redirect('profile')
     
     return render(request, 'direct_password_reset.html')
+
+@login_required
+@require_http_methods(["POST"])
+def verify_current_password(request):
+    MAX_ATTEMPTS = 5
+    SESSION_KEY = 'pw_verify_attempts'
+
+    attempts = request.session.get(SESSION_KEY, 0)
+
+    if attempts >= MAX_ATTEMPTS:
+        return JsonResponse({'valid': False, 'locked': True, 'attempts': attempts})
+
+    password = request.POST.get('password', '')
+    if request.user.check_password(password):
+        request.session[SESSION_KEY] = 0
+        return JsonResponse({'valid': True, 'locked': False, 'attempts': 0})
+
+    attempts += 1
+    request.session[SESSION_KEY] = attempts
+    remaining = MAX_ATTEMPTS - attempts
+    return JsonResponse({'valid': False, 'locked': attempts >= MAX_ATTEMPTS, 'attempts': attempts, 'remaining': remaining})
+
 
 def privacy_policy(request):
     return render(request, 'privacy_policy.html')

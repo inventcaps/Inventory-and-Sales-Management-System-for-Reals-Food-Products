@@ -699,42 +699,49 @@
 <div class="modal fade" id="exportSalesModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
-      <form method="get" action="{% url 'export_sales' %}">
-        <div class="modal-header">
-          <h5 class="modal-title">Export Sales Data</h5>
-          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      <div class="modal-header">
+        <h5 class="modal-title">Export Sales Data</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label>Export Format</label>
+          <select id="salesExportFormat" class="form-control">
+            <option value="csv">CSV</option>
+            <option value="pdf">PDF</option>
+          </select>
         </div>
-        <div class="modal-body">
-          <label>Filter Type</label>
-          <select name="filter" class="form-control mb-3" id="salesFilterType" required>
-            <option value="date">By Date</option>
-            <option value="month">By Month</option>
-            <option value="year">By Year</option>
-            <option value="range">Custom Range</option>
-          </select> 
-          <div id="salesStartInput">
-            <label>Start</label>
-            <input type="date" name="start" class="form-control mb-3" required>
-          </div>
-          <div id="salesEndInput" style="display:none;">
-            <label>End</label>
-            <input type="date" name="end" class="form-control mb-3">
-          </div>
+        <label>Filter Type</label>
+        <select class="form-control mb-3" id="salesFilterType" required>
+          <option value="date">By Date</option>
+          <option value="month">By Month</option>
+          <option value="year">By Year</option>
+          <option value="range">Custom Range</option>
+        </select>
+        <div id="salesStartInput">
+          <label>Start</label>
+          <input type="date" id="salesStartValue" class="form-control mb-3" required>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Export CSV</button>
+        <div id="salesEndInput" style="display:none;">
+          <label>End</label>
+          <input type="date" id="salesEndValue" class="form-control mb-3">
         </div>
-      </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="exportSalesReport()" id="exportSalesButton">
+          <i class="la la-download mr-1"></i> Export CSV
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 document.getElementById("salesFilterType").addEventListener("change", function() {
-  const start = document.querySelector("#salesStartInput input");
+  const start = document.getElementById("salesStartValue");
   const endDiv = document.getElementById("salesEndInput");
-  const end = document.querySelector("#salesEndInput input");
+  const end = document.getElementById("salesEndValue");
 
   if (this.value === "date") {
     start.type = "date"; endDiv.style.display = "none";
@@ -749,48 +756,80 @@ document.getElementById("salesFilterType").addEventListener("change", function()
     start.type = "month"; end.type = "month"; endDiv.style.display = "block";
   }
 });
+
+function exportSalesReport() {
+  const params = new URLSearchParams();
+  const format = document.getElementById('salesExportFormat').value;
+  const filterType = document.getElementById('salesFilterType').value;
+  const startVal = document.getElementById('salesStartValue').value;
+  const endVal = document.getElementById('salesEndValue').value;
+
+  params.set('format', format);
+  params.set('filter', filterType);
+  if (startVal) params.set('start', startVal);
+  if (endVal) params.set('end', endVal);
+
+  window.location.href = "{% url 'export_sales' %}?" + params.toString();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const salesFormatSel = document.getElementById('salesExportFormat');
+  const salesExportBtn = document.getElementById('exportSalesButton');
+  if (salesFormatSel && salesExportBtn) {
+    salesFormatSel.addEventListener('change', function() {
+      salesExportBtn.innerHTML = '<i class="la la-download mr-1"></i> Export ' + this.value.toUpperCase();
+    });
+  }
+});
 </script>
 
 <!-- Export Expenses Modal -->
 <div class="modal fade" id="exportExpensesModal" tabindex="-1" role="dialog" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered" role="document">
     <div class="modal-content">
-      <form method="get" action="{% url 'export_expenses' %}">
-        <div class="modal-header">
-          <h5 class="modal-title">Export Expenses Data</h5>
-          <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      <div class="modal-header">
+        <h5 class="modal-title">Export Expenses Data</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group mb-3">
+          <label>Export Format</label>
+          <select id="expensesExportFormat" class="form-control">
+            <option value="csv">CSV</option>
+            <option value="pdf">PDF</option>
+          </select>
         </div>
-        <div class="modal-body">
-          <label>Filter Type</label>
-          <select name="filter" class="form-control mb-3" id="expensesFilterType" required>
-            <option value="date">By Date</option>
-            <option value="month">By Month</option>
-            <option value="year">By Year</option>
-            <option value="range">Custom Range</option>
-          </select> 
-          <div id="expensesStartInput">
-            <label>Start</label>
-            <input type="date" name="start" class="form-control mb-3" required>
-          </div>
-          <div id="expensesEndInput" style="display:none;">
-            <label>End</label>
-            <input type="date" name="end" class="form-control mb-3">
-          </div>
+        <label>Filter Type</label>
+        <select class="form-control mb-3" id="expensesFilterType" required>
+          <option value="date">By Date</option>
+          <option value="month">By Month</option>
+          <option value="year">By Year</option>
+          <option value="range">Custom Range</option>
+        </select>
+        <div id="expensesStartInput">
+          <label>Start</label>
+          <input type="date" id="expensesStartValue" class="form-control mb-3" required>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Export CSV</button>
+        <div id="expensesEndInput" style="display:none;">
+          <label>End</label>
+          <input type="date" id="expensesEndValue" class="form-control mb-3">
         </div>
-      </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="exportExpensesReport()" id="exportExpensesButton">
+          <i class="la la-download mr-1"></i> Export CSV
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 document.getElementById("expensesFilterType").addEventListener("change", function() {
-  const start = document.querySelector("#expensesStartInput input");
+  const start = document.getElementById("expensesStartValue");
   const endDiv = document.getElementById("expensesEndInput");
-  const end = document.querySelector("#expensesEndInput input");
+  const end = document.getElementById("expensesEndValue");
 
   if (this.value === "date") {
     start.type = "date"; endDiv.style.display = "none";
@@ -803,6 +842,31 @@ document.getElementById("expensesFilterType").addEventListener("change", functio
   } 
   else if (this.value === "range") {
     start.type = "month"; end.type = "month"; endDiv.style.display = "block";
+  }
+});
+
+function exportExpensesReport() {
+  const params = new URLSearchParams();
+  const format = document.getElementById('expensesExportFormat').value;
+  const filterType = document.getElementById('expensesFilterType').value;
+  const startVal = document.getElementById('expensesStartValue').value;
+  const endVal = document.getElementById('expensesEndValue').value;
+
+  params.set('format', format);
+  params.set('filter', filterType);
+  if (startVal) params.set('start', startVal);
+  if (endVal) params.set('end', endVal);
+
+  window.location.href = "{% url 'export_expenses' %}?" + params.toString();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  const expFormatSel = document.getElementById('expensesExportFormat');
+  const expExportBtn = document.getElementById('exportExpensesButton');
+  if (expFormatSel && expExportBtn) {
+    expFormatSel.addEventListener('change', function() {
+      expExportBtn.innerHTML = '<i class="la la-download mr-1"></i> Export ' + this.value.toUpperCase();
+    });
   }
 });
 </script>
@@ -1493,17 +1557,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 #salesExpensesTabs .nav-link:hover,
 #salesExpensesTabs .nav-link:focus {
-  color: #007bff;
-  border-color: #c9d8ff;
-  background: #eef3ff;
+  color: var(--primary-500);
+  border-color: var(--border);
+  background: rgba(119, 178, 84, 0.08);
   text-decoration: none;
 }
 
 #salesExpensesTabs .nav-link.active {
-  background: #007bff;
+  background: var(--primary-500);
   color: #fff;
-  border-color: #007bff;
-  box-shadow: 0 4px 14px rgba(0, 123, 255, 0.25);
+  border-color: var(--primary-600);
+  box-shadow: 0 4px 14px rgba(119, 178, 84, 0.28);
 }
 
 .tab-pane {

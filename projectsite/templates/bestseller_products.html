@@ -42,7 +42,7 @@
                             <div class="card" style="background: white; border: 1px solid #e5e7eb;">
                                 <div class="card-body">
                                     <p class="text-muted small mb-2">Total Units Sold</p>
-                                    <h3 class="mb-2" style="color: #16a34a; font-weight: 600;">{{ total_quantity|default:0|floatformat:0 }}</h3>
+                                    <h3 class="mb-2 metric-green" style="font-weight: 600;">{{ total_quantity|default:0|floatformat:0 }}</h3>
                                     <small class="text-muted">items moved</small>
                                 </div>
                             </div>
@@ -51,7 +51,7 @@
                             <div class="card" style="background: white; border: 1px solid #e5e7eb;">
                                 <div class="card-body">
                                     <p class="text-muted small mb-2">Total Revenue</p>
-                                    <h3 class="mb-2" style="color: #dc2626; font-weight: 600;">₱{{ total_revenue|default:0|floatformat:0 }}</h3>
+                                    <h3 class="mb-2 metric-red" style="font-weight: 600;">₱{{ total_revenue|default:0|floatformat:0 }}</h3>
                                     <small class="text-muted">total earnings</small>
                                 </div>
                             </div>
@@ -60,7 +60,7 @@
                             <div class="card" style="background: white; border: 1px solid #e5e7eb;">
                                 <div class="card-body">
                                     <p class="text-muted small mb-2">Product Variety</p>
-                                    <h3 class="mb-2" style="color: #0284c7; font-weight: 600;">{{ total_products|default:0 }}</h3>
+                                    <h3 class="mb-2 metric-blue" style="font-weight: 600;">{{ total_products|default:0 }}</h3>
                                     <small class="text-muted">different products</small>
                                 </div>
                             </div>
@@ -69,7 +69,7 @@
                             <div class="card" style="background: white; border: 1px solid #e5e7eb;">
                                 <div class="card-body">
                                     <p class="text-muted small mb-2">Avg Revenue/Product</p>
-                                    <h3 class="mb-2" style="color: #d97706; font-weight: 600;">₱{{ average_revenue|default:0|floatformat:0 }}</h3>
+                                    <h3 class="mb-2 metric-amber" style="font-weight: 600;">₱{{ average_revenue|default:0|floatformat:0 }}</h3>
                                     <small class="text-muted">per item type</small>
                                 </div>
                             </div>
@@ -83,16 +83,16 @@
                         <div class="col-md-6">
                             <div class="card" style="background: white; border: none; border-radius: 12px;">
                                 <div class="card-body">
-                                    <h6 class="mb-2" style="color: #065f46; font-weight: 600;">Top Selling Products</h6>
-                                    <p class="text-muted small mb-4" style="color: #047857;">Products with highest sales quantity</p>
+                                    <h6 class="mb-2" style="color: var(--primary-700); font-weight: 600;">Top Selling Products</h6>
+                                    <p class="text-muted small mb-4" style="color: var(--primary-600);">Products with highest sales quantity</p>
                                     
                                     <div class="table-responsive">
                                         <table class="table table-borderless" style="margin-bottom: 0;">
                                             <thead>
                                                 <tr style="border-bottom: 2px solid rgba(255,255,255,0.3);">
-                                                    <th style="color: #065f46; font-weight: 600; padding: 12px 8px;">Rank</th>
-                                                    <th style="color: #065f46; font-weight: 600; padding: 12px 8px;">Product</th>
-                                                    <th style="color: #065f46; font-weight: 600; padding: 12px 8px; text-align: right;">Total Sold</th>
+                                                    <th style="color: var(--primary-700); font-weight: 600; padding: 12px 8px;">Rank</th>
+                                                    <th style="color: var(--primary-700); font-weight: 600; padding: 12px 8px;">Product</th>
+                                                    <th style="color: var(--primary-700); font-weight: 600; padding: 12px 8px; text-align: right;">Total Sold</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -100,23 +100,23 @@
                                                     {% for product in best_sellers %}
                                                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
                                                         <td style="padding: 12px 8px;">
-                                                            <span class="badge" style="background-color: #10b981; color: white; padding: 6px 10px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">#{{ forloop.counter }}</span>
+                                                            <span class="badge" style="background-color: var(--primary-500); color: white; padding: 6px 10px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">#{{ forloop.counter }}</span>
                                                         </td>
                                                         <td style="padding: 12px 8px;">
-                                                            <strong style="color: #065f46;">{{ product.product__product_type__name }}</strong><br>
-                                                            <small style="color: #047857;">
+                                                            <strong style="color: var(--primary-700);">{{ product.product__product_type__name }}</strong><br>
+                                                            <small style="color: var(--primary-600);">
                                                                 {{ product.product__variant__name }} 
                                                                 ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
                                                             </small>
                                                         </td>
                                                         <td style="padding: 12px 8px; text-align: right;">
-                                                            <span class="badge" style="background-color: #3b82f6; color: white; padding: 6px 12px;">{{ product.total_quantity|floatformat:0 }} units</span>
+                                                            <span class="badge" style="background-color: var(--c-blue); color: white; padding: 6px 12px;">{{ product.total_quantity|floatformat:0 }} units</span>
                                                         </td>
                                                     </tr>
                                                     {% endfor %}
                                                 {% else %}
                                                     <tr>
-                                                        <td colspan="3" class="text-center py-4" style="color: #047857;">No sales data available yet</td>
+                                                        <td colspan="3" class="text-center py-4" style="color: var(--primary-600);">No sales data available yet</td>
                                                     </tr>
                                                 {% endif %}
                                             </tbody>
@@ -130,16 +130,16 @@
                         <div class="col-md-6">
                             <div class="card" style="background: white; border: none; border-radius: 12px;">
                                 <div class="card-body">
-                                    <h6 class="mb-2" style="color: #7c2d12; font-weight: 600;">Low Selling Products</h6>
-                                    <p class="text-muted small mb-4" style="color: #92400e;">Products with lowest sales quantity</p>
+                                    <h6 class="mb-2" style="color: var(--c-orange); font-weight: 600;">Low Selling Products</h6>
+                                    <p class="text-muted small mb-4" style="color: var(--c-amber);">Products with lowest sales quantity</p>
                                     
                                     <div class="table-responsive">
                                         <table class="table table-borderless" style="margin-bottom: 0;">
                                             <thead>
                                                 <tr style="border-bottom: 2px solid rgba(255,255,255,0.3);">
-                                                    <th style="color: #7c2d12; font-weight: 600; padding: 12px 8px;">Rank</th>
-                                                    <th style="color: #7c2d12; font-weight: 600; padding: 12px 8px;">Product</th>
-                                                    <th style="color: #7c2d12; font-weight: 600; padding: 12px 8px; text-align: right;">Total Sold</th>
+                                                    <th style="color: var(--c-orange); font-weight: 600; padding: 12px 8px;">Rank</th>
+                                                    <th style="color: var(--c-orange); font-weight: 600; padding: 12px 8px;">Product</th>
+                                                    <th style="color: var(--c-orange); font-weight: 600; padding: 12px 8px; text-align: right;">Total Sold</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -147,23 +147,23 @@
                                                     {% for product in low_sellers %}
                                                     <tr style="border-bottom: 1px solid rgba(255,255,255,0.2);">
                                                         <td style="padding: 12px 8px;">
-                                                            <span class="badge" style="background-color: #f97316; color: white; padding: 6px 10px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">#{{ forloop.counter }}</span>
+                                                            <span class="badge" style="background-color: var(--c-orange); color: white; padding: 6px 10px; border-radius: 50%; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600;">#{{ forloop.counter }}</span>
                                                         </td>
                                                         <td style="padding: 12px 8px;">
-                                                            <strong style="color: #7c2d12;">{{ product.product__product_type__name }}</strong><br>
-                                                            <small style="color: #92400e;">
+                                                            <strong style="color: var(--c-orange);">{{ product.product__product_type__name }}</strong><br>
+                                                            <small style="color: var(--c-amber);">
                                                                 {{ product.product__variant__name }} 
                                                                 ({{ product.product__size__size_label }} {{ product.product__size_unit__unit_name }})
                                                             </small>
                                                         </td>
                                                         <td style="padding: 12px 8px; text-align: right;">
-                                                            <span class="badge" style="background-color: #6b7280; color: white; padding: 6px 12px;">{{ product.total_quantity|floatformat:0 }} units</span>
+                                                            <span class="badge" style="background-color: var(--c-gray); color: white; padding: 6px 12px;">{{ product.total_quantity|floatformat:0 }} units</span>
                                                         </td>
                                                     </tr>
                                                     {% endfor %}
                                                 {% else %}
                                                     <tr>
-                                                        <td colspan="3" class="text-center py-4" style="color: #92400e;">No sales data available yet</td>
+                                                        <td colspan="3" class="text-center py-4" style="color: var(--c-amber);">No sales data available yet</td>
                                                     </tr>
                                                 {% endif %}
                                             </tbody>

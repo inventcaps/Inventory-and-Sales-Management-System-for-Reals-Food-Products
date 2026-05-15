@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (!monthFilter.value && params.get('show_all')) {
-        params.set('show_all', '1');
+        params.set('show_all', 'true');
       }
 
       url += params.toString();
@@ -52,7 +52,7 @@ function toggleShowAll() {
   if (params.get('show_all')) {
     params.delete('show_all');
   } else {
-    params.set('show_all', '1');
+    params.set('show_all', 'true');
     params.delete('month');
   }
   window.location.href = window.location.pathname + '?' + params.toString();

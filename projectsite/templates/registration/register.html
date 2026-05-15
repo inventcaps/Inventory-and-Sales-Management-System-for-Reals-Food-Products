@@ -5,34 +5,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Register - Real's Food Products</title>
+  <link rel="icon" type="image/png" href="{% static 'img/Reals_logo.png' %}">
 
   <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/login.css' %}">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
   <style>
-    .form-wrapper {
-      max-height: 90vh;
-      overflow-y: auto;
-      padding-right: 10px;
+    /* Custom scrollbar on the right panel */
+    .login-right::-webkit-scrollbar {
+      width: 6px;
     }
-    
-    /* Custom scrollbar styling */
-    .form-wrapper::-webkit-scrollbar {
-      width: 8px;
+    .login-right::-webkit-scrollbar-track {
+      background: transparent;
     }
-    
-    .form-wrapper::-webkit-scrollbar-track {
-      background: #f1f1f1;
+    .login-right::-webkit-scrollbar-thumb {
+      background: #ccc;
       border-radius: 10px;
     }
-    
-    .form-wrapper::-webkit-scrollbar-thumb {
-      background: #888;
-      border-radius: 10px;
-    }
-    
-    .form-wrapper::-webkit-scrollbar-thumb:hover {
-      background: #555;
+    .login-right::-webkit-scrollbar-thumb:hover {
+      background: #aaa;
     }
     /* Privacy Policy Checkbox Styling */
     #accept_privacy {
@@ -48,8 +40,12 @@
   <div class="login-container">
     <!-- Left Section -->
     <div class="login-left">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="orb orb-4"></div>
       <div class="brand">
-        <img src="{% static 'img/reals.jpg' %}" alt="Logo" class="brand-logo">
+        <img src="{% static 'img/Reals_logo.png' %}" alt="Logo" class="brand-logo">
         <h1>WELCOME TO REALS!</h1>
         <p>Create your account here!</p>
       </div>
@@ -94,7 +90,7 @@
       <div style="margin-bottom: 15px;">
         <label style="display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 0.9rem; color: #333;">
           <input type="checkbox" name="accept_privacy" id="accept_privacy" style="margin-top:2px;">
-          <span>I have read and agree to the <a href="#" onclick="openTermsModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Terms of Use</a> and <a href="#" onclick="openPrivacyModal(event)" style="color: #667eea; text-decoration: underline; font-weight: 600;">Privacy Policy</a></span>
+          <span>I have read and agree to the <a href="#" onclick="openTermsModal(event)" style="color: #5a855f; text-decoration: underline; font-weight: 600;">Terms of Use</a> and <a href="#" onclick="openPrivacyModal(event)" style="color: #5a855f; text-decoration: underline; font-weight: 600;">Privacy Policy</a></span>
         </label>
         <small id="privacyError" class="form-text" style="display: none; color: #dc3545; margin-top: 5px; margin-left: 28px; font-size: 0.875rem; font-weight: 600;">
           You must accept the Privacy Policy to register.
@@ -111,7 +107,7 @@
             </div>
           {% endif %}
 
-          <button type="submit">Register</button>
+          <button type="submit" class="login-btn">Register</button>
         </form>
         <p class="signup-text">Already have an account? <a href="{% url 'login' %}">Login</a></p>
       </div>
@@ -160,8 +156,6 @@
   <script src="{% static 'js/core/jquery.3.2.1.min.js' %}"></script>
   <script src="{% static 'js/core/bootstrap.min.js' %}"></script>
 
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
   <script>
     function openTermsModal(event) {
@@ -310,6 +304,24 @@
     });
 
     acceptPrivacyCheckbox.addEventListener('change', hidePrivacyError);
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const btn = document.querySelector('.login-btn');
+      if (btn) {
+        btn.addEventListener('click', function (e) {
+          const ripple = document.createElement('span');
+          ripple.classList.add('ripple');
+          const rect = btn.getBoundingClientRect();
+          const size = Math.max(rect.width, rect.height);
+          ripple.style.width  = size + 'px';
+          ripple.style.height = size + 'px';
+          ripple.style.left   = (e.clientX - rect.left - size / 2) + 'px';
+          ripple.style.top    = (e.clientY - rect.top  - size / 2) + 'px';
+          btn.appendChild(ripple);
+          setTimeout(() => ripple.remove(), 650);
+        });
+      }
+    });
   </script>
 </body>
 </html>
