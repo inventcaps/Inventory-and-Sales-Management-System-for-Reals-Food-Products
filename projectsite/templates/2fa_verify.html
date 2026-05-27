@@ -10,46 +10,98 @@
   <link rel="stylesheet" href="{% static 'css/bootstrap.min.css' %}">
   <link rel="stylesheet" href="{% static 'css/login.css' %}">
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
   <style>
     .otp-input {
       font-size: 24px;
       text-align: center;
-      letter-spacing: 10px;
-      font-weight: bold;
+      letter-spacing: 12px;
+      font-weight: 700;
       padding: 15px;
       margin: 20px 0;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      width: 100%;
+      outline: none;
+      transition: border-color 0.2s;
+      font-family: 'Nunito', sans-serif;
+    }
+    .otp-input:focus {
+      border-color: #4e7452;
+      box-shadow: 0 0 0 3px rgba(78,116,82,0.15);
     }
     .info-box {
-      background: #e3f2fd;
-      border-left: 4px solid #2196f3;
-      padding: 15px;
+      background: #f0f7f0;
+      border-left: 4px solid #4e7452;
+      padding: 14px 16px;
       margin: 20px 0;
-      border-radius: 4px;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #444;
     }
     .info-box i {
-      color: #2196f3;
-      margin-right: 10px;
+      color: #4e7452;
+      margin-right: 8px;
     }
     .resend-link {
-      color: #2196f3;
+      color: #4e7452;
       cursor: pointer;
       text-decoration: underline;
+      font-weight: 600;
     }
     .resend-link:hover {
-      color: #1976d2;
+      color: #3a5c3e;
+    }
+    .cancel-btn {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      background: transparent;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      color: #6b7280;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Nunito', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      text-align: center;
+      text-decoration: none;
+    }
+    .cancel-btn:hover {
+      background: #f3f4f6;
+      color: #374151;
+      text-decoration: none;
+    }
+    .expire-text {
+      color: #9ca3af;
+      font-size: 12px;
+      margin-top: 10px;
+      text-align: center;
+    }
+    .resend-text {
+      color: #6b7280;
+      font-size: 14px;
+      text-align: center;
+      margin-top: 16px;
     }
   </style>
 </head>
 <body>
   <div class="login-container">
-    <!-- Left Section -->
+
+    <!-- Left Section — matches login/register exactly -->
     <div class="login-left">
+      <div class="orb orb-1"></div>
+      <div class="orb orb-2"></div>
+      <div class="orb orb-3"></div>
+      <div class="orb orb-4"></div>
       <div class="brand">
-        <h1>🔐 SECURE LOGIN</h1>
+        <img src="{% static 'img/Reals_logo.png' %}" alt="Logo" class="brand-logo">
+        <h1>🔐SECURE LOGIN</h1>
         <p>Two-Factor Authentication</p>
-      </div>
-      <div class="footer-left">
-        <p>&copy; Reals Food Products</p>
       </div>
     </div>
 
@@ -57,50 +109,72 @@
     <div class="login-right">
       <div class="form-wrapper">
         <h2>ENTER OTP CODE</h2>
-                
+
         <div class="info-box">
-          <i class="bi bi-envelope-check"></i>
+          <i class="bi bi-envelope-check-fill"></i>
           <strong>Check your email!</strong><br>
           We've sent a 6-digit verification code to <strong>{{ user_email }}</strong>
         </div>
-        
+
         <form method="post" action="{% url 'login' %}">
           {% csrf_token %}
-          <input 
-            type="text" 
-            name="otp_code" 
-            class="form-control otp-input" 
-            placeholder="000000" 
-            maxlength="6" 
-            pattern="[0-9]{6}" 
-            required 
+          <input
+            type="text"
+            name="otp_code"
+            class="otp-input"
+            placeholder="0  0  0  0  0  0"
+            maxlength="6"
+            pattern="[0-9]{6}"
+            inputmode="numeric"
+            required
             autofocus
           >
-          
-          <button type="submit">Verify & Login</button>
+
+          <button type="submit" class="login-btn">
+            <i class="bi bi-shield-check me-1"></i> Verify & Login
+          </button>
         </form>
-        
-        <div style="text-align: center; margin-top: 20px;">
-          <p style="color: #666; font-size: 14px;">
-            Didn't receive the code? <a href="{% url 'login' %}" class="resend-link">Try again</a>
-          </p>
-          <p style="color: #999; font-size: 12px; margin-top: 10px;">
-            ⏱️ Code expires in 5 minutes
-          </p>
-          <div style="margin-top: 20px;">
-            <a href="{% url 'login' %}" class="btn btn-secondary" style="background-color: #6c757d; border-color: #6c757d; color: white; padding: 10px 30px; text-decoration: none; border-radius: 4px; display: inline-block;">Cancel</a>
-          </div>
-        </div>
+
+        <p class="resend-text">
+          Didn't receive the code? <a href="{% url 'login' %}" class="resend-link">Try again</a>
+        </p>
+        <p class="expire-text">
+          <i class="bi bi-clock"></i> Code expires in 5 minutes
+        </p>
+
+        <a href="{% url 'login' %}" class="cancel-btn">Cancel</a>
+
       </div>
     </div>
+
   </div>
+
   <script src="{% static 'js/core/jquery.3.2.1.min.js' %}"></script>
   <script src="{% static 'js/core/bootstrap.min.js' %}"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
-  
+
   <script>
-    document.querySelector('.otp-input').addEventListener('input', function(e) {
+    // Only allow numeric input
+    document.querySelector('.otp-input').addEventListener('input', function () {
       this.value = this.value.replace(/[^0-9]/g, '');
+    });
+
+    // Ripple effect on verify button (same as login)
+    document.addEventListener('DOMContentLoaded', function () {
+      const btn = document.querySelector('.login-btn');
+      if (btn) {
+        btn.addEventListener('click', function (e) {
+          const ripple = document.createElement('span');
+          ripple.classList.add('ripple');
+          const rect = btn.getBoundingClientRect();
+          const size = Math.max(rect.width, rect.height);
+          ripple.style.width  = size + 'px';
+          ripple.style.height = size + 'px';
+          ripple.style.left   = (e.clientX - rect.left - size / 2) + 'px';
+          ripple.style.top    = (e.clientY - rect.top  - size / 2) + 'px';
+          btn.appendChild(ripple);
+          setTimeout(() => ripple.remove(), 650);
+        });
+      }
     });
   </script>
 </body>
