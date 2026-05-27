@@ -1,9 +1,13 @@
+import logging
+
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models.signals import post_save
 from django.contrib.auth.models import User
-from .models import UserActivity, HistoryLog, HistoryLogTypes, AuthUser
+from .models import UserActivity, HistoryLog, HistoryLogTypes
+
+logger = logging.getLogger(__name__)
 
 @receiver(user_logged_in)
 def user_logged_in_handler(sender, request, user, **kwargs):
@@ -20,21 +24,17 @@ def user_logged_out_handler(sender, request, user, **kwargs):
 
 @receiver(post_save, sender=User)
 def user_registered_handler(sender, instance, created, **kwargs):
-    """Track new user sign-ups in the history log"""
     if created:
         try:
-            # Get the first superuser as the creator for the log type if it doesn't exist
             first_admin = User.objects.filter(is_superuser=True).first()
             if not first_admin:
                 first_admin = instance
-            
-            # Get or create "User Sign Up" log type
+
             log_type, _ = HistoryLogTypes.objects.get_or_create(
                 category="User Sign Up",
                 defaults={'created_by_admin_id': first_admin.id}
             )
-            
-            # Create history log entry for the new user
+
             HistoryLog.objects.create(
                 admin_id=instance.id,
                 log_type_id=log_type.id,
@@ -52,9 +52,8 @@ def user_registered_handler(sender, instance, created, **kwargs):
                 },
                 is_archived=False
             )
-            print(f"✅ History log created for user: {instance.username}")
+            logger.info("History log created for user: %s", instance.username)
         except Exception as e:
-            # Log the error for debugging
-            print(f"❌ Error creating history log for user {instance.username}: {str(e)}")
+            logger.error("Error creating history log for user %s: %s", instance.username, str(e))
             import traceback
             traceback.print_exc()
