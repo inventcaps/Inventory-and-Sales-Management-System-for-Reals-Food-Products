@@ -1,26 +1,30 @@
 # Django Framework
-Django==5.2
+Django==5.2.14
 
 # Database
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.12
 
 # ASGI Server and WebSocket Support
-channels==4.1.0
-daphne==4.1.2
+channels==4.3.2
+daphne==4.2.1
 
 # Static Files Management
-whitenoise==6.8.2
+whitenoise==6.12.0
 
 # Form Widgets
-django-widget-tweaks==1.5.0
+django-widget-tweaks==1.5.1
 
 # Utilities
 python-decouple==3.8
-dj-database-url==2.1.0
-Pillow==10.4.0
-# Email - HTTP API (bypasses SMTP blocks)
-requests==2.31.0
-sendgrid==6.11.0
+Pillow==12.2.0
 
-# ASGI/WSGI Server for Production
-gunicorn==23.0.0
+# Email - HTTP API (bypasses SMTP blocks)
+requests==2.34.2
+sendgrid==6.12.5
+
+# Task Scheduling (for backup_service.py)
+schedule==1.2.2
+
+# Windows Service (optional - for backup_service.py on Windows)
+# pywin32==308
+
