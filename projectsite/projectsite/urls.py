@@ -33,9 +33,17 @@ urlpatterns = [
     re_path(r'^logout/$', auth_views.LogoutView.as_view(), name='logout'),
 
     path('products/', a.ProductsList.as_view(), name='products'),
+    path('products/', a.ProductsList.as_view(), name='product-list'),
     path('products/add', a.ProductCreateView.as_view(), name='product-add'),
     path('products/<pk>', a.ProductsUpdateView.as_view(), name='product-edit'),
     path('products/<pk>/delete', a.ProductsDeleteView.as_view(), name='product-delete'),
+    path('products/<int:pk>/archive/', a.ProductArchiveView.as_view(), name='product-archive'),
+    path('products/archived/', a.ArchivedProductsListView.as_view(), name='products-archived-list'),
+    path('products/<int:pk>/unarchive/', a.ProductUnarchiveView.as_view(), name='product-unarchive'),
+    path('products/archive-old/', a.ProductArchiveOldView.as_view(), name='products-archive-old'),
+    path('products/bulk-delete/', a.product_bulk_delete, name='product-bulk-delete'),
+    path('products/bulk-archive/', a.product_bulk_archive, name='product-bulk-archive'),
+    path('products/bulk-restore/', a.product_bulk_restore, name='products-bulk-restore'),
     path("products/scan-phone/", a.product_scan_phone, name="product-scan-phone"),
     path("api/check-barcode/", a.check_barcode_availability, name="check-barcode"),
     path("api/check-product-batches/", a.check_product_batches, name="check-product-batches"),
@@ -96,6 +104,7 @@ urlpatterns = [
     path('expenses/bulk-delete-archived/', a.ExpenseBulkDeleteView.as_view(), name='expenses-bulk-delete-archived'),
 
     path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch'),
+    path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch-list'),
     path('prodbatch/add', a.BulkProductBatchCreateView.as_view(), name='product-batch-add'),
     path('prodbatch/<pk>', a.ProductBatchUpdateView.as_view(), name='product-batch-edit'),
     path('prodbatch/<pk>/delete', a.ProductBatchDeleteView.as_view(), name='product-batch-delete'),
@@ -106,9 +115,9 @@ urlpatterns = [
     path('prodbatch/bulk-delete/', a.product_batch_bulk_delete, name='product-batch-bulk-delete'),
     path('prodbatch/bulk-archive/', a.product_batch_bulk_archive, name='product-batch-bulk-archive'),
     path('prodbatch/bulk-restore/', a.product_batch_bulk_restore, name='product-batch-bulk-restore'),
-    path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch-list'),
 
     path('product-inventory/', a.ProductInventoryList.as_view(), name='product-inventory'),
+    path('product-inventory/export/', a.export_product_inventory, name='product_inventory_export'),
     path('best-seller-products/', a.BestSellerProductsView.as_view(), name='best-seller-products'),
     path('best-seller-products/export/', a.export_bestseller_report, name='best-seller-products-export'),
 
@@ -232,9 +241,7 @@ urlpatterns = [
     path('stock-changes/archive-old/', a.StockChangesArchiveOldView.as_view(), name='stock-changes-archive-old'),
     path('stock-changes/bulk-archive/', a.stock_changes_bulk_archive, name='stock-changes-bulk-archive'),
 
-    path("revenue-x-recent_sales", a.HomePageView.as_view(), name="home"),
-    path("product-inventory/", a.ProductInventoryList.as_view(), name="product_inventory_list"),
-    path("product-inventory/export/", a.export_product_inventory, name="product_inventory_export"),    
+    
 
     path('profile/', a.profile_view, name='profile'),
     path('profile/edit/', a.edit_profile, name='edit_profile'),
@@ -249,14 +256,7 @@ urlpatterns = [
     path('user/<int:user_id>/reactivate/', a.reactivate_user, name='reactivate-user'),
     path('user/<int:user_id>/delete/', a.delete_user, name='delete-user'),
 
-    path('products/', a.ProductsList.as_view(), name='product-list'),
-    path('products/<int:pk>/archive/', a.ProductArchiveView.as_view(), name='product-archive'),
-    path('products/archived/', a.ArchivedProductsListView.as_view(), name='products-archived-list'),
-    path('products/<int:pk>/unarchive/', a.ProductUnarchiveView.as_view(), name='product-unarchive'),
-    path('products/archive-old/', a.ProductArchiveOldView.as_view(), name='products-archive-old'),
-    path('products/bulk-delete/', a.product_bulk_delete, name='product-bulk-delete'),
-    path('products/bulk-archive/', a.product_bulk_archive, name='product-bulk-archive'),
-    path('products/bulk-restore/', a.product_bulk_restore, name='products-bulk-restore'),
+
     path("report/", a.monthly_report, name="monthly-report"),
     path("report/export/", a.monthly_report_export, name="monthly-report-export"),
 

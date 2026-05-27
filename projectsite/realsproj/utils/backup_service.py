@@ -1,9 +1,10 @@
 """
 Windows Service for Reals Inventory Backup System
-Install: python backup_service.py install
-Start: python backup_service.py start
-Stop: python backup_service.py stop
-Remove: python backup_service.py remove
+Run from projectsite/ directory:
+  python realsproj/utils/backup_service.py install
+  python realsproj/utils/backup_service.py start
+  python realsproj/utils/backup_service.py stop
+  python realsproj/utils/backup_service.py remove
 """
 
 import win32serviceutil
@@ -28,7 +29,7 @@ class RealsBackupService(win32serviceutil.ServiceFramework):
         self.hWaitStop = win32event.CreateEvent(None, 0, 0, None)
         socket.setdefaulttimeout(60)
         
-        self.project_path = Path(__file__).parent
+        self.project_path = Path(__file__).resolve().parent.parent.parent
         self.manage_py = self.project_path / 'manage.py'
 
     def SvcStop(self):
