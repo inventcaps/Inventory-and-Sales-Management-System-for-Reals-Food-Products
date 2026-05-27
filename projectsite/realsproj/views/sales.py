@@ -1338,7 +1338,7 @@ class ExpensesDeleteView(LoginRequiredMixin, DeleteView):
     def dispatch(self, request, *args, **kwargs):
         if not request.user.is_superuser:
             messages.error(request, "❌ You don't have permission to delete expense records.")
-            return redirect('expenses')
+            return redirect('salesexpenses')
         return super().dispatch(request, *args, **kwargs)
 
 

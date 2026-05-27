@@ -769,7 +769,7 @@ function exportSalesReport() {
   if (startVal) params.set('start', startVal);
   if (endVal) params.set('end', endVal);
 
-  window.location.href = "{% url 'export_sales' %}?" + params.toString();
+  window.location.href = "{% url 'export-sales' %}?" + params.toString();
 }
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -857,7 +857,7 @@ function exportExpensesReport() {
   if (startVal) params.set('start', startVal);
   if (endVal) params.set('end', endVal);
 
-  window.location.href = "{% url 'export_expenses' %}?" + params.toString();
+  window.location.href = "{% url 'export-expenses' %}?" + params.toString();
 }
 
 document.addEventListener('DOMContentLoaded', function() {

@@ -74,7 +74,7 @@ urlpatterns = [
     path('packaging-materials/archived/', a.ArchivedPackagingMaterialsListView.as_view(), name='packaging-archived-list'),
 
     path('historylog/', a.HistoryLogList.as_view(), name='historylog'),
-    path('history/', a.HistoryLogList.as_view(), name='history_log'),  
+    path('history/', a.HistoryLogList.as_view(), name='history-log'),  
 
     path('salesexpenses/', a.SalesExpensesList.as_view(), name='salesexpenses'),
     path('sales/add', a.SalesCreateView.as_view(), name='sales-add'),
@@ -117,7 +117,7 @@ urlpatterns = [
     path('prodbatch/bulk-restore/', a.product_batch_bulk_restore, name='product-batch-bulk-restore'),
 
     path('product-inventory/', a.ProductInventoryList.as_view(), name='product-inventory'),
-    path('product-inventory/export/', a.export_product_inventory, name='product_inventory_export'),
+    path('product-inventory/export/', a.export_product_inventory, name='product-inventory-export'),
     path('best-seller-products/', a.BestSellerProductsView.as_view(), name='best-seller-products'),
     path('best-seller-products/export/', a.export_bestseller_report, name='best-seller-products-export'),
 
@@ -136,13 +136,6 @@ urlpatterns = [
 
     path('rawmaterial-inventory/', a.RawMaterialInventoryList.as_view(), name='rawmaterial-inventory'),
     path('rawmaterial-inventory/export/', a.export_rawmaterial_inventory, name='rawmaterial-inventory-export'),
-
-    path('producttypes/add', a.ProductTypeAddView.as_view(), name='product-types-add'),
-    path('productvariants/add', a.ProductVariantCreateView.as_view(), name='product-variants-add'),
-    path('sizes/add', a.SizesCreateView.as_view(), name='sizes-add'),
-    path('sizeunits/add', a.SizeUnitsCreateView.as_view(), name='size-units-add'),
-    path('unirprices/add', a.UnitPricesCreateView.as_view(), name='unit-prices-add'),
-    path('srpprices/add', a.SrpPricesCreateView.as_view(), name='srp-prices-add'),
 
     # Product Attributes Management
     path('product-attributes/', a.ProductAttributesView.as_view(), name='product-attributes'),
@@ -228,9 +221,9 @@ urlpatterns = [
 
     path("api/revenue-change/", a.revenue_change_api, name="revenue-change"),
 
-    path("api/best-sellers/", a.best_sellers_api, name="best_sellers_api"),
+    path("api/best-sellers/", a.best_sellers_api, name="best-sellers-api"),
 
-    path('notifications/<int:pk>/read/', a.mark_notification_read, name='notification_read'),
+    path('notifications/<int:pk>/read/', a.mark_notification_read, name='notification-read'),
 
     path('stock-changes/', a.StockChangesList.as_view(), name='stock-changes'),
     path('stock-changes/export/', a.export_stock_changes, name='stock-changes-export'),
@@ -244,8 +237,8 @@ urlpatterns = [
     
 
     path('profile/', a.profile_view, name='profile'),
-    path('profile/edit/', a.edit_profile, name='edit_profile'),
-    path('profile/download-my-data/', a.download_my_data, name='download_my_data'),
+    path('profile/edit/', a.edit_profile, name='edit-profile'),
+    path('profile/download-my-data/', a.download_my_data, name='download-my-data'),
     # User Management
     path('user-management/', a.user_management, name='user-management'),
     path('user/create-admin/', a.create_admin_user, name='create-admin-user'),
@@ -260,8 +253,8 @@ urlpatterns = [
     path("report/", a.monthly_report, name="monthly-report"),
     path("report/export/", a.monthly_report_export, name="monthly-report-export"),
 
-    path('export-sales/', a.export_sales, name='export_sales'),
-    path('export-expenses/', a.export_expenses, name='export_expenses'),
+    path('export-sales/', a.export_sales, name='export-sales'),
+    path('export-expenses/', a.export_expenses, name='export-expenses'),
     
     path('financial-loss/', a.financial_loss, name='financial-loss'),
     path('financial-loss/export/', a.financial_loss_export, name='financial-loss-export'),
@@ -271,12 +264,12 @@ urlpatterns = [
 
     path('database-backup/', a.database_backup, name='database-backup'),
 
-    path('2fa-setup/', a.setup_2fa, name='2fa_setup'),
-    path('2fa-disable/', a.disable_2fa, name='2fa_disable'),
-    path('account/delete/', a.delete_account, name='delete_account'),
-    path('direct-password-reset/', a.direct_password_reset, name='direct_password_reset'),
-    path('profile/verify-password/', a.verify_current_password, name='verify_current_password'),
-    path('privacy-policy/', a.privacy_policy, name='privacy_policy'),
-    path('terms-of-use/', a.terms_of_use, name='terms_of_use'),
+    path('2fa-setup/', a.setup_2fa, name='2fa-setup'),
+    path('2fa-disable/', a.disable_2fa, name='2fa-disable'),
+    path('account/delete/', a.delete_account, name='delete-account'),
+    path('direct-password-reset/', a.direct_password_reset, name='direct-password-reset'),
+    path('profile/verify-password/', a.verify_current_password, name='verify-current-password'),
+    path('privacy-policy/', a.privacy_policy, name='privacy-policy'),
+    path('terms-of-use/', a.terms_of_use, name='terms-of-use'),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

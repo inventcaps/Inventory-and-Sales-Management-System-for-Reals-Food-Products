@@ -979,7 +979,7 @@ def edit_profile(request):
         if email and email != user.email:
             if User.objects.filter(email=email).exclude(id=user.id).exists():
                 messages.error(request, 'This email is already in use.')
-                return redirect('edit_profile')
+                return redirect('edit-profile')
             user.email = email
         if first_name:
             user.first_name = first_name
@@ -1162,12 +1162,12 @@ def delete_account(request):
         # Verify password
         if not request.user.check_password(password):
             messages.error(request, "❌ Incorrect password. Account deletion cancelled.")
-            return redirect('delete_account')
+            return redirect('delete-account')
         
         # Verify confirmation text
         if confirm_text != 'DELETE':
             messages.error(request, "❌ Please type 'DELETE' to confirm account deletion.")
-            return redirect('delete_account')
+            return redirect('delete-account')
 
         try:
             user = request.user
@@ -1198,7 +1198,7 @@ def delete_account(request):
             
         except Exception as e:
             messages.error(request, f"❌ An error occurred while deleting your account: {str(e)}")
-            return redirect('delete_account')
+            return redirect('delete-account')
     
     # GET request - show confirmation page
     return render(request, 'delete_account_confirm.html')

@@ -29,7 +29,7 @@
     <div class="login-right">
       <div class="form-wrapper">
         <h2>SIGN UP</h2>
-        <form method="post" action="{% url 'signup' %}">
+        <form method="post" action="{% url 'register' %}">
           {% csrf_token %}
           
           <input type="text" name="username" placeholder="Username" required>

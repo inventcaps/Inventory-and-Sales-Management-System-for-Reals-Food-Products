@@ -90,14 +90,3 @@ from realsproj.views.sales import *
 from realsproj.views.withdrawals import *
 from realsproj.views.users import *
 from realsproj.views.reports import *
-# Helper function for creating history logs
-# Withdrawal Order Views
-# Product Attributes Management View
-# Product Type CRUD
-# Product Variant CRUD
-# Size CRUD
-# Size Unit CRUD
-# Unit Price CRUD
-# SRP Price CRUD
-# Withdrawal Group Actions
-# NotificationsDeleteView removed - notifications should not be deleted
