@@ -134,7 +134,7 @@ def download_my_data(request):
             writer.writerow(['Backup Email', user.twofa_settings.backup_email or 'Not set'])
         else:
             writer.writerow(['2FA Enabled', 'No'])
-    except:
+    except Exception:
         writer.writerow(['2FA Enabled', 'No'])
     writer.writerow([])
     
@@ -147,7 +147,7 @@ def download_my_data(request):
             writer.writerow(['Currently Active', 'Yes' if user.useractivity.active else 'No'])
         else:
             writer.writerow(['Activity Tracking', 'Not available'])
-    except:
+    except Exception:
         writer.writerow(['Activity Tracking', 'Not available'])
     writer.writerow([])
     

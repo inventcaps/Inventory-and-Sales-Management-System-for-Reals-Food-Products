@@ -19,6 +19,7 @@ from django.views.decorators.http import require_http_methods
 import threading
 import os
 import json
+import hashlib
 from realsproj.forms import (
     ProductsForm,
     RawMaterialsForm,
@@ -173,8 +174,6 @@ def get_client_ip(request):
 # get_device_fingerprint
 def get_device_fingerprint(request):
     """Create unique device ID from browser characteristics"""
-    import hashlib
-    
     user_agent = request.META.get('HTTP_USER_AGENT', '')
     accept_language = request.META.get('HTTP_ACCEPT_LANGUAGE', '')
     accept_encoding = request.META.get('HTTP_ACCEPT_ENCODING', '')

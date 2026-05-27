@@ -65,7 +65,7 @@ class FallbackEmailBackend(BaseEmailBackend):
             try:
                 backend = MailgunBackend(fail_silently=True)
                 return backend.send_messages(email_messages)
-            except:
+            except Exception:
                 pass
         
         # Fallback to console backend

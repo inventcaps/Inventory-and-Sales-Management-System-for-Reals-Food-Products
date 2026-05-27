@@ -22,7 +22,7 @@ class Command(BaseCommand):
             system_user = User.objects.filter(is_superuser=True).first()
             if not system_user:
                 system_user = User.objects.first()
-        except:
+        except Exception:
             system_user = None
         
         if not system_user:

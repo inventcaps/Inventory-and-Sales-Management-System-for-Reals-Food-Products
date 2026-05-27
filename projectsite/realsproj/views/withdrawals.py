@@ -1300,8 +1300,8 @@ class WithdrawalGroupEditView(View):
             elif price_or_custom:
                 try:
                     custom_total_price = Decimal(price_or_custom)
-                except:
-                    pass  # Invalid input, ignore
+                except (InvalidOperation, ValueError, TypeError):
+                    pass
             
             # Track if any changes were made
             updated_count = 0

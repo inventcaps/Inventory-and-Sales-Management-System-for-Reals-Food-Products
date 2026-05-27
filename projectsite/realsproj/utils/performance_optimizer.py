@@ -177,6 +177,6 @@ def performance_context(request):
         try:
             stats = SupabasePerformanceOptimizer.get_db_performance_stats()
             return {'performance_stats': stats}
-        except:
+        except Exception:
             pass
     return {}

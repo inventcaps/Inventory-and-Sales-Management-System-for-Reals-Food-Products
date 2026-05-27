@@ -30,7 +30,7 @@ class Command(BaseCommand):
                     metadata = backup_data.get('_metadata', {})
                     total_records = metadata.get('total_records', 0)
                     created_at = metadata.get('created_at', 'Unknown')
-                except:
+                except Exception:
                     total_records = 0
                     created_at = 'Unknown'
                 
