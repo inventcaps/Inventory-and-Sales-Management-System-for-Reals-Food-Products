@@ -41,11 +41,11 @@ body {
       padding-right: 0px;
       opacity: 0;
       .navbar-toggler-icon {
-        background: url(../img/menu2.png);
-        background-size: cover;
-        height: 1em;
+        background: #333;
+        height: 2px;
         width: 1em;
         opacity: .8;
+        box-shadow: 0 6px 0 #333, 0 -6px 0 #333;
       }
     }
     .more {
