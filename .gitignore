@@ -37,8 +37,8 @@ db.sqlite3
 *.sqlite3
 
 # Static files - Django admin collectstatic output
-static/admin/
-staticfiles/
+**/static/admin/
+**/staticfiles/
 
 # Logs
 logs/
