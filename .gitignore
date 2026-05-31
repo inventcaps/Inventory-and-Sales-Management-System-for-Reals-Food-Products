@@ -31,3 +31,34 @@ wheels/
 venv/
 .venv/
 env/
+
+# Database
+db.sqlite3
+*.sqlite3
+
+# Static files - Django admin collectstatic output
+static/admin/
+staticfiles/
+
+# Logs
+logs/
+*.log
+
+# Backups
+backups/
+
+# User uploaded media
+media/
+
+# IDE / Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.kiro/
+.windsurf/
+
+# OS files
+.DS_Store
+Thumbs.db
