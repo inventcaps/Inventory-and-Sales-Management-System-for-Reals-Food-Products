@@ -82,6 +82,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+from .helpers import get_or_create_auth_user
 
 # RawMaterialsList
 class RawMaterialsList(ListView):

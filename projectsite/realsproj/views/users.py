@@ -82,6 +82,7 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+from .helpers import get_client_ip, get_device_fingerprint, get_device_info, mask_email, get_or_create_auth_user
 
 # profile_view
 @login_required
