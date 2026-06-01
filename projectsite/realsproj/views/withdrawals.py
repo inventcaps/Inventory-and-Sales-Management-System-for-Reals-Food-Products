@@ -978,6 +978,15 @@ class WithdrawUpdateView(LoginRequiredMixin, UpdateView):
             'custom_discount_value'
         ])
 
+        # If reason changed from SOLD to non-SOLD, remove trigger-created Sales records
+        if before['reason'] == 'SOLD' and self.object.reason != 'SOLD':
+            Sales.objects.filter(withdrawal=self.object).delete()
+            logger.info(
+                "Deleted trigger-created Sales records for withdrawal %s "
+                "because reason changed from SOLD to %s",
+                self.object.pk, self.object.reason
+            )
+
         if inventory_changed:
             messages.success(self.request,
                 "✅ Withdrawal updated successfully! Inventory has been adjusted.")
