@@ -3,7 +3,6 @@ from .sales_service import (
     get_withdrawal_sales_queryset,
     get_expenses_queryset,
     compute_aggregate_summary,
-    compute_financial_loss,
     get_filter_params,
     get_expense_filter_params,
     get_withdrawal_filter_params,

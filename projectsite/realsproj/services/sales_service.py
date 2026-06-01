@@ -1,7 +1,7 @@
 from decimal import Decimal
 from django.db.models import Sum, Avg, Count, Q
 from django.utils import timezone
-from realsproj.models import Sales, Expenses, Withdrawals, Products, RawMaterials
+from realsproj.models import Sales, Expenses
 
 
 def get_manual_sales_queryset(filters=None):
@@ -59,27 +59,6 @@ def compute_aggregate_summary(queryset):
         average=Avg("amount"),
         count=Count("id"),
     )
-
-
-def compute_financial_loss(filters=None):
-    qs = Withdrawals.objects.filter(
-        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-        is_archived=False
-    )
-    qs = _apply_common_filters(qs, filters)
-
-    total = Decimal('0.00')
-    for w in qs:
-        try:
-            if w.item_type == 'PRODUCT':
-                product = Products.objects.select_related('unit_price').get(id=w.item_id)
-                total += Decimal(w.quantity) * product.unit_price.unit_price
-            elif w.item_type == 'RAW_MATERIAL':
-                material = RawMaterials.objects.get(id=w.item_id)
-                total += Decimal(w.quantity) * material.price_per_unit
-        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
-            continue
-    return total
 
 
 def get_filter_params(request):
