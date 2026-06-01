@@ -70,7 +70,8 @@ from realsproj.models import (
     ExpensesSummary,
     Discounts,
     UserActivity,
-    PriceHistory
+    PriceHistory,
+    FinancialLoss,
 )
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -451,30 +452,10 @@ def monthly_report(request):
         .order_by("month") 
     )
 
-    # Calculate financial loss per month (expired, damaged, replacement items)
-    financial_loss_withdrawals = Withdrawals.objects.filter(
-        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-        is_archived=False
-    ).annotate(month=TruncMonth("date")).values("month", "item_type", "item_id", "quantity")
-    
-    # Group financial loss by month
-    financial_loss_dict = {}
-    for withdrawal in financial_loss_withdrawals:
-        month = withdrawal["month"]
-        if month not in financial_loss_dict:
-            financial_loss_dict[month] = Decimal('0.00')
-        
-        try:
-            if withdrawal["item_type"] == 'PRODUCT':
-                product = Products.objects.select_related('unit_price').get(id=withdrawal["item_id"])
-                loss_amount = Decimal(withdrawal["quantity"]) * product.unit_price.unit_price
-                financial_loss_dict[month] += loss_amount
-            elif withdrawal["item_type"] == 'RAW_MATERIAL':
-                material = RawMaterials.objects.get(id=withdrawal["item_id"])
-                loss_amount = Decimal(withdrawal["quantity"]) * material.price_per_unit
-                financial_loss_dict[month] += loss_amount
-        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
-            continue
+    # Calculate financial loss per month from trigger-maintained financial_loss table
+    financial_loss_qs = FinancialLoss.objects.filter(is_archived=False).annotate(
+        month=TruncMonth("loss_date")
+    ).values("month").annotate(total_loss=Sum("loss_amount"))
 
     # Normalize all dictionaries to use date objects as keys
     def normalize_date(dt):
@@ -484,18 +465,13 @@ def monthly_report(request):
 
     expenses_dict = {normalize_date(e["month"]): e["total_expenses"] for e in expenses}
     sales_dict = {normalize_date(s["month"]): s["total_sales"] for s in sales}
-    
-    # Normalize financial_loss_dict keys as well
-    normalized_financial_loss_dict = {}
-    for month, loss in financial_loss_dict.items():
-        normalized_month = normalize_date(month)
-        normalized_financial_loss_dict[normalized_month] = loss
+    financial_loss_dict = {normalize_date(fl["month"]): fl["total_loss"] for fl in financial_loss_qs}
 
     # Get all unique months from sales, expenses, and financial loss
     all_months = set()
     all_months.update(sales_dict.keys())
     all_months.update(expenses_dict.keys())
-    all_months.update(normalized_financial_loss_dict.keys())
+    all_months.update(financial_loss_dict.keys())
     
     # Sort months chronologically
     all_months = sorted(all_months)
@@ -505,7 +481,7 @@ def monthly_report(request):
 
     for month in all_months:
         gross_revenue = sales_dict.get(month, 0) or 0
-        financial_loss = normalized_financial_loss_dict.get(month, 0) or 0
+        financial_loss = financial_loss_dict.get(month, 0) or 0
         revenue = gross_revenue - financial_loss  # Net revenue after financial loss
         cost = expenses_dict.get(month, 0) or 0
         profit = revenue - cost
@@ -570,31 +546,11 @@ def monthly_report_export(request):
         .order_by("month")
     )
     
-    # Calculate financial loss per month (same logic as main view)
-    financial_loss_withdrawals = Withdrawals.objects.filter(
-        reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-        is_archived=False
-    ).annotate(month=TruncMonth("date")).values("month", "item_type", "item_id", "quantity")
-    
-    financial_loss_dict = {}
-    for withdrawal in financial_loss_withdrawals:
-        month = withdrawal["month"]
-        if month not in financial_loss_dict:
-            financial_loss_dict[month] = Decimal('0.00')
-        
-        try:
-            if withdrawal["item_type"] == 'PRODUCT':
-                product = Products.objects.select_related('unit_price').get(id=withdrawal["item_id"])
-                loss_amount = Decimal(withdrawal["quantity"]) * product.unit_price.unit_price
-                financial_loss_dict[month] += loss_amount
-            elif withdrawal["item_type"] == 'RAW_MATERIAL':
-                material = RawMaterials.objects.get(id=withdrawal["item_id"])
-                loss_amount = Decimal(withdrawal["quantity"]) * material.price_per_unit
-                financial_loss_dict[month] += loss_amount
-        except (Products.DoesNotExist, RawMaterials.DoesNotExist):
-            continue
-    
-    # Normalize all dictionaries to use date objects as keys
+    # Calculate financial loss per month from trigger-maintained financial_loss table
+    financial_loss_qs = FinancialLoss.objects.filter(is_archived=False).annotate(
+        month=TruncMonth("loss_date")
+    ).values("month").annotate(total_loss=Sum("loss_amount"))
+
     def normalize_date(dt):
         if hasattr(dt, 'date'):
             return dt.date()
@@ -602,12 +558,7 @@ def monthly_report_export(request):
 
     sales_dict = {normalize_date(s["month"]): Decimal(s["total_sales"] or 0) for s in sales}
     expenses_dict = {normalize_date(e["month"]): Decimal(e["total_expenses"] or 0) for e in expenses}
-    
-    # Normalize financial_loss_dict keys as well
-    normalized_financial_loss_dict = {}
-    for month, loss in financial_loss_dict.items():
-        normalized_month = normalize_date(month)
-        normalized_financial_loss_dict[normalized_month] = loss
+    normalized_financial_loss_dict = {normalize_date(fl["month"]): fl["total_loss"] for fl in financial_loss_qs}
     
     # Get all unique months from sales, expenses, and financial loss
     all_months = set()
