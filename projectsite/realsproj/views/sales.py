@@ -81,6 +81,7 @@ from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
+from django.core.cache import cache
 import re
 import logging
 
@@ -411,6 +412,12 @@ class SalesExpensesList(ListView):
         return qs.order_by('-date')
 
     def get_context_data(self, **kwargs):
+        # Cache key based on request params (GET query string + user)
+        cache_key = f"sales_summary_{self.request.user.id}_{self.request.META.get('QUERY_STRING', '')}"
+        cached = cache.get(cache_key)
+        if cached:
+            return cached
+
         context = super().get_context_data(**kwargs)
 
         # Get the filtered queryset for display (excludes withdrawal sales)
@@ -838,6 +845,9 @@ class SalesExpensesList(ListView):
         # Add current month value for default display
         today = timezone.now()
         context['current_month_value'] = today.strftime("%Y-%m")
+
+        # Cache for 2 minutes (cache_key set at top of method)
+        cache.set(cache_key, context, 120)
 
         return context
 
