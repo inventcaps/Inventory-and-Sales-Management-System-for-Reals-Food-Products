@@ -82,7 +82,10 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+import logging
 from .helpers import create_history_log, get_or_create_auth_user
+
+logger = logging.getLogger(__name__)
 
 # ProductsList
 class ProductsList(ListView):
@@ -287,6 +290,7 @@ def product_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} product(s)'
         })
     except Exception as e:
+        logger.exception("Product bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # product_bulk_archive
@@ -311,6 +315,7 @@ def product_bulk_archive(request):
             'message': f'Successfully archived {archived_count} product(s)'
         })
     except Exception as e:
+        logger.exception("Product bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # product_bulk_restore
@@ -335,6 +340,7 @@ def product_bulk_restore(request):
             'message': f'Successfully restored {restored_count} product(s)'
         })
     except Exception as e:
+        logger.exception("Product bulk restore failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # ProductCreateView
@@ -378,6 +384,7 @@ class ProductCreateView(CreateView):
 
     @transaction.atomic
     def form_valid(self, form):
+        from django.db import IntegrityError
         try:
             auth_user = AuthUser.objects.get(username=self.request.user.username)
             form.instance.created_by_admin = auth_user
@@ -385,10 +392,14 @@ class ProductCreateView(CreateView):
             # Save ONE product
             self.object = form.save()
 
-        except Exception as e:
+        except ValidationError as e:
             transaction.set_rollback(True)
-            messages.error(self.request, f"❌ Product did not save. {e}")
-            return redirect(self.request.path)  
+            messages.error(self.request, f"❌ Validation error: {e}")
+            return redirect(self.request.path)
+        except IntegrityError as e:
+            transaction.set_rollback(True)
+            messages.error(self.request, f"❌ Database constraint error: {e}")
+            return redirect(self.request.path)
 
         messages.success(self.request, "✅ Product added successfully.")
         return redirect('products')
@@ -772,6 +783,7 @@ def product_batch_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} batch(es)'
         })
     except Exception as e:
+        logger.exception("Product batch bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # product_batch_bulk_archive
@@ -797,6 +809,7 @@ def product_batch_bulk_archive(request):
             'message': f'Successfully archived {archived_count} batch(es)'
         })
     except Exception as e:
+        logger.exception("Product batch bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # product_batch_bulk_restore
@@ -822,6 +835,7 @@ def product_batch_bulk_restore(request):
             'message': f'Successfully restored {restored_count} batch(es)'
         })
     except Exception as e:
+        logger.exception("Product batch bulk restore failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # ProductInventoryList
@@ -1090,11 +1104,14 @@ class ProductTypeAddView(View):
             return redirect('product-attributes')
         
         try:
+            from django.db import IntegrityError
             auth_user = AuthUser.objects.get(id=request.user.id)
             ProductTypes.objects.create(name=name, created_by_admin=auth_user)
             messages.success(request, f'✅ Product Type "{name}" added successfully!')
-        except Exception as e:
-            messages.error(request, f'❌ Error adding Product Type. Please try again.')
+        except AuthUser.DoesNotExist:
+            messages.error(request, f'❌ User not found. Please try again.')
+        except IntegrityError:
+            messages.error(request, f'❌ Database error adding Product Type. Please try again.')
         
         return redirect('product-attributes')
 
@@ -1146,11 +1163,14 @@ class ProductVariantAddView(View):
             return redirect('product-attributes')
         
         try:
+            from django.db import IntegrityError
             auth_user = AuthUser.objects.get(id=request.user.id)
             ProductVariants.objects.create(name=name, created_by_admin=auth_user)
             messages.success(request, f'✅ Variant "{name}" added successfully!')
-        except Exception as e:
-            messages.error(request, f'❌ Error adding Variant. Please try again.')
+        except AuthUser.DoesNotExist:
+            messages.error(request, f'❌ User not found. Please try again.')
+        except IntegrityError:
+            messages.error(request, f'❌ Database error adding Variant. Please try again.')
         
         return redirect('product-attributes')
 
@@ -1202,11 +1222,14 @@ class SizeAddView(View):
             return redirect('product-attributes')
         
         try:
+            from django.db import IntegrityError
             auth_user = AuthUser.objects.get(id=request.user.id)
             Sizes.objects.create(size_label=size_label, created_by_admin=auth_user)
             messages.success(request, f'✅ Size "{size_label}" added successfully!')
-        except Exception as e:
-            messages.error(request, f'❌ Error adding Size. Please try again.')
+        except AuthUser.DoesNotExist:
+            messages.error(request, f'❌ User not found. Please try again.')
+        except IntegrityError:
+            messages.error(request, f'❌ Database error adding Size. Please try again.')
         
         return redirect('product-attributes')
 
@@ -1331,7 +1354,10 @@ class UnitPriceAddView(View):
             messages.success(request, f'✅ Unit Price ₱{price_value} added successfully!')
         except IntegrityError as e:
             messages.error(request, f'❌ Database error: This Unit Price already exists!')
+        except AuthUser.DoesNotExist:
+            messages.error(request, f'❌ User not found. Please try again.')
         except Exception as e:
+            logger.exception("UnitPriceAddView failed")
             messages.error(request, f'❌ Error: {str(e)}')
         
         return redirect('product-attributes')
@@ -1367,7 +1393,10 @@ class UnitPriceEditView(View):
                 messages.error(request, '❌ Invalid price value!')
             except IntegrityError as e:
                 messages.error(request, f'❌ Database error: {str(e)}')
+            except AuthUser.DoesNotExist:
+                messages.error(request, f'❌ User not found. Please try again.')
             except Exception as e:
+                logger.exception("UnitPriceEditView failed")
                 messages.error(request, f'❌ Error updating Unit Price: {str(e)}')
         return redirect('product-attributes')
 
@@ -1391,6 +1420,7 @@ class UnitPriceDeleteView(View):
         except IntegrityError:
             messages.error(request, '❌ Cannot delete this Unit Price because it is being used by existing products.')
         except Exception as e:
+            logger.exception("UnitPriceDeleteView failed")
             messages.error(request, f'❌ Error deleting Unit Price: {str(e)}')
         return redirect('product-attributes')
 
@@ -1429,7 +1459,10 @@ class SrpPriceAddView(View):
             messages.success(request, f'✅ SRP Price ₱{price_value} added successfully!')
         except IntegrityError:
             messages.error(request, f'❌ This SRP Price already exists!')
+        except AuthUser.DoesNotExist:
+            messages.error(request, f'❌ User not found. Please try again.')
         except Exception as e:
+            logger.exception("SrpPriceAddView failed")
             messages.error(request, f'❌ Error adding SRP Price. Please try again.')
         
         return redirect('product-attributes')
@@ -1465,7 +1498,10 @@ class SrpPriceEditView(View):
                 messages.error(request, '❌ Invalid price value!')
             except IntegrityError as e:
                 messages.error(request, f'❌ Database error: {str(e)}')
+            except AuthUser.DoesNotExist:
+                messages.error(request, f'❌ User not found. Please try again.')
             except Exception as e:
+                logger.exception("SrpPriceEditView failed")
                 messages.error(request, f'❌ Error updating SRP Price: {str(e)}')
         return redirect('product-attributes')
 
@@ -1489,6 +1525,7 @@ class SrpPriceDeleteView(View):
         except IntegrityError:
             messages.error(request, '❌ Cannot delete this SRP Price because it is being used by existing products.')
         except Exception as e:
+            logger.exception("SrpPriceDeleteView failed")
             messages.error(request, f'❌ Error deleting SRP Price: {str(e)}')
         return redirect('product-attributes')
 
@@ -1575,20 +1612,15 @@ class BulkProductBatchCreateView(View):
                 if not added_any:
                     raise ValueError("⚠️ No product quantities were entered.")
 
+        except ValueError as e:
+            messages.error(request, str(e))
+            return render(request, self.template_name, {
+                'form': form,
+                'products': form.products
+            })
         except Exception as e:
-            error_message = str(e)
-
-            if "Not enough stock" in error_message:
-                error_message = error_message.split("CONTEXT:")[0].strip()
-            elif "insufficient" in error_message.lower():
-                error_message = "❌ Insufficient raw materials to create this batch."
-            elif "No product quantities" in error_message:
-                error_message = "⚠️ No product quantities were entered."
-            else:
-                error_message = f"❌ {error_message}"
-
-            messages.error(request, error_message)
-
+            logger.exception("Bulk product batch creation failed")
+            messages.error(request, f"❌ {e}")
             return render(request, self.template_name, {
                 'form': form,
                 'products': form.products
@@ -1756,7 +1788,7 @@ def export_product_inventory(request):
             return response
             
     except Exception as e:
-        # Handle errors gracefully
+        logger.exception("Product inventory export failed")
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
             response['Content-Disposition'] = 'attachment; filename="product_inventory_error.txt"'
@@ -2025,7 +2057,7 @@ def export_price_history(request):
             return response
 
     except Exception as e:
-        # Handle errors gracefully
+        logger.exception("Price history export failed")
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
             response['Content-Disposition'] = 'attachment; filename="price_history_error.txt"'
