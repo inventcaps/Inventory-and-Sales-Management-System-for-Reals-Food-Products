@@ -631,7 +631,7 @@
                     <div class="collapse {% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list rawmaterial-batch rawmaterial-inventory' %}show{% endif %}" id="rawmatMenu" data-parent="">
                         <ul class="nav nav-collapse">
                             <li class="{% if request.resolver_match.url_name in 'rawmaterials rawmaterials-list' %}active{% endif %}">
-                                <a href="{% url 'rawmaterials' %}"><span class="sub-item">Packaging Materials List</span></a>
+                                <a href="{% url 'rawmaterials-list' %}"><span class="sub-item">Packaging Materials List</span></a>
                             </li>
                             <li class="{% if request.resolver_match.url_name == 'rawmaterial-batch' %}active{% endif %}">
                                 <a href="{% url 'rawmaterial-batch' %}"><span class="sub-item">Packaging Batch</span></a>

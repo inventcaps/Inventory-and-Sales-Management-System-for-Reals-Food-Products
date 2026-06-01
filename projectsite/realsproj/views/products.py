@@ -216,7 +216,7 @@ class ProductArchiveView(View):
         
         page = request.POST.get('page')
         if page:
-            return redirect(f"{reverse('product-list')}?page={page}")
+            return redirect(f"{reverse('products')}?page={page}")
         return redirect('product-list')
 
 # ArchivedProductsListView

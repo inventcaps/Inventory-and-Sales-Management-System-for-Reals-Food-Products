@@ -31,7 +31,6 @@ urlpatterns = [
     re_path(r'^logout/$', auth_views.LogoutView.as_view(), name='logout'),
 
     path('products/', a.ProductsList.as_view(), name='products'),
-    path('products/', a.ProductsList.as_view(), name='product-list'),
     path('products/add', a.ProductCreateView.as_view(), name='product-add'),
     path('products/<pk>', a.ProductsUpdateView.as_view(), name='product-edit'),
     path('products/<pk>/delete', a.ProductsDeleteView.as_view(), name='product-delete'),
@@ -54,7 +53,6 @@ urlpatterns = [
     path('price-history/export/', a.export_price_history, name='price-history-export'),
 
     path('rawmaterials/', a.RawMaterialsList.as_view(), name='rawmaterials-list'),
-    path('rawmaterials/', a.RawMaterialsList.as_view(), name='rawmaterials'),
     path('rawmaterials/add', a.RawMaterialsCreateView.as_view(), name='rawmaterials-add'),
     path('rawmaterials/<pk>', a.RawMaterialsUpdateView.as_view(), name='rawmaterials-edit'),
     path('rawmaterials/<pk>/delete', a.RawMaterialsDeleteView.as_view(), name='rawmaterials-delete'),
@@ -102,7 +100,6 @@ urlpatterns = [
     path('expenses/bulk-delete-archived/', a.ExpenseBulkDeleteView.as_view(), name='expenses-bulk-delete-archived'),
 
     path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch'),
-    path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch-list'),
     path('prodbatch/add', a.BulkProductBatchCreateView.as_view(), name='product-batch-add'),
     path('prodbatch/<pk>', a.ProductBatchUpdateView.as_view(), name='product-batch-edit'),
     path('prodbatch/<pk>/delete', a.ProductBatchDeleteView.as_view(), name='product-batch-delete'),
