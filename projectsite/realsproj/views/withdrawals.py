@@ -156,6 +156,36 @@ class WithdrawSuccessView(LoginRequiredMixin, ListView):
         context['rawmat_withdrawals_qty'] = rawmat_withdrawals.aggregate(total=Sum('quantity'))['total'] or 0
         context['rawmat_withdrawals_count'] = rawmat_withdrawals.count()
         
+        # Batch-load Products and RawMaterials to fix N+1
+        product_ids = set()
+        material_ids = set()
+        for w in all_withdrawals:
+            if w.item_type == 'PRODUCT':
+                product_ids.add(w.item_id)
+            elif w.item_type == 'RAW_MATERIAL':
+                material_ids.add(w.item_id)
+
+        products_map = {}
+        materials_map = {}
+        if product_ids:
+            products_map = {
+                p.id: p for p in Products.objects.select_related(
+                    'product_type', 'variant', 'size', 'size_unit'
+                ).filter(id__in=product_ids)
+            }
+        if material_ids:
+            materials_map = {
+                m.id: m for m in RawMaterials.objects.select_related('unit').filter(id__in=material_ids)
+            }
+
+        for withdrawal in all_withdrawals:
+            if withdrawal.item_type == 'PRODUCT':
+                product = products_map.get(withdrawal.item_id)
+                withdrawal._item_display_cache = str(product) if product else f"Unknown Product (ID {withdrawal.item_id})"
+            elif withdrawal.item_type == 'RAW_MATERIAL':
+                material = materials_map.get(withdrawal.item_id)
+                withdrawal._item_display_cache = str(material) if material else f"Unknown Material (ID {withdrawal.item_id})"
+
         grouped_withdrawals = defaultdict(list)
         for withdrawal in all_withdrawals:
             # Use order_group_id if available, otherwise use a unique key based on timestamp
