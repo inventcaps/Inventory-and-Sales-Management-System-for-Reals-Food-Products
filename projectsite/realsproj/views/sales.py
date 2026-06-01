@@ -82,6 +82,9 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 # sales_vs_expenses
 @login_required
@@ -286,6 +289,7 @@ def sales_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} sale(s)'
         })
     except Exception as e:
+        logger.exception("Sales bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # sales_bulk_archive
@@ -304,6 +308,7 @@ def sales_bulk_archive(request):
             'message': f'Successfully archived {archived_count} sale(s)'
         })
     except Exception as e:
+        logger.exception("Sales bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # SaleBulkRestoreView
@@ -320,6 +325,7 @@ class SaleBulkRestoreView(View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Sale bulk restore failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # SaleBulkDeleteView
@@ -336,6 +342,7 @@ class SaleBulkDeleteView(View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Sale bulk delete failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # SalesExpensesList
@@ -844,10 +851,11 @@ class SalesCreateView(CreateView):
     @transaction.atomic
     def form_valid(self, form):
         try:
+            from django.db import IntegrityError
             auth_user = AuthUser.objects.get(id=self.request.user.id)
             form.instance.created_by_admin = auth_user
             self.object = form.save()
-        except Exception as e:
+        except (ValidationError, IntegrityError) as e:
             transaction.set_rollback(True)
             messages.error(self.request, f"Sale creation failed: {e}")
             return redirect(self.request.path)
@@ -1205,6 +1213,7 @@ def expenses_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} expense(s)'
         })
     except Exception as e:
+        logger.exception("Expenses bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # expenses_bulk_archive
@@ -1223,6 +1232,7 @@ def expenses_bulk_archive(request):
             'message': f'Successfully archived {archived_count} expense(s)'
         })
     except Exception as e:
+        logger.exception("Expenses bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # ArchivedExpensesListView
@@ -1270,6 +1280,7 @@ class ExpenseBulkRestoreView(View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Expense bulk restore failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # ExpenseBulkDeleteView
@@ -1286,6 +1297,7 @@ class ExpenseBulkDeleteView(View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Expense bulk delete failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # ExpensesCreateView
@@ -1298,10 +1310,11 @@ class ExpensesCreateView(CreateView):
     @transaction.atomic
     def form_valid(self, form):
         try:
+            from django.db import IntegrityError
             auth_user = AuthUser.objects.get(id=self.request.user.id)
             form.instance.created_by_admin = auth_user
             self.object = form.save()
-        except Exception as e:
+        except (ValidationError, IntegrityError) as e:
             transaction.set_rollback(True)
             messages.error(self.request, f"Expense creation failed: {e}")
             return redirect(self.request.path)  # reset form
@@ -1362,6 +1375,7 @@ class SalesExpensesCreateView(View):
         
         if form.is_valid():
             try:
+                from django.db import IntegrityError
                 auth_user = AuthUser.objects.get(id=request.user.id)
                 
                 # Create Sales record
@@ -1393,7 +1407,7 @@ class SalesExpensesCreateView(View):
                 )
                 return redirect('salesexpenses')
                 
-            except Exception as e:
+            except (ValidationError, IntegrityError) as e:
                 messages.error(request, f"Failed to create sales & expenses: {e}")
                 return render(request, self.template_name, {'form': form})
         else:
@@ -1477,6 +1491,7 @@ def export_sales(request):
                 ])
             return response
     except Exception as e:
+        logger.exception("Sales export failed")
         if format_type == 'pdf':
             resp = HttpResponse(content_type='text/plain')
             resp['Content-Disposition'] = 'attachment; filename="sales_error.txt"'
@@ -1558,6 +1573,7 @@ def export_expenses(request):
                 ])
             return response
     except Exception as e:
+        logger.exception("Expenses export failed")
         if format_type == 'pdf':
             resp = HttpResponse(content_type='text/plain')
             resp['Content-Disposition'] = 'attachment; filename="expenses_error.txt"'
