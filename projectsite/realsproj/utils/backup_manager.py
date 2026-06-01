@@ -23,7 +23,7 @@ class BackupManager:
     
     def get_backup_filename(self, prefix="reals_backup"):
         """Generate backup filename with timestamp"""
-        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
         return f"{prefix}_{timestamp}.sql"
     
     def create_backup(self, email_notification=False):
@@ -185,7 +185,7 @@ class BackupManager:
             if not os.path.exists(self.backup_dir):
                 return 0
                 
-            cutoff_date = datetime.datetime.now() - datetime.timedelta(days=self.keep_days)
+            cutoff_date = timezone.now() - datetime.timedelta(days=self.keep_days)
             cleaned_count = 0
             
             for filename in os.listdir(self.backup_dir):

@@ -77,7 +77,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
 from itertools import islice
-from datetime import datetime, timedelta, date
+from datetime import timedelta
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -1334,8 +1334,8 @@ def export_sales(request):
                 'sales': qs,
                 'total_amount': total_amount,
                 'filter_info': filter_info,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
             }
             html = render_to_string('exports/sales_pdf.html', context)
             pdf_buffer = BytesIO()
@@ -1420,8 +1420,8 @@ def export_expenses(request):
                 'expenses': qs,
                 'total_amount': total_amount,
                 'filter_info': filter_info,
-                'generated_date': datetime.now().strftime('%B %d, %Y at %I:%M %p'),
-                'current_year': datetime.now().year,
+                'generated_date': timezone.now().strftime('%B %d, %Y at %I:%M %p'),
+                'current_year': timezone.now().year,
             }
             html = render_to_string('exports/expenses_pdf.html', context)
             pdf_buffer = BytesIO()

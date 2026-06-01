@@ -2,6 +2,7 @@ import os
 import json
 import datetime
 import logging
+from django.utils import timezone
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.core.mail import send_mail
@@ -29,7 +30,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             # Create backup filename with timestamp
-            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
             format_ext = options['format']
             backup_filename = f"reals_backup_python_{timestamp}.{format_ext}"
             
@@ -71,7 +72,7 @@ class Command(BaseCommand):
             
             # Add metadata
             backup_data['_metadata'] = {
-                'created_at': datetime.datetime.now().isoformat(),
+                'created_at': timezone.now().isoformat(),
                 'django_version': '5.2',
                 'total_records': total_records,
                 'database_host': settings.DATABASES['default']['HOST'],
@@ -137,7 +138,7 @@ Database backup completed successfully using Python serialization!
 File: {filename}
 Size: {file_size:.2f} MB
 Records: {record_count:,}
-Time: {datetime.datetime.now()}
+Time: {timezone.now()}
 Database: {settings.DATABASES['default']['HOST']}
 Method: Django Serialization (Python-based)
                 """
@@ -147,7 +148,7 @@ Method: Django Serialization (Python-based)
 Database backup failed!
 
 Error: {error_msg}
-Time: {datetime.datetime.now()}
+Time: {timezone.now()}
 Database: {settings.DATABASES['default']['HOST']}
                 """
             
@@ -176,7 +177,7 @@ Database: {settings.DATABASES['default']['HOST']}
             if not os.path.exists(backup_dir):
                 return
                 
-            cutoff_date = datetime.datetime.now() - datetime.timedelta(days=28)  # Keep 4 weeks of weekly backups
+            cutoff_date = timezone.now() - datetime.timedelta(days=28)  # Keep 4 weeks of weekly backups
             cleaned_count = 0
             
             for filename in os.listdir(backup_dir):

@@ -1,5 +1,6 @@
 import os
 import datetime
+from django.utils import timezone
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from realsproj.utils.backup_manager import backup_manager
@@ -35,7 +36,7 @@ class Command(BaseCommand):
                 )
                 return
             
-            cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days_to_keep)
+            cutoff_date = timezone.now() - datetime.timedelta(days=days_to_keep)
             files_to_delete = []
             total_size = 0
             

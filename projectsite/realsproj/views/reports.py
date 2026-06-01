@@ -80,7 +80,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
 from itertools import islice
-from datetime import datetime, timedelta, date
+from datetime import timedelta
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone
@@ -956,7 +956,7 @@ def database_backup(request):
     if request.method == 'POST':
         try:
             os.makedirs(backup_dir, exist_ok=True)
-            timestamp = dt.datetime.now().strftime('%Y%m%d_%H%M%S')
+            timestamp = timezone.now().strftime('%Y%m%d_%H%M%S')
             filename = f"reals_backup_{timestamp}.json"
             backup_path = os.path.join(backup_dir, filename)
 
@@ -980,7 +980,7 @@ def database_backup(request):
                     logger.exception("Failed to serialize model %s", model_name)
 
             backup_data['_metadata'] = {
-                'created_at': dt.datetime.now().isoformat(),
+                'created_at': timezone.now().isoformat(),
                 'total_records': total_records,
                 'backup_type': 'python_serialization',
             }

@@ -1419,8 +1419,7 @@ class Withdrawals(models.Model):
                         return receipt_num
                 except Exception:
                     continue
-        from datetime import datetime
-        return f"REC-{datetime.now().strftime('%y%m%d%H%M%S')}-{self.id}"
+        return f"REC-{timezone.now().strftime('%y%m%d%H%M%S')}-{self.id}"
 
     def save(self, *args, **kwargs):
         """Auto-generate receipt number if not already set"""
