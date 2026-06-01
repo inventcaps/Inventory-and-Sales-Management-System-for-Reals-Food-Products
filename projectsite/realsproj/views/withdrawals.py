@@ -1397,89 +1397,38 @@ class WithdrawalGroupEditView(View):
                 withdrawal.delete()
                 deleted_count += 1
             
-            # Handle sales entry based on payment status
-            sales_entry = Sales.objects.filter(
-                Q(description__icontains=f"Order #{order_group_id}"),
-                is_archived=False
-            ).first()
-            
-            if (reason == 'SOLD' and 
+            # Handle sales entries based on payment status
+            if (reason == 'SOLD' and
                 sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER']):
-                
+
                 if payment_status == 'UNPAID':
-                    # Delete sales entry if changing to UNPAID
-                    if sales_entry:
-                        sales_entry.delete()
-                        msg = f"✅ Updated {updated_count} withdrawal(s)"
-                        if deleted_count > 0:
-                            msg += f", deleted {deleted_count} item(s)"
-                        msg += ". Sales entry removed (UNPAID)"
-                        messages.success(request, msg)
-                    else:
-                        msg = f"✅ Updated {updated_count} withdrawal(s)"
-                        if deleted_count > 0:
-                            msg += f", deleted {deleted_count} item(s)"
-                        messages.success(request, msg)
-                
+                    deleted = Sales.objects.filter(
+                        withdrawal__order_group_id=order_group_id
+                    ).delete()[0]
+                    msg = f"✅ Updated {updated_count} withdrawal(s)"
+                    if deleted_count > 0:
+                        msg += f", deleted {deleted_count} item(s)"
+                    if deleted > 0:
+                        msg += f". Sales entry(ies) removed (UNPAID)"
+                    messages.success(request, msg)
+
                 elif payment_status in ['PAID', 'PARTIAL']:
-                    # Recalculate total based on payment status
-                    new_total = Decimal(0)
-                    
-                    if payment_status == 'PARTIAL':
-                        # Use paid amount for partial payments
-                        if paid_amount:
-                            new_total = Decimal(paid_amount)
-                    elif payment_status == 'PAID':
-                        # Calculate from withdrawals
-                        for w in withdrawals:
-                            if w.custom_price:
-                                # Custom price is the TOTAL for the entire order
-                                new_total = Decimal(w.custom_price)
-                                break  # Stop after first custom price (should only be one)
-                            elif w.price_type:
-                                # Unit/SRP price with discount
-                                product = Products.objects.get(id=w.item_id)
-                                base_price = Decimal(0)
-                                
-                                if w.price_type == 'UNIT':
-                                    base_price = product.unit_price.unit_price
-                                elif w.price_type == 'SRP':
-                                    base_price = product.srp_price.srp_price
-                                
-                                # Apply discount
-                                discount_percent = Decimal(0)
-                                if w.discount_id:
-                                    discount = Discounts.objects.get(id=w.discount_id)
-                                    discount_percent = Decimal(discount.value)
-                                elif w.custom_discount_value:
-                                    discount_percent = Decimal(w.custom_discount_value)
-                                
-                                discounted_price = base_price * (1 - (discount_percent / 100))
-                                item_total = Decimal(w.quantity) * discounted_price
-                                new_total += item_total
-                    
-                    # Update or create sales entry
-                    if sales_entry:
-                        sales_entry.amount = new_total
-                        sales_entry.save()
-                        msg = f"✅ Updated {updated_count} withdrawal(s)"
-                        if deleted_count > 0:
-                            msg += f", deleted {deleted_count} item(s)"
-                        msg += f". Sales updated to ₱{new_total:,.2f}"
-                        messages.success(request, msg)
-                    else:
-                        # Create new sales entry if it doesn't exist
-                        Sales.objects.create(
-                            amount=new_total,
-                            description=f"Order #{order_group_id} - {customer_name or 'N/A'} - Status: {payment_status}",
-                            date=timezone.now().date(),
-                            created_by_admin=request.user
-                        )
-                        msg = f"✅ Updated {updated_count} withdrawal(s)"
-                        if deleted_count > 0:
-                            msg += f", deleted {deleted_count} item(s)"
-                        msg += f". Sales entry created: ₱{new_total:,.2f}"
-                        messages.success(request, msg)
+                    # Update each withdrawal's Sales record via FK
+                    updated_sales = 0
+                    for w in withdrawals:
+                        if w.reason == 'SOLD':
+                            sales_entry = Sales.objects.filter(withdrawal=w).first()
+                            if sales_entry and w.total_amount is not None:
+                                sales_entry.amount = w.total_amount
+                                sales_entry.save()
+                                updated_sales += 1
+
+                    msg = f"✅ Updated {updated_count} withdrawal(s)"
+                    if deleted_count > 0:
+                        msg += f", deleted {deleted_count} item(s)"
+                    if updated_sales > 0:
+                        msg += f". {updated_sales} sales entry(ies) updated"
+                    messages.success(request, msg)
             else:
                 msg = f"✅ Updated {updated_count} withdrawal(s)"
                 if deleted_count > 0:
