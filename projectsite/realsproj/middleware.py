@@ -1,3 +1,5 @@
+from django.shortcuts import redirect
+from django.contrib.auth import logout
 from django.utils import timezone
 from django.db import connection
 from realsproj.models import UserActivity
@@ -6,33 +8,23 @@ from realsproj.models import UserActivity
 class UpdateLastActivityMiddleware:
     """
     Middleware to update user's last_activity timestamp on every request.
-    This helps track if a user is actively using the system.
+    Logs out deactivated users immediately.
     """
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         if request.user.is_authenticated:
+            if not request.user.is_active:
+                logout(request)
+                return redirect("login")
+
             try:
                 activity, created = UserActivity.objects.get_or_create(user=request.user)
                 activity.last_activity = timezone.now()
-                activity.save(update_fields=['last_activity'])
+                activity.save(update_fields=["last_activity"])
             except Exception:
                 pass
-
-        if request.session.get('show_deactivated_modal'):
-            # Set a flag for the template to show modal
-            request.show_deactivated_modal = True
-            # DON'T clear the flag yet - let the page load with modal first
-        
-        # Check if user is authenticated but not active (deactivated)
-        # BUT if we need to show the modal, let the page load first
-        if request.user.is_authenticated and not request.user.is_active:
-            if not hasattr(request, 'show_deactivated_modal'):
-                # No modal to show, just logout and redirect
-                logout(request)
-                return redirect('login')
-            # else: Let the page load with the modal, modal will handle logout
 
         response = self.get_response(request)
         return response
@@ -49,7 +41,6 @@ class SetCurrentUserMiddleware:
     def __call__(self, request):
         if request.user.is_authenticated:
             try:
-                # Set the current user ID in PostgreSQL session variable
                 with connection.cursor() as cursor:
                     cursor.execute("SELECT set_config('app.current_user_id', %s, false)", [str(request.user.id)])
             except Exception:
