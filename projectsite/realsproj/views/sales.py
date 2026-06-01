@@ -84,6 +84,16 @@ from django.db.models import Q, F, CharField
 from django.core.cache import cache
 import re
 import logging
+from realsproj.services.sales_service import (
+    get_manual_sales_queryset,
+    get_withdrawal_sales_queryset,
+    get_expenses_queryset,
+    compute_aggregate_summary,
+    compute_financial_loss,
+    get_filter_params,
+    get_expense_filter_params,
+    get_withdrawal_filter_params,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -423,209 +433,56 @@ class SalesExpensesList(ListView):
         # Get the filtered queryset for display (excludes withdrawal sales)
         display_qs = getattr(self, "_full_queryset", Sales.objects.all())
 
-        # For total sales computation, include ALL sales (manual + withdrawal)
-        # Apply same filters (month, category, search) but don't exclude withdrawal sales
-        month = self.request.GET.get("month", "").strip()
-        category = self.request.GET.get("category", "").strip()
-        query = self.request.GET.get("q", "").strip()
-        show_all = self.request.GET.get("show_all", "").strip()
-        
-        total_qs = Sales.objects.filter(is_archived=False).order_by("-date")
-        
-        # Apply month filter
-        if show_all:
-            pass
-        elif month:
-            try:
-                year_str, month_str = month.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                total_qs = total_qs.filter(date__year=year, date__month=month_num)
-            except ValueError:
-                pass
-        else:
-            today = timezone.now()
-            total_qs = total_qs.filter(date__year=today.year, date__month=today.month)
-         # Apply category filter (only affects manual sales display, not total)
-        if category:
-            total_qs = total_qs.filter(category__iexact=category)
-        
-        # Apply search filter
-        if query:
-            total_qs = total_qs.filter(
-                Q(category__icontains=query) |
-                Q(amount__icontains=query) |
-                Q(date__icontains=query) |
-                Q(description__icontains=query) |
-                Q(created_by_admin__username__icontains=query)
-            )
-        
-        # Calculate MANUAL sales summary (excludes withdrawal sales)
-        manual_sales_qs = Sales.objects.filter(is_archived=False).exclude(
-            Q(description__icontains="Order #") | Q(description__icontains="order #")
-        ).order_by("-date")
-        
-        # Apply same filters to manual sales
-        if show_all:
-            pass
-        elif month:
-            try:
-                year_str, month_str = month.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                manual_sales_qs = manual_sales_qs.filter(date__year=year, date__month=month_num)
-            except ValueError:
-                pass
-        else:
-            today = timezone.now()
-            manual_sales_qs = manual_sales_qs.filter(date__year=today.year, date__month=today.month)
-        
-        if category:
-            manual_sales_qs = manual_sales_qs.filter(category__iexact=category)
-        
-        if query:
-            manual_sales_qs = manual_sales_qs.filter(
-                Q(category__icontains=query) |
-                Q(amount__icontains=query) |
-                Q(date__icontains=query) |
-                Q(description__icontains=query) |
-                Q(created_by_admin__username__icontains=query)
-            )
-        
-        context["manual_sales_summary"] = manual_sales_qs.aggregate(
-            total_sales=Sum("amount"),
-            average_sales=Avg("amount"),
-            sales_count=Count("id"),
-        )
-        
-        # Calculate WITHDRAWAL sales summary (only from Sales table with "Order #")
-        withdrawal_sales_qs = Sales.objects.filter(
-            is_archived=False
-        ).filter(
-            Q(description__icontains="Order #") | Q(description__icontains="order #")
-        ).order_by("-date")
-        
-        # Apply same month filter
-        if show_all:
-            pass
-        elif month:
-            try:
-                year_str, month_str = month.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=year, date__month=month_num)
-            except ValueError:
-                pass
-        else:
-            today = timezone.now()
-            withdrawal_sales_qs = withdrawal_sales_qs.filter(date__year=today.year, date__month=today.month)
-        
-        context["withdrawal_sales_summary"] = withdrawal_sales_qs.aggregate(
-            total_sales=Sum("amount"),
-            average_sales=Avg("amount"),
-            sales_count=Count("id"),
-        )
-        
-        # Calculate TOTAL sales summary (manual + withdrawal)
+        # Get filter parameters from request
+        filters = get_filter_params(self.request)
+        expense_filters = get_expense_filter_params(self.request)
+
+        # Manual sales summary (excludes withdrawal sales)
+        manual_sales_qs = get_manual_sales_queryset(filters)
+        manual_summary = compute_aggregate_summary(manual_sales_qs)
+        context["manual_sales_summary"] = {
+            'total_sales': manual_summary['total'] or 0,
+            'average_sales': manual_summary['average'] or 0,
+            'sales_count': manual_summary['count'] or 0,
+        }
+
+        # Withdrawal sales summary (only from Sales table with "Order #")
+        withdrawal_sales_qs = get_withdrawal_sales_queryset(filters)
+        withdrawal_summary = compute_aggregate_summary(withdrawal_sales_qs)
+        context["withdrawal_sales_summary"] = {
+            'total_sales': withdrawal_summary['total'] or 0,
+            'average_sales': withdrawal_summary['average'] or 0,
+            'sales_count': withdrawal_summary['count'] or 0,
+        }
+
+        # Total sales summary (manual + withdrawal)
         manual_total = context["manual_sales_summary"]["total_sales"] or 0
         withdrawal_total = context["withdrawal_sales_summary"]["total_sales"] or 0
         manual_count = context["manual_sales_summary"]["sales_count"] or 0
         withdrawal_count = context["withdrawal_sales_summary"]["sales_count"] or 0
-        
         context["sales_summary"] = {
             'total_sales': manual_total + withdrawal_total,
             'sales_count': manual_count + withdrawal_count,
         }
-        
-        # Add expenses summary for combined display
-        expenses_qs = Expenses.objects.filter(is_archived=False)
-        
-        # Get expense-specific filter parameters
-        expense_category = self.request.GET.get("expense_category", "").strip()
-        expense_month = self.request.GET.get("expense_month", "").strip()
-        expense_show_all = self.request.GET.get("expense_show_all", "").strip()
-        
-        # Apply expense category filter
-        if expense_category:
-            expenses_qs = expenses_qs.filter(category__iexact=expense_category)
-        
-        # Apply expense month filter
-        if expense_month:
-            try:
-                year_str, month_str = expense_month.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                expenses_qs = expenses_qs.filter(date__year=year, date__month=month_num)
-            except ValueError:
-                pass
-        elif not expense_show_all:
-            # Default to current month if no filter and not showing all
-            today = timezone.now()
-            expenses_qs = expenses_qs.filter(date__year=today.year, date__month=today.month)
-        
-        context["expenses_summary"] = expenses_qs.aggregate(
-            total_expenses=Sum("amount"),
-            average_expenses=Avg("amount"),
-            expenses_count=Count("id"),
-        )
-        
-        # Calculate financial loss (expired, damaged, replacement items)
-        # Determine which month to calculate financial loss for
-        if show_all:
-            financial_loss_qs = Withdrawals.objects.filter(
-                reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-                is_archived=False
-            )
-        elif month:
-            try:
-                year_str, month_str = month.split("-")
-                year = int(year_str)
-                month_num = int(month_str.lstrip("0"))
-                financial_loss_qs = Withdrawals.objects.filter(
-                    reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-                    is_archived=False,
-                    date__year=year,
-                    date__month=month_num
-                )
-            except ValueError:
-                today = timezone.now()
-                financial_loss_qs = Withdrawals.objects.filter(
-                    reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-                    is_archived=False,
-                    date__year=today.year,
-                    date__month=today.month
-                )
-        else:
-            today = timezone.now()
-            financial_loss_qs = Withdrawals.objects.filter(
-                reason__in=['EXPIRED', 'DAMAGED', 'REPLACEMENT_FOR_RETURNED'],
-                is_archived=False,
-                date__year=today.year,
-                date__month=today.month
-            )
-        
-        # Calculate total financial loss
-        total_financial_loss = Decimal('0.00')
-        for withdrawal in financial_loss_qs:
-            try:
-                if withdrawal.item_type == 'PRODUCT':
-                    product = Products.objects.select_related('unit_price').get(id=withdrawal.item_id)
-                    loss_amount = Decimal(withdrawal.quantity) * product.unit_price.unit_price
-                    total_financial_loss += loss_amount
-                elif withdrawal.item_type == 'RAW_MATERIAL':
-                    material = RawMaterials.objects.get(id=withdrawal.item_id)
-                    loss_amount = Decimal(withdrawal.quantity) * material.price_per_unit
-                    total_financial_loss += loss_amount
-            except (Products.DoesNotExist, RawMaterials.DoesNotExist):
-                continue
-        
+
+        # Expenses summary
+        expenses_qs = get_expenses_queryset(expense_filters)
+        expenses_summary = compute_aggregate_summary(expenses_qs)
+        context["expenses_summary"] = {
+            'total_expenses': expenses_summary['total'] or 0,
+            'average_expenses': expenses_summary['average'] or 0,
+            'expenses_count': expenses_summary['count'] or 0,
+        }
+
+        # Financial loss (expired, damaged, replacement items)
+        total_financial_loss = compute_financial_loss(filters)
         context["financial_loss"] = total_financial_loss
-        
-        # Calculate net sales (sales - financial loss)
+
+        # Net sales (sales - financial loss)
         total_sales = context["sales_summary"]["total_sales"] or 0
         context["net_sales"] = total_sales - total_financial_loss
-        
-        # Calculate net profit (sales - expenses - financial loss)
+
+        # Net profit (sales - expenses - financial loss)
         total_expenses = context["expenses_summary"]["total_expenses"] or 0
         context["net_profit"] = total_sales - total_expenses
         
