@@ -1085,6 +1085,9 @@ class WithdrawDeleteView(LoginRequiredMixin, DeleteView):
         sales_channel = withdrawal.sales_channel
         payment_status = withdrawal.payment_status
         
+        # Delete trigger-created Sales records before deleting the withdrawal
+        Sales.objects.filter(withdrawal=withdrawal).delete()
+
         # Call parent delete
         response = super().post(request, *args, **kwargs)
         
