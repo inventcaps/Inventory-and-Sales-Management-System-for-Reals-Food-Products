@@ -82,7 +82,10 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+import logging
 from .helpers import get_client_ip, get_device_fingerprint, get_device_info, mask_email, get_or_create_auth_user
+
+logger = logging.getLogger(__name__)
 
 # profile_view
 @login_required
@@ -136,6 +139,7 @@ def download_my_data(request):
         else:
             writer.writerow(['2FA Enabled', 'No'])
     except Exception:
+        logger.exception("Error retrieving 2FA settings")
         writer.writerow(['2FA Enabled', 'No'])
     writer.writerow([])
     
@@ -149,6 +153,7 @@ def download_my_data(request):
         else:
             writer.writerow(['Activity Tracking', 'Not available'])
     except Exception:
+        logger.exception("Error retrieving user activity")
         writer.writerow(['Activity Tracking', 'Not available'])
     writer.writerow([])
     
@@ -168,6 +173,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No products created'])
     except Exception as e:
+        logger.exception("Error retrieving user products")
         writer.writerow([f'Error retrieving products: {str(e)}'])
     writer.writerow([])
     
@@ -186,6 +192,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No raw materials created'])
     except Exception as e:
+        logger.exception("Error retrieving user raw materials")
         writer.writerow([f'Error retrieving raw materials: {str(e)}'])
     writer.writerow([])
     
@@ -204,6 +211,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No sales records created'])
     except Exception as e:
+        logger.exception("Error retrieving user sales")
         writer.writerow([f'Error retrieving sales: {str(e)}'])
     writer.writerow([])
     
@@ -223,6 +231,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No expense records created'])
     except Exception as e:
+        logger.exception("Error retrieving user expenses")
         writer.writerow([f'Error retrieving expenses: {str(e)}'])
     writer.writerow([])
     
@@ -243,6 +252,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No withdrawal records created'])
     except Exception as e:
+        logger.exception("Error retrieving user withdrawals")
         writer.writerow([f'Error retrieving withdrawals: {str(e)}'])
     writer.writerow([])
     
@@ -262,6 +272,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No product batches created'])
     except Exception as e:
+        logger.exception("Error retrieving user product batches")
         writer.writerow([f'Error retrieving product batches: {str(e)}'])
     writer.writerow([])
     
@@ -281,6 +292,7 @@ def download_my_data(request):
         else:
             writer.writerow(['No raw material batches created'])
     except Exception as e:
+        logger.exception("Error retrieving user raw material batches")
         writer.writerow([f'Error retrieving raw material batches: {str(e)}'])
     
     # Create CSV response
@@ -390,7 +402,11 @@ def login_view(request):
                             request.session.pop(key, None)
                         messages.error(request, "🔒 Too many incorrect OTP attempts. Please login again.")
                         return redirect('login')
+            except (User.DoesNotExist, UserOTP.DoesNotExist) as e:
+                messages.error(request, f"Session error: {str(e)}")
+                return redirect('login')
             except Exception as e:
+                logger.exception("OTP verification failed")
                 messages.error(request, f"An error occurred: {str(e)}")
                 return render(request, '2fa_verify.html')
         
@@ -702,6 +718,7 @@ def approve_user(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
+        logger.exception("User approval failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # reject_user
@@ -739,6 +756,7 @@ def reject_user(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found or already active'})
     except Exception as e:
+        logger.exception("User rejection failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # send_role_change_email_async
@@ -780,6 +798,7 @@ def toggle_user_role(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found'})
     except Exception as e:
+        logger.exception("User role toggle failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # create_admin_user
@@ -850,6 +869,7 @@ def create_admin_user(request):
         })
 
     except Exception as e:
+        logger.exception("Admin user creation failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # send_deactivation_email_async
@@ -909,6 +929,7 @@ def deactivate_user(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found or already inactive'})
     except Exception as e:
+        logger.exception("User deactivation failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # reactivate_user
@@ -941,6 +962,7 @@ def reactivate_user(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found'})
     except Exception as e:
+        logger.exception("User reactivation failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # delete_user
@@ -967,6 +989,7 @@ def delete_user(request, user_id):
     except User.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'User not found'})
     except Exception as e:
+        logger.exception("User permanent deletion failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # edit_profile
@@ -1199,6 +1222,7 @@ def delete_account(request):
             return redirect('home')
             
         except Exception as e:
+            logger.exception("Account deletion failed")
             messages.error(request, f"❌ An error occurred while deleting your account: {str(e)}")
             return redirect('delete-account')
     
