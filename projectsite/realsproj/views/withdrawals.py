@@ -742,69 +742,7 @@ class WithdrawItemView(LoginRequiredMixin, View):
                         continue
 
         if count > 0:
-            
-            if reason == "SOLD" and sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and order_group_id:
-                if payment_status in ['PAID', 'PARTIAL']:
-                    # Calculate total amount for the order
-                    withdrawals = Withdrawals.objects.filter(order_group_id=order_group_id)
-                    total_sales_amount = Decimal(0)
-                    
-                    if payment_status == 'PARTIAL':
-                        # For partial, use the paid_amount
-                        total_sales_amount = paid_amount if paid_amount else Decimal(0)
-                    else:
-                        # For PAID, calculate from withdrawals
-                        has_custom_price = any(w.custom_price for w in withdrawals)
-                        
-                        if has_custom_price:
-                            # Custom price is the TOTAL for the entire order, not per item
-                            # Just use the custom_price from the first withdrawal
-                            total_sales_amount = Decimal(withdrawals.first().custom_price)
-                        else:
-                            # PRICE FIX: Use stored total_amount if available, otherwise calculate
-                            for w in withdrawals:
-                                if w.total_amount is not None:
-                                    # Use stored price (after fix implementation)
-                                    total_sales_amount += w.total_amount
-                                elif w.price_type:
-                                    product = Products.objects.get(id=w.item_id)
-                                    base_price = Decimal(0)
-                                    
-                                    if w.price_type == 'UNIT':
-                                        base_price = product.unit_price.unit_price
-                                    elif w.price_type == 'SRP':
-                                        base_price = product.srp_price.srp_price
-                                    
-                                    # Apply discount if exists
-                                    discount_percent = Decimal(0)
-                                    if w.discount_id:
-                                        discount = Discounts.objects.get(id=w.discount_id)
-                                        discount_percent = Decimal(discount.value)
-                                    elif w.custom_discount_value:
-                                        discount_percent = Decimal(w.custom_discount_value)
-                                    
-                                    # Calculate discounted price
-                                    discounted_price = base_price * (1 - (discount_percent / 100))
-                                    item_total = Decimal(w.quantity) * discounted_price
-                                    total_sales_amount += item_total
-                                    
-                                    # print(f"  Item: {product}, Qty: {w.quantity}, Base: P{base_price}, Discount: {discount_percent}%, Final: P{item_total} (calculated)")
-                    
-                    # Create ONE sales entry for the entire order
-                    # print(f"Total sales amount calculated: P{total_sales_amount}")
-                    
-                    if total_sales_amount > 0:
-                        from .models import AuthUser
-                        auth_user = AuthUser.objects.get(id=request.user.id)
-                        
-                        sales_entry = Sales.objects.create(
-                            category=f"{sales_channel} - {customer_name}",
-                            amount=total_sales_amount,
-                            date=timezone.now().date(),
-                            description=f"Order #{order_group_id}, Status: {payment_status}",
-                            created_by_admin=auth_user
-                        )
-            
+            # Trigger trg_withdrawal_sales_func creates per-item Sales records for SOLD withdrawals
             messages.success(request, f"✅ Success! {count} item(s) withdrawn. Inventory updated!")
         else:
             messages.warning(request, "⚠️ No items withdrawn. Please enter quantity for at least one item.")
