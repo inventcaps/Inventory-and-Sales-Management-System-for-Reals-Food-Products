@@ -1400,20 +1400,36 @@ class Withdrawals(models.Model):
         return Decimal(0)
 
     def generate_receipt_number(self):
-        """Generate a unique continuous receipt number in format: REC-XXXXX"""
-        # Get the total count of all receipts with receipt_number set
-        total_count = Withdrawals.objects.filter(
-            receipt_number__isnull=False
-        ).count() + 1
-        
-        receipt_num = f"REC-{total_count:06d}"
-        return receipt_num
+        """Generate a unique continuous receipt number with retry on collision."""
+        from django.db import connection
+        for attempt in range(5):
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT COALESCE(MAX(CAST(SUBSTRING(receipt_number, 5) AS INTEGER)), 0) + 1 "
+                    "FROM withdrawals WHERE receipt_number ~ '^REC-[0-9]+$'"
+                )
+                next_num = cursor.fetchone()[0]
+                receipt_num = f"REC-{next_num:06d}"
+                try:
+                    cursor.execute(
+                        "UPDATE withdrawals SET receipt_number = %s WHERE id = %s AND receipt_number IS NULL",
+                        [receipt_num, self.id]
+                    )
+                    if cursor.rowcount > 0:
+                        return receipt_num
+                except Exception:
+                    continue
+        from datetime import datetime
+        return f"REC-{datetime.now().strftime('%y%m%d%H%M%S')}-{self.id}"
 
     def save(self, *args, **kwargs):
         """Auto-generate receipt number if not already set"""
         if not self.receipt_number:
+            if self._state.adding:
+                super().save(*args, **kwargs)
             self.receipt_number = self.generate_receipt_number()
-        super().save(*args, **kwargs)
+        else:
+            super().save(*args, **kwargs)
 
     @staticmethod
     def get_queryset(request):
