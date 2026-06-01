@@ -81,7 +81,7 @@ from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
 from itertools import islice
-from datetime import timedelta
+from datetime import datetime, timedelta
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
 from django.utils import timezone

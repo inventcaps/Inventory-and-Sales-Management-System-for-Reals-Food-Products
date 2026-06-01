@@ -182,10 +182,10 @@ class WithdrawSuccessView(LoginRequiredMixin, ListView):
         for withdrawal in all_withdrawals:
             if withdrawal.item_type == 'PRODUCT':
                 product = products_map.get(withdrawal.item_id)
-                withdrawal._item_display_cache = str(product) if product else f"Unknown Product (ID {withdrawal.item_id})"
-            elif withdrawal.item_type == 'RAW_MATERIAL':
-                material = materials_map.get(withdrawal.item_id)
-                withdrawal._item_display_cache = str(material) if material else f"Unknown Material (ID {withdrawal.item_id})"
+                withdrawal.item_display_cache = str(product) if product else f"Unknown Product (ID {withdrawal.item_id})"
+            else:
+                material = RawMaterials.objects.filter(id=withdrawal.item_id).first()
+                withdrawal.item_display_cache = str(material) if material else f"Unknown Material (ID {withdrawal.item_id})"
 
         grouped_withdrawals = defaultdict(list)
         for withdrawal in all_withdrawals:
