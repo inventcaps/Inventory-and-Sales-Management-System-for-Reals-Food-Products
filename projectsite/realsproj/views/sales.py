@@ -1152,22 +1152,6 @@ class ExpenseBulkRestoreView(View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 # ExpenseBulkDeleteView
-class ExpenseBulkDeleteView(View):
-    def post(self, request):
-        import json
-        try:
-            expense_ids = json.loads(request.POST.get('expense_ids', '[]'))
-            if not expense_ids:
-                return JsonResponse({'success': False, 'message': 'No expenses selected'})
-            
-            # Delete selected expenses
-            count, _ = Expenses.objects.filter(id__in=expense_ids, is_archived=True).delete()
-            
-            return JsonResponse({'success': True, 'count': count})
-        except Exception as e:
-            logger.exception("Expense bulk delete failed")
-            return JsonResponse({'success': False, 'message': str(e)})
-
 # ExpensesCreateView
 class ExpensesCreateView(CreateView):
     model = Expenses

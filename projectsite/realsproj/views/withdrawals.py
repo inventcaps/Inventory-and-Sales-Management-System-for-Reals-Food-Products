@@ -874,22 +874,6 @@ class WithdrawalBulkRestoreView(LoginRequiredMixin, View):
             return JsonResponse({'success': False, 'message': str(e)})
 
 # WithdrawalBulkDeleteView
-class WithdrawalBulkDeleteView(LoginRequiredMixin, View):
-    def post(self, request):
-        import json
-        try:
-            withdrawal_ids = json.loads(request.POST.get('withdrawal_ids', '[]'))
-            if not withdrawal_ids:
-                return JsonResponse({'success': False, 'message': 'No withdrawals selected'})
-            
-            # Delete selected withdrawals
-            count, _ = Withdrawals.objects.filter(id__in=withdrawal_ids, is_archived=True).delete()
-            
-            return JsonResponse({'success': True, 'count': count})
-        except Exception as e:
-            logger.exception("Withdrawal bulk delete failed")
-            return JsonResponse({'success': False, 'message': str(e)})
-
 # WithdrawalsArchiveOldView
 class WithdrawalsArchiveOldView(LoginRequiredMixin, View):
     def post(self, request):

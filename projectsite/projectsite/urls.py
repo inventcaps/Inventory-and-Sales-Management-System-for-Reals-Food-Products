@@ -97,7 +97,7 @@ urlpatterns = [
     path('expenses/bulk-delete/', a.expenses_bulk_delete, name='expenses-bulk-delete'),
     path('expenses/bulk-archive/', a.expenses_bulk_archive, name='expenses-bulk-archive'),
     path('expenses/bulk-restore/', a.ExpenseBulkRestoreView.as_view(), name='expenses-bulk-restore'),
-    path('expenses/bulk-delete-archived/', a.ExpenseBulkDeleteView.as_view(), name='expenses-bulk-delete-archived'),
+
 
     path('prodbatch/', a.ProductBatchList.as_view(), name='product-batch'),
     path('prodbatch/add', a.BulkProductBatchCreateView.as_view(), name='product-batch-add'),
@@ -127,7 +127,7 @@ urlpatterns = [
     path('rawmatbatch/bulk-delete/', a.rawmaterial_batch_bulk_delete, name='rawmaterial-batch-bulk-delete'),
     path('rawmatbatch/bulk-archive/', a.rawmaterial_batch_bulk_archive, name='rawmaterial-batch-bulk-archive'),
     path('rawmatbatch/bulk-restore/', a.RawMaterialBatchBulkRestoreView.as_view(), name='rawmaterial-batch-bulk-restore'),
-    path('rawmatbatch/bulk-delete-archived/', a.RawMaterialBatchBulkDeleteView.as_view(), name='rawmaterial-batch-bulk-delete-archived'),
+
 
     path('rawmaterial-inventory/', a.RawMaterialInventoryList.as_view(), name='rawmaterial-inventory'),
     path('rawmaterial-inventory/export/', a.export_rawmaterial_inventory, name='rawmaterial-inventory-export'),
@@ -184,7 +184,7 @@ urlpatterns = [
     path('withdrawals/bulk-delete/', a.withdrawals_bulk_delete, name='withdrawals-bulk-delete'),
     path('withdrawals/bulk-archive/', a.withdrawals_bulk_archive, name='withdrawals-bulk-archive'),
     path('withdrawals/bulk-restore/', a.WithdrawalBulkRestoreView.as_view(), name='withdrawals-bulk-restore'),
-    path('withdrawals/bulk-delete-archived/', a.WithdrawalBulkDeleteView.as_view(), name='withdrawals-bulk-delete-archived'),
+
     path("api/get-stock/", a.get_stock, name="get-stock"),
 
     path("login/", a.login_view, name="login"),
