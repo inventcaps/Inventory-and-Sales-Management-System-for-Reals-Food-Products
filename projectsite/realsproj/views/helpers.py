@@ -18,6 +18,9 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 import threading
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 import json
 import hashlib
 from realsproj.forms import (
@@ -146,8 +149,7 @@ def create_history_log(admin, log_category, entity_type, entity_id, before=None,
             is_archived=False
         )
     except Exception as e:
-        # Silently fail to avoid breaking the main operation
-        pass
+        logger.exception("Failed to create history log for %s #%s", entity_type, entity_id)
 
 # mask_email
 def mask_email(email):
