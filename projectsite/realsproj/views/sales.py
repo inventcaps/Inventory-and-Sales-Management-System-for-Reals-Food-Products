@@ -704,8 +704,10 @@ class SalesExpensesList(ListView):
         context['current_month_value'] = today.strftime("%Y-%m")
 
         # Cache for 2 minutes (cache_key set at top of method)
+        view_obj = context.pop('view', None)
         cache.set(cache_key, context, 120)
-
+        if view_obj is not None:
+            context['view'] = view_obj
         return context
 
 # SalesCreateView
