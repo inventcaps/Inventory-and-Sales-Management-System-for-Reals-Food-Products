@@ -67,7 +67,8 @@ from realsproj.models import (
     ExpensesSummary,
     Discounts,
     UserActivity,
-    PriceHistory
+    PriceHistory,
+    FinancialLoss,
 )
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -90,7 +91,6 @@ from realsproj.services.sales_service import (
     get_withdrawal_sales_queryset,
     get_expenses_queryset,
     compute_aggregate_summary,
-    compute_financial_loss,
     get_filter_params,
     get_expense_filter_params,
     get_withdrawal_filter_params,
@@ -475,8 +475,9 @@ class SalesExpensesList(ListView):
             'expenses_count': expenses_summary['count'] or 0,
         }
 
-        # Financial loss (expired, damaged, replacement items)
-        total_financial_loss = compute_financial_loss(filters)
+        # Financial loss (expired, damaged, replacement items) - from trigger-maintained table
+        fl_qs = FinancialLoss.objects.filter(is_archived=False)
+        total_financial_loss = fl_qs.aggregate(total=Sum('loss_amount'))['total'] or Decimal('0.00')
         context["financial_loss"] = total_financial_loss
 
         # Net sales (sales - financial loss)
