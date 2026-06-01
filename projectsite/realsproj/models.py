@@ -1,4 +1,4 @@
-from django.db import models
+from django.db import models, transaction
 from django.contrib.auth.models import User
 from django.utils import timezone
 from decimal import Decimal
@@ -1427,7 +1427,14 @@ class Withdrawals(models.Model):
         if not self.receipt_number:
             if self._state.adding:
                 super().save(*args, **kwargs)
+            else:
+                super().save(*args, **kwargs)
+
+            sid = transaction.savepoint()
             self.receipt_number = self.generate_receipt_number()
+            transaction.savepoint_commit(sid)
+
+            super().save(update_fields=['receipt_number'])
         else:
             super().save(*args, **kwargs)
 
