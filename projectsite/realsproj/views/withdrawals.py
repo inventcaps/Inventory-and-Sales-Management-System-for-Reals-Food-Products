@@ -1144,15 +1144,25 @@ class WithdrawalGroupDeleteView(View):
             
             # History logging is now handled by PostgreSQL triggers
             # Removed manual create_history_log calls to prevent double logging
-            
+
+            # FIX (Bug 3): Collect Sales IDs BEFORE deleting withdrawals.
+            # After withdrawals.delete(), sales.withdrawal_id becomes a dangling reference
+            # (no DB-level FK cascade), so the JOIN in filter(withdrawal__order_group_id=...)
+            # returns 0 rows. We must resolve the IDs while the FK is still intact.
+            sales_ids_to_delete = []
+            if should_delete_sales:
+                sales_ids_to_delete = list(
+                    Sales.objects.filter(
+                        withdrawal_id__in=withdrawals.values_list('id', flat=True)
+                    ).values_list('id', flat=True)
+                )
+
             # Delete all withdrawals in the group
             withdrawals.delete()
-            
-            # Delete all Sales records linked to the deleted withdrawals
-            if should_delete_sales:
-                deleted_count = Sales.objects.filter(
-                    withdrawal__order_group_id=order_group_id
-                ).delete()[0]
+
+            # Now safely delete the pre-collected Sales records
+            if should_delete_sales and sales_ids_to_delete:
+                deleted_count = Sales.objects.filter(id__in=sales_ids_to_delete).delete()[0]
                 if deleted_count > 0:
                     messages.success(request, f"🗑️ Deleted {count} withdrawal(s) and {deleted_count} sales entry(ies) from Order #{order_group_id}")
                 else:

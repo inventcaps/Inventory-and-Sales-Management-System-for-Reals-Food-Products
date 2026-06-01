@@ -1005,14 +1005,22 @@ class WithdrawalOrderUpdatePaymentView(View):
         auth_user = AuthUser.objects.get(id=request.user.id)
         
         if new_payment_status == 'PAID':
-            # Add full amount to sales
+            # FIX (Bug 2): Delete any existing PARTIAL sales record for this order
+            # before creating the PAID one, to prevent double-counting in sales_summary.
+            Sales.objects.filter(
+                withdrawal_id=withdrawals.first().id,
+                is_payment=True
+            ).delete()
+
+            # The total paid is the full amount entered by the user on the PAID form.
+            # previous_partial_amount is only used for the description message.
             if previous_partial_amount > 0:
-                description = f"Final payment for order #{order_group_id} (Previous: ₱{previous_partial_amount:,.2f}, Additional: ₱{sales_amount:,.2f}, Total: ₱{previous_partial_amount + sales_amount:,.2f})"
+                description = f"Final payment for order #{order_group_id} (Previous partial: ₱{previous_partial_amount:,.2f}, Remaining: ₱{sales_amount:,.2f}, Total: ₱{previous_partial_amount + sales_amount:,.2f})"
                 success_msg = f"✅ Order marked as PAID. ₱{sales_amount:,.2f} added to sales. Total paid: ₱{previous_partial_amount + sales_amount:,.2f}"
             else:
                 description = f"Payment received for order #{order_group_id}"
                 success_msg = f"✅ Order marked as PAID. ₱{sales_amount:,.2f} added to sales."
-            
+
             Sales.objects.create(
                 category=f"{withdrawals.first().get_sales_channel_display()} - {withdrawals.first().customer_name}",
                 amount=sales_amount,
