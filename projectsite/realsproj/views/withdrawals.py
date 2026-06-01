@@ -1201,16 +1201,13 @@ class WithdrawalGroupDeleteView(View):
             # Delete all withdrawals in the group
             withdrawals.delete()
             
-            # Delete corresponding sales entry if applicable
+            # Delete all Sales records linked to the deleted withdrawals
             if should_delete_sales:
-                sales_entry = Sales.objects.filter(
-                    Q(description__icontains=f"Order #{order_group_id}"),
-                    is_archived=False
-                ).first()
-                
-                if sales_entry:
-                    sales_entry.delete()
-                    messages.success(request, f"🗑️ Deleted {count} withdrawal(s) and sales entry from Order #{order_group_id}")
+                deleted_count = Sales.objects.filter(
+                    withdrawal__order_group_id=order_group_id
+                ).delete()[0]
+                if deleted_count > 0:
+                    messages.success(request, f"🗑️ Deleted {count} withdrawal(s) and {deleted_count} sales entry(ies) from Order #{order_group_id}")
                 else:
                     messages.success(request, f"🗑️ Deleted {count} withdrawal(s) from Order #{order_group_id}")
             else:
