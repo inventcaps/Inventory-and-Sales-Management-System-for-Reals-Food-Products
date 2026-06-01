@@ -82,7 +82,10 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+import logging
 from .helpers import get_or_create_auth_user
+
+logger = logging.getLogger(__name__)
 
 # RawMaterialsList
 class RawMaterialsList(ListView):
@@ -181,6 +184,7 @@ def rawmaterial_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} raw material(s)'
         })
     except Exception as e:
+        logger.exception("Raw material bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # rawmaterial_bulk_archive
@@ -206,6 +210,7 @@ def rawmaterial_bulk_archive(request):
             'message': f'Successfully archived {archived_count} raw material(s)'
         })
     except Exception as e:
+        logger.exception("Raw material bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # rawmaterial_bulk_restore
@@ -231,6 +236,7 @@ def rawmaterial_bulk_restore(request):
             'message': f'Successfully restored {restored_count} raw material(s)'
         })
     except Exception as e:
+        logger.exception("Raw material bulk restore failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # ArchivedRawMaterialsListView
@@ -295,11 +301,12 @@ class RawMaterialsCreateView(CreateView):
     @transaction.atomic
     def form_valid(self, form):
         try:
+            from django.db import IntegrityError
             auth_user = AuthUser.objects.get(id=self.request.user.id)
             form.instance.created_by_admin = auth_user
             form.instance.category = 'PACKAGING'
             self.object = form.save()
-        except Exception as e:
+        except (ValidationError, IntegrityError) as e:
             transaction.set_rollback(True)
             messages.error(self.request, f"Raw material creation failed: {e}")
             return redirect(self.request.path)
@@ -624,6 +631,7 @@ class RawMaterialBatchBulkRestoreView(View):
                 'message': f'✅ {count} raw material batch(es) restored successfully!'
             })
         except Exception as e:
+            logger.exception("Raw material batch bulk restore failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # RawMaterialBatchBulkDeleteView
@@ -659,6 +667,7 @@ class RawMaterialBatchBulkDeleteView(View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Raw material batch bulk delete failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # RawMaterialBatchArchiveOldView
@@ -707,6 +716,7 @@ def rawmaterial_batch_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} batch(es)'
         })
     except Exception as e:
+        logger.exception("Raw material batch bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # rawmaterial_batch_bulk_archive
@@ -725,6 +735,7 @@ def rawmaterial_batch_bulk_archive(request):
             'message': f'Successfully archived {archived_count} batch(es)'
         })
     except Exception as e:
+        logger.exception("Raw material batch bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # RawMaterialInventoryList
@@ -989,7 +1000,7 @@ def export_rawmaterial_inventory(request):
             return response
 
     except Exception as e:
-        # Handle errors gracefully
+        logger.exception("Raw material inventory export failed")
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
             response['Content-Disposition'] = 'attachment; filename="raw_material_inventory_error.txt"'
