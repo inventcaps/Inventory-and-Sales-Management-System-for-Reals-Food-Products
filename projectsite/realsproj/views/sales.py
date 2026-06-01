@@ -373,12 +373,10 @@ class SalesExpensesList(ListView):
 
     def get_queryset(self):
         # Exclude withdrawal-based sales (they have their own table below)
-        # Withdrawal sales have "Order #" or "order #" in description
         qs = Sales.objects.filter(
-            is_archived=False
-        ).exclude(
-            Q(description__icontains="Order #") | Q(description__icontains="order #")
-        ).select_related("created_by_admin").order_by("-date")
+            is_archived=False,
+            withdrawal__isnull=True,
+        ).exclude(description__icontains="order #").select_related("created_by_admin").order_by("-date")
 
         query = self.request.GET.get("q", "").strip()
         if query:
@@ -509,10 +507,9 @@ class SalesExpensesList(ListView):
         
         # Format categories for display (exclude withdrawal-based sales)
         raw_categories = Sales.objects.filter(
-            is_archived=False
-        ).exclude(
-            Q(description__icontains="Order #") | Q(description__icontains="order #")
-        ).values_list('category', flat=True).distinct()
+            is_archived=False,
+            withdrawal__isnull=True,
+        ).exclude(description__icontains="order #").values_list('category', flat=True).distinct()
         
         # Create clean list of unique categories with proper formatting
         # Convert UPPERCASE_WITH_UNDERSCORE to Title Case
@@ -654,11 +651,11 @@ class SalesExpensesList(ListView):
         # Calculate withdrawal sales totals from Sales table (same logic as the card sa taas)
         # This ensures custom prices, partial payments, and payment status changes are reflected
         withdrawal_sales_from_sales = Sales.objects.filter(
-            is_archived=False
+            is_archived=False,
         ).filter(
-            Q(description__icontains="Order #") | Q(description__icontains="order #")
+            Q(withdrawal__isnull=False) | Q(description__icontains="order #")
         )
-        
+
         # Apply withdrawal-specific filters
         # Filter by channel - extract from category field in Sales table
         if withdrawal_channel:
@@ -806,9 +803,9 @@ class WithdrawalOrderDetailView(View):
             if first_withdrawal.payment_status in ['PAID', 'PARTIAL']:
                 # Get all sales entries for this order (case-insensitive search)
                 sales_entries_list = Sales.objects.filter(
-                    is_archived=False
+                    is_archived=False,
                 ).filter(
-                    Q(description__icontains=f"Order #{order_group_id}") | 
+                    Q(withdrawal__order_group_id=order_group_id) |
                     Q(description__icontains=f"order #{order_group_id}")
                 )
                 
@@ -857,8 +854,10 @@ class WithdrawalOrderDetailView(View):
                     # Get total from Sales table for this order
                     if not partial_amount_added:
                         sales_entries = Sales.objects.filter(
-                            description__contains=f"order #{order_group_id}",
-                            is_archived=False
+                            is_archived=False,
+                        ).filter(
+                            Q(withdrawal__order_group_id=order_group_id) |
+                            Q(description__icontains=f"order #{order_group_id}")
                         ).aggregate(total=Sum('amount'))
                         if sales_entries['total']:
                             total_amount = sales_entries['total']
@@ -885,9 +884,9 @@ class WithdrawalOrderDetailView(View):
         payment_history = []
         if order_group_id:
             sales_payments = Sales.objects.filter(
-                is_archived=False
+                is_archived=False,
             ).filter(
-                Q(description__icontains=f"Order #{order_group_id}") | 
+                Q(withdrawal__order_group_id=order_group_id) |
                 Q(description__icontains=f"order #{order_group_id}")
             ).order_by('date')
             

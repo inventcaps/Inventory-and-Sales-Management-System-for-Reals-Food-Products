@@ -5,15 +5,18 @@ from realsproj.models import Sales, Expenses
 
 
 def get_manual_sales_queryset(filters=None):
-    qs = Sales.objects.filter(is_archived=False).exclude(
-        Q(description__icontains="Order #") | Q(description__icontains="order #")
-    )
+    qs = Sales.objects.filter(
+        is_archived=False,
+        withdrawal__isnull=True,
+    ).exclude(description__icontains="order #")
     return _apply_common_filters(qs, filters)
 
 
 def get_withdrawal_sales_queryset(filters=None):
-    qs = Sales.objects.filter(is_archived=False).filter(
-        Q(description__icontains="Order #") | Q(description__icontains="order #")
+    qs = Sales.objects.filter(
+        is_archived=False,
+    ).filter(
+        Q(withdrawal__isnull=False) | Q(description__icontains="order #")
     )
     return _apply_common_filters(qs, filters)
 
