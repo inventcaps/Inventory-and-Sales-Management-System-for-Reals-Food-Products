@@ -82,6 +82,9 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.db.models import Q, F, CharField
 import re
+import logging
+
+logger = logging.getLogger(__name__)
 
 # WithdrawSuccessView
 class WithdrawSuccessView(LoginRequiredMixin, ListView):
@@ -332,7 +335,7 @@ def export_withdrawals(request):
             return response
     
     except Exception as e:
-        # Handle errors gracefully
+        logger.exception("Withdrawals export failed")
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
             response['Content-Disposition'] = 'attachment; filename="withdrawals_error.txt"'
@@ -656,9 +659,11 @@ class WithdrawItemView(LoginRequiredMixin, View):
                             )
 
                         count += 1
+                    except (Products.DoesNotExist, ValueError, Decimal.InvalidOperation) as e:
+                        messages.error(request, f"❌ Error withdrawing product: {str(e)}")
+                        continue
                     except Exception as e:
-                        import traceback
-                        error_details = traceback.format_exc()
+                        logger.exception("Unexpected error withdrawing product")
                         messages.error(request, f"❌ Error withdrawing product: {str(e)}")
                         continue
 
@@ -693,9 +698,11 @@ class WithdrawItemView(LoginRequiredMixin, View):
                             order_group_id=order_group_id,
                         )
                         count += 1
+                    except (RawMaterials.DoesNotExist, ValueError, Decimal.InvalidOperation) as e:
+                        messages.error(request, f"❌ Error withdrawing raw material: {str(e)}")
+                        continue
                     except Exception as e:
-                        import traceback
-                        error_details = traceback.format_exc()
+                        logger.exception("Unexpected error withdrawing raw material")
                         messages.error(request, f"❌ Error withdrawing raw material: {str(e)}")
                         continue
 
@@ -828,6 +835,7 @@ class WithdrawalBulkRestoreView(LoginRequiredMixin, View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Withdrawal bulk restore failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # WithdrawalBulkDeleteView
@@ -844,6 +852,7 @@ class WithdrawalBulkDeleteView(LoginRequiredMixin, View):
             
             return JsonResponse({'success': True, 'count': count})
         except Exception as e:
+            logger.exception("Withdrawal bulk delete failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # WithdrawalsArchiveOldView
@@ -871,6 +880,7 @@ def withdrawals_bulk_delete(request):
             'message': f'Successfully deleted {deleted_count} withdrawal(s)'
         })
     except Exception as e:
+        logger.exception("Withdrawals bulk delete failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # withdrawals_bulk_archive
@@ -889,6 +899,7 @@ def withdrawals_bulk_archive(request):
             'message': f'Successfully archived {archived_count} withdrawal(s)'
         })
     except Exception as e:
+        logger.exception("Withdrawals bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # WithdrawUpdateView
@@ -989,7 +1000,11 @@ class WithdrawUpdateView(LoginRequiredMixin, UpdateView):
                                 f"Available after restore: {restored_stock}, Needed: {new_quantity}")
                             return redirect(self.get_success_url())
 
+            except (Products.DoesNotExist, RawMaterials.DoesNotExist) as e:
+                messages.error(self.request, f"❌ Item not found: {str(e)}")
+                return redirect(self.get_success_url())
             except Exception as e:
+                logger.exception("Error validating withdrawal stock")
                 messages.error(self.request, f"❌ Error validating stock: {str(e)}")
                 return redirect(self.get_success_url())
 
@@ -1505,7 +1520,10 @@ class WithdrawalGroupEditView(View):
                     msg += f", deleted {deleted_count} item(s)"
                 messages.success(request, msg)
             
+        except (ValueError, Decimal.InvalidOperation) as e:
+            messages.error(request, f"❌ Invalid value: {str(e)}")
         except Exception as e:
+            logger.exception("Withdrawal group edit failed")
             messages.error(request, f"❌ Error updating withdrawals: {str(e)}")
         
         return redirect('withdrawals')
@@ -1648,6 +1666,7 @@ def stock_changes_bulk_archive(request):
             'message': f'Successfully archived {archived_count} stock change(s)'
         })
     except Exception as e:
+        logger.exception("Stock changes bulk archive failed")
         return JsonResponse({'success': False, 'message': str(e)})
 
 # ArchivedStockChangesListView
@@ -1683,6 +1702,7 @@ class StockChangesBulkRestoreView(LoginRequiredMixin, View):
             
             return JsonResponse({'success': True, 'count': count, 'message': f'{count} stock change(s) restored successfully!'})
         except Exception as e:
+            logger.exception("Stock changes bulk restore failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
 # StockChangesArchiveOldView
