@@ -18,6 +18,9 @@ from django.core.exceptions import ValidationError
 from django.views.decorators.http import require_http_methods
 import threading
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 import json
 from realsproj.forms import (
     ProductsForm,
@@ -242,7 +245,7 @@ class HomePageView(LoginRequiredMixin, TemplateView):
         for b in expiring_batches:
             try:
                 days_left = (b.expiration_date - today).days
-            except Exception:
+            except TypeError:
                 days_left = 0
             expiring_list.append({
                 'label': str(b.product),
@@ -715,6 +718,7 @@ def monthly_report_export(request):
             return response
 
     except Exception as e:
+        logger.exception("Monthly report export failed")
         # Handle errors gracefully
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
@@ -766,7 +770,7 @@ class HistoryLogList(ListView):
                 end_date = timezone.make_aware(datetime(year, month, last_day, 23, 59, 59))
 
                 qs = qs.filter(log_date__gte=start_date, log_date__lte=end_date)
-            except Exception:
+            except (ValueError, OverflowError):
                 pass
 
         elif not show_all:
@@ -876,16 +880,15 @@ class NotificationsList(LoginRequiredMixin, ListView):
         Notifications.objects.filter(is_read=False).update(is_read=True)
         
         # Handle pagination - if page doesn't exist, redirect to page 1 with same filters
+        from django.core.paginator import EmptyPage, PageNotAnInteger
         try:
             return super().get(request, *args, **kwargs)
-        except Exception as e:
-            if 'Invalid page' in str(e) or 'That page contains no results' in str(e):
-                # Preserve all query parameters except page
-                from django.shortcuts import redirect
-                params = request.GET.copy()
-                params['page'] = '1'
-                return redirect(f"{request.path}?{params.urlencode()}")
-            raise
+        except (PageNotAnInteger, EmptyPage):
+            # Preserve all query parameters except page
+            from django.shortcuts import redirect
+            params = request.GET.copy()
+            params['page'] = '1'
+            return redirect(f"{request.path}?{params.urlencode()}")
 
 # best_sellers_api
 @login_required
@@ -972,7 +975,8 @@ def database_backup(request):
                             'data': json.loads(serialized_data),
                         }
                         total_records += count
-                except Exception:
+                    except Exception:
+                    logger.exception("Failed to serialize model %s", model_name)
                     pass
 
             backup_data['_metadata'] = {
@@ -991,6 +995,7 @@ def database_backup(request):
             return response
 
         except Exception as e:
+            logger.exception("Backup creation failed")
             messages.error(request, f"Backup failed: {str(e)}")
             return redirect('home')
 
@@ -1212,6 +1217,7 @@ def export_bestseller_report(request):
             return response
 
     except Exception as e:
+        logger.exception("Best seller export failed")
         # Handle errors gracefully
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
@@ -1537,6 +1543,7 @@ def financial_loss_export(request):
             return response
 
     except Exception as e:
+        logger.exception("Financial loss export failed")
         # Handle errors gracefully
         if format_type == 'pdf':
             response = HttpResponse(content_type='text/plain')
