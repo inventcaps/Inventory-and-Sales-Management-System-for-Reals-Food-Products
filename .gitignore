@@ -62,3 +62,7 @@ media/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Graphify output - generated files
+graphify-out/
+projectsite/graphify-out/
