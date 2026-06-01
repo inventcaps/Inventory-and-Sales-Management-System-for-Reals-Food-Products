@@ -1039,11 +1039,7 @@ class WithdrawUpdateView(LoginRequiredMixin, UpdateView):
                         item_total = Decimal(w.quantity) * discounted_price
                         new_total += item_total
 
-                sales_entry = Sales.objects.filter(
-                    Q(description__icontains=f"Order #{withdrawal.order_group_id}") &
-                    Q(description__icontains="Status: PAID"),
-                    is_archived=False
-                ).first()
+                sales_entry = Sales.objects.filter(withdrawal=withdrawal).first()
 
                 if sales_entry:
                     sales_entry.amount = new_total
@@ -1094,67 +1090,18 @@ class WithdrawDeleteView(LoginRequiredMixin, DeleteView):
         # History logging is now handled by PostgreSQL triggers
         # Removed manual create_history_log call to prevent double logging
         
-        # Update sales entry if this was part of a PAID/PARTIAL order
+        # Per-item Sales record was already deleted above (line 1085).
+        # Remaining withdrawals each have their own correct per-item Sales records.
         if (reason == 'SOLD' and 
             sales_channel in ['ORDER', 'CONSIGNMENT', 'RESELLER'] and
             payment_status in ['PAID', 'PARTIAL'] and
             order_group_id):
             
-            # Check if there are remaining withdrawals in this order
-            remaining_withdrawals = Withdrawals.objects.filter(order_group_id=order_group_id)
-            
-            if remaining_withdrawals.exists():
-                # Recalculate total for remaining items
-                new_total = Decimal(0)
-                
-                for w in remaining_withdrawals:
-                    if w.custom_price:
-                        new_total = Decimal(w.custom_price)
-                        break
-                    elif w.price_type:
-                        product = Products.objects.get(id=w.item_id)
-                        base_price = Decimal(0)
-                        
-                        if w.price_type == 'UNIT':
-                            base_price = product.unit_price.unit_price
-                        elif w.price_type == 'SRP':
-                            base_price = product.srp_price.srp_price
-                        
-                        discount_percent = Decimal(0)
-                        if w.discount_id:
-                            discount = Discounts.objects.get(id=w.discount_id)
-                            discount_percent = Decimal(discount.value)
-                        elif w.custom_discount_value:
-                            discount_percent = Decimal(w.custom_discount_value)
-                        
-                        discounted_price = base_price * (1 - (discount_percent / 100))
-                        item_total = Decimal(w.quantity) * discounted_price
-                        new_total += item_total
-                
-                # Update sales entry
-                sales_entry = Sales.objects.filter(
-                    Q(description__icontains=f"Order #{order_group_id}"),
-                    is_archived=False
-                ).first()
-                
-                if sales_entry:
-                    sales_entry.amount = new_total
-                    sales_entry.save()
-                    messages.success(request, f"🗑️ Withdrawal deleted. Sales updated to ₱{new_total:,.2f}")
-                else:
-                    messages.success(request, "🗑️ Withdrawal deleted successfully.")
+            remaining = Withdrawals.objects.filter(order_group_id=order_group_id)
+            if remaining.exists():
+                messages.success(request, f"🗑️ Withdrawal deleted. Remaining item(s) still in order #{order_group_id}.")
             else:
-                # No more withdrawals, delete the sales entry
-                sales_entry = Sales.objects.filter(
-                    Q(description__icontains=f"Order #{order_group_id}"),
-                    is_archived=False
-                ).first()
-                
-                if sales_entry:
-                    sales_entry.delete()
-                    messages.success(request, "🗑️ Withdrawal and sales entry deleted successfully.")
-                else:
-                    messages.success(request, "🗑️ Withdrawal deleted successfully.")
+                messages.success(request, "🗑️ Withdrawal and sales entry deleted successfully.")
         
         return response
 
