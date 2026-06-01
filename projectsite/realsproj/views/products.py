@@ -76,6 +76,7 @@ from django.db.models.functions import Cast
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
+from itertools import islice
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
@@ -1776,14 +1777,18 @@ def export_product_inventory(request):
             writer = csv.writer(response)
             writer.writerow(['Product', 'Total Stock', 'Restock Threshold', 'Status'])
             
-            for inv in queryset:
-                if inv.total_stock <= 0:
-                    stock_status = 'Out of Stock'
-                elif inv.total_stock <= inv.restock_threshold:
-                    stock_status = 'Low Stock'
-                else:
-                    stock_status = 'In Stock'
-                writer.writerow([str(inv.product), inv.total_stock, inv.restock_threshold, stock_status])
+            CHUNK_SIZE = 1000
+            total = queryset.count()
+            for offset in range(0, total, CHUNK_SIZE):
+                chunk = queryset[offset:offset + CHUNK_SIZE]
+                for inv in chunk:
+                    if inv.total_stock <= 0:
+                        stock_status = 'Out of Stock'
+                    elif inv.total_stock <= inv.restock_threshold:
+                        stock_status = 'Low Stock'
+                    else:
+                        stock_status = 'In Stock'
+                    writer.writerow([str(inv.product), inv.total_stock, inv.restock_threshold, stock_status])
             
             return response
             
@@ -2014,45 +2019,49 @@ def export_price_history(request):
                 'By',
             ])
 
-            for ph in qs:
-                # Product string
-                product_str = str(ph.product) if getattr(ph, 'product', None) else ''
+            CHUNK_SIZE = 1000
+            total = qs.count()
+            for offset in range(0, total, CHUNK_SIZE):
+                chunk = qs[offset:offset + CHUNK_SIZE]
+                for ph in chunk:
+                    # Product string
+                    product_str = str(ph.product) if getattr(ph, 'product', None) else ''
 
-                # Price type display
-                try:
-                    price_type_display = ph.get_price_type_display()
-                except Exception:
-                    price_type_display = ph.price_type
+                    # Price type display
+                    try:
+                        price_type_display = ph.get_price_type_display()
+                    except Exception:
+                        price_type_display = ph.price_type
 
-                # Old/New price
-                old_price = ph.old_price if ph.old_price is not None else ''
-                new_price = ph.new_price
+                    # Old/New price
+                    old_price = ph.old_price if ph.old_price is not None else ''
+                    new_price = ph.new_price
 
-                # Compute change
-                change_amount = ''
-                change_percent = ''
-                try:
-                    if ph.old_price is not None and ph.old_price != 0:
-                        change_amount_val = ph.new_price - ph.old_price
-                        change_amount = f"{change_amount_val:.2f}"
-                        change_percent_val = ((ph.new_price - ph.old_price) / ph.old_price) * 100
-                        change_percent = f"{change_percent_val:.2f}%"
-                except Exception:
-                    pass
+                    # Compute change
+                    change_amount = ''
+                    change_percent = ''
+                    try:
+                        if ph.old_price is not None and ph.old_price != 0:
+                            change_amount_val = ph.new_price - ph.old_price
+                            change_amount = f"{change_amount_val:.2f}"
+                            change_percent_val = ((ph.new_price - ph.old_price) / ph.old_price) * 100
+                            change_percent = f"{change_percent_val:.2f}%"
+                    except Exception:
+                        pass
 
-                # Changed by
-                changed_by = ph.changed_by_admin.username if getattr(ph, 'changed_by_admin', None) else 'System'
+                    # Changed by
+                    changed_by = ph.changed_by_admin.username if getattr(ph, 'changed_by_admin', None) else 'System'
 
-                writer.writerow([
-                    ph.changed_at.strftime('%Y-%m-%d %I:%M %p') if ph.changed_at else '',
-                    product_str,
-                    price_type_display,
-                    old_price,
-                    new_price,
-                    change_amount,
-                    change_percent,
-                    changed_by,
-                ])
+                    writer.writerow([
+                        ph.changed_at.strftime('%Y-%m-%d %I:%M %p') if ph.changed_at else '',
+                        product_str,
+                        price_type_display,
+                        old_price,
+                        new_price,
+                        change_amount,
+                        change_percent,
+                        changed_by,
+                    ])
 
             return response
 

@@ -76,6 +76,7 @@ from django.db.models.functions import Cast
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
+from itertools import islice
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
@@ -352,15 +353,19 @@ def export_withdrawals(request):
             writer.writerow([])
             
             writer.writerow(['Date & Time', 'Item Type', 'Reason', 'Item Display', 'Quantity', 'Created By'])
-            for withdrawal in qs:
-                writer.writerow([
-                    withdrawal.date.strftime('%Y-%m-%d %H:%M:%S'),
-                    withdrawal.get_item_type_display(),
-                    withdrawal.get_reason_display(),
-                    withdrawal.get_item_display(),
-                    f"{withdrawal.quantity:.2f}",
-                    withdrawal.created_by_admin.username,
-                ])
+            CHUNK_SIZE = 1000
+            total = qs.count()
+            for offset in range(0, total, CHUNK_SIZE):
+                chunk = qs[offset:offset + CHUNK_SIZE]
+                for withdrawal in chunk:
+                    writer.writerow([
+                        withdrawal.date.strftime('%Y-%m-%d %H:%M:%S'),
+                        withdrawal.get_item_type_display(),
+                        withdrawal.get_reason_display(),
+                        withdrawal.get_item_display(),
+                        f"{withdrawal.quantity:.2f}",
+                        withdrawal.created_by_admin.username,
+                    ])
             
             return response
     
@@ -1645,15 +1650,19 @@ def export_stock_changes(request):
     writer.writerow([])
     
     writer.writerow(['Item Type', 'Item ID', 'Item Display', 'Quantity Change', 'Category', 'Date & Time'])
-    for item in qs:
-        writer.writerow([
-            item.item_type,
-            item.item_id,
-            item.item_display,
-            f"{item.quantity_change:.2f}",
-            item.category,
-            item.date.strftime('%Y-%m-%d %H:%M:%S'),
-        ])
+    CHUNK_SIZE = 1000
+    total = qs.count()
+    for offset in range(0, total, CHUNK_SIZE):
+        chunk = qs[offset:offset + CHUNK_SIZE]
+        for item in chunk:
+            writer.writerow([
+                item.item_type,
+                item.item_id,
+                item.item_display,
+                f"{item.quantity_change:.2f}",
+                item.category,
+                item.date.strftime('%Y-%m-%d %H:%M:%S'),
+            ])
     
     return response
 

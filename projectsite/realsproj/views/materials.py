@@ -76,6 +76,7 @@ from django.db.models.functions import Cast
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
+from itertools import islice
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
@@ -974,28 +975,32 @@ def export_rawmaterial_inventory(request):
             writer.writerow([])
 
             writer.writerow(['Material', 'Unit Size', 'Unit', 'Price Per Unit', 'Category', 'Current Stock', 'Reorder Threshold', 'Status'])
-            for item in qs:
-                mat = item.material
-                unit_obj = getattr(mat, 'unit', None)
-                unit_name = getattr(unit_obj, 'unit_name', str(unit_obj)) if unit_obj is not None else ''
-                unit_size = f"{mat.size:.0f}" if mat.size is not None else ''
-                price = f"{mat.price_per_unit:.2f}" if mat.price_per_unit is not None else ''
-                status_label = (
-                    'Out of Stock' if item.total_stock == 0 else
-                    'Low Stock' if item.total_stock < item.reorder_threshold else
-                    'Warning' if item.total_stock == item.reorder_threshold else
-                    'On Stock'
-                )
-                writer.writerow([
-                    mat.name,
-                    unit_size,
-                    unit_name,
-                    price,
-                    (mat.category or '').title() if getattr(mat, 'category', None) else '',
-                    f"{item.total_stock:.0f}",
-                    f"{item.reorder_threshold:.0f}",
-                    status_label,
-                ])
+            CHUNK_SIZE = 1000
+            total = qs.count()
+            for offset in range(0, total, CHUNK_SIZE):
+                chunk = qs[offset:offset + CHUNK_SIZE]
+                for item in chunk:
+                    mat = item.material
+                    unit_obj = getattr(mat, 'unit', None)
+                    unit_name = getattr(unit_obj, 'unit_name', str(unit_obj)) if unit_obj is not None else ''
+                    unit_size = f"{mat.size:.0f}" if mat.size is not None else ''
+                    price = f"{mat.price_per_unit:.2f}" if mat.price_per_unit is not None else ''
+                    status_label = (
+                        'Out of Stock' if item.total_stock == 0 else
+                        'Low Stock' if item.total_stock < item.reorder_threshold else
+                        'Warning' if item.total_stock == item.reorder_threshold else
+                        'On Stock'
+                    )
+                    writer.writerow([
+                        mat.name,
+                        unit_size,
+                        unit_name,
+                        price,
+                        (mat.category or '').title() if getattr(mat, 'category', None) else '',
+                        f"{item.total_stock:.0f}",
+                        f"{item.reorder_threshold:.0f}",
+                        status_label,
+                    ])
 
             return response
 

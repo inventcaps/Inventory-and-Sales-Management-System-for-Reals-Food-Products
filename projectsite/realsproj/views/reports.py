@@ -79,6 +79,7 @@ from django.db.models.functions import Cast
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
+from itertools import islice
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
@@ -975,9 +976,8 @@ def database_backup(request):
                             'data': json.loads(serialized_data),
                         }
                         total_records += count
-                    except Exception:
+                except Exception:
                     logger.exception("Failed to serialize model %s", model_name)
-                    pass
 
             backup_data['_metadata'] = {
                 'created_at': dt.datetime.now().isoformat(),
@@ -1438,43 +1438,47 @@ def financial_loss_export(request):
         withdrawals = withdrawals.filter(date__date__range=[start, end])
         filter_info = f'Range: {start} to {end}'
 
-    # Separate by item type
+    # Separate by item type (chunked to avoid memory exhaustion)
     product_withdrawals = []
     raw_material_withdrawals = []
 
-    for w in withdrawals:
-        if w.item_type == 'PRODUCT':
-            try:
-                product = Products.objects.select_related('unit_price').get(id=w.item_id)
-                unit_price = product.unit_price.unit_price if product.unit_price else Decimal('0.00')
-                loss_amount = Decimal(w.quantity) * unit_price
-                product_withdrawals.append({
-                    'date': w.date,
-                    'product_name': str(product),
-                    'quantity': w.quantity,
-                    'unit_price': unit_price,
-                    'reason': w.reason,
-                    'get_reason_display': w.get_reason_display(),
-                    'loss_amount': loss_amount,
-                })
-            except Products.DoesNotExist:
-                continue
-        elif w.item_type == 'RAW_MATERIAL':
-            try:
-                material = RawMaterials.objects.get(id=w.item_id)
-                loss_amount = Decimal(w.quantity) * material.price_per_unit
-                raw_material_withdrawals.append({
-                    'date': w.date,
-                    'material_name': material.name,
-                    'quantity': w.quantity,
-                    'unit_name': material.unit_name,
-                    'price_per_unit': material.price_per_unit,
-                    'reason': w.reason,
-                    'get_reason_display': w.get_reason_display(),
-                    'loss_amount': loss_amount,
-                })
-            except RawMaterials.DoesNotExist:
-                continue
+    CHUNK_SIZE = 1000
+    total_withdrawals = withdrawals.count()
+    for offset in range(0, total_withdrawals, CHUNK_SIZE):
+        chunk = withdrawals[offset:offset + CHUNK_SIZE]
+        for w in chunk:
+            if w.item_type == 'PRODUCT':
+                try:
+                    product = Products.objects.select_related('unit_price').get(id=w.item_id)
+                    unit_price = product.unit_price.unit_price if product.unit_price else Decimal('0.00')
+                    loss_amount = Decimal(w.quantity) * unit_price
+                    product_withdrawals.append({
+                        'date': w.date,
+                        'product_name': str(product),
+                        'quantity': w.quantity,
+                        'unit_price': unit_price,
+                        'reason': w.reason,
+                        'get_reason_display': w.get_reason_display(),
+                        'loss_amount': loss_amount,
+                    })
+                except Products.DoesNotExist:
+                    continue
+            elif w.item_type == 'RAW_MATERIAL':
+                try:
+                    material = RawMaterials.objects.get(id=w.item_id)
+                    loss_amount = Decimal(w.quantity) * material.price_per_unit
+                    raw_material_withdrawals.append({
+                        'date': w.date,
+                        'material_name': material.name,
+                        'quantity': w.quantity,
+                        'unit_name': material.unit_name,
+                        'price_per_unit': material.price_per_unit,
+                        'reason': w.reason,
+                        'get_reason_display': w.get_reason_display(),
+                        'loss_amount': loss_amount,
+                    })
+                except RawMaterials.DoesNotExist:
+                    continue
 
     # Calculate totals
     product_loss = sum(item['loss_amount'] for item in product_withdrawals)

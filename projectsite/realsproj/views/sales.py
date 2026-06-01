@@ -76,6 +76,7 @@ from django.db.models.functions import Cast
 from django.contrib.auth.models import User
 from django.http import HttpResponse
 import csv
+from itertools import islice
 from datetime import datetime, timedelta, date
 from django.db.models.signals import pre_save, post_delete
 from django.dispatch import receiver
@@ -1349,13 +1350,17 @@ def export_sales(request):
             response['Content-Disposition'] = 'attachment; filename="sales_export.csv"'
             writer = csv.writer(response)
             writer.writerow(['Date', 'Category', 'Amount', 'Description'])
-            for sale in qs:
-                writer.writerow([
-                    sale.date,
-                    getattr(sale, 'category', ''),
-                    sale.amount,
-                    getattr(sale, 'description', ''),
-                ])
+            CHUNK_SIZE = 1000
+            total = qs.count()
+            for offset in range(0, total, CHUNK_SIZE):
+                chunk = qs[offset:offset + CHUNK_SIZE]
+                for sale in chunk:
+                    writer.writerow([
+                        sale.date,
+                        getattr(sale, 'category', ''),
+                        sale.amount,
+                        getattr(sale, 'description', ''),
+                    ])
             return response
     except Exception as e:
         logger.exception("Sales export failed")
@@ -1431,13 +1436,17 @@ def export_expenses(request):
             response['Content-Disposition'] = 'attachment; filename="expenses_export.csv"'
             writer = csv.writer(response)
             writer.writerow(['Date', 'Category', 'Amount', 'Description'])
-            for expense in qs:
-                writer.writerow([
-                    expense.date,
-                    getattr(expense, 'category', ''),
-                    expense.amount,
-                    getattr(expense, 'description', ''),
-                ])
+            CHUNK_SIZE = 1000
+            total = qs.count()
+            for offset in range(0, total, CHUNK_SIZE):
+                chunk = qs[offset:offset + CHUNK_SIZE]
+                for expense in chunk:
+                    writer.writerow([
+                        expense.date,
+                        getattr(expense, 'category', ''),
+                        expense.amount,
+                        getattr(expense, 'description', ''),
+                    ])
             return response
     except Exception as e:
         logger.exception("Expenses export failed")
