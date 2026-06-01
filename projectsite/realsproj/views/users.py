@@ -1049,6 +1049,7 @@ def check_account_status(request):
     })
 
 # clear_deactivation_flag
+@login_required
 @require_http_methods(["POST"])
 def clear_deactivation_flag(request):
     request.session.pop('account_deactivated', None)

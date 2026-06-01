@@ -164,6 +164,7 @@ def product_scan_phone(request):
 
 # check_barcode_availability
 @require_GET
+@login_required
 def check_barcode_availability(request):
     """API endpoint to check if a barcode already exists"""
     barcode = request.GET.get('barcode', '').strip()

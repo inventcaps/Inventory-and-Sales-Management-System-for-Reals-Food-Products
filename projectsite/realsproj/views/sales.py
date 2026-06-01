@@ -162,6 +162,7 @@ def sales_vs_expenses(request):
     })
 
 # revenue_change_api
+@login_required
 def revenue_change_api(request):
     year = request.GET.get("year")
     month = request.GET.get("month")
