@@ -25,6 +25,9 @@ sendgrid==6.12.5
 # Task Scheduling (for backup_service.py)
 schedule==1.2.2
 
+# PDF Generation for exports
+xhtml2pdf==0.2.16
+
 # Windows Service (optional - for backup_service.py on Windows)
 # pywin32==308
 
