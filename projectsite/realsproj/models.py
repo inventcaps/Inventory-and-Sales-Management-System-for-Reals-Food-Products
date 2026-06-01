@@ -1061,6 +1061,7 @@ class Sales(models.Model):
     created_by_admin = models.ForeignKey(AuthUser, models.DO_NOTHING)
     withdrawal = models.ForeignKey('Withdrawals', models.DO_NOTHING, blank=True, null=True)
     is_archived = models.BooleanField(default=False)
+    is_payment = models.BooleanField(default=False)
 
     class Meta:
         managed = False

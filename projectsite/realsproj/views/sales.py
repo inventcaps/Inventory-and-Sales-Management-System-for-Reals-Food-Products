@@ -376,7 +376,8 @@ class SalesExpensesList(ListView):
         qs = Sales.objects.filter(
             is_archived=False,
             withdrawal__isnull=True,
-        ).exclude(description__icontains="order #").select_related("created_by_admin").order_by("-date")
+            is_payment=False,
+        ).select_related("created_by_admin").order_by("-date")
 
         query = self.request.GET.get("q", "").strip()
         if query:
@@ -509,7 +510,8 @@ class SalesExpensesList(ListView):
         raw_categories = Sales.objects.filter(
             is_archived=False,
             withdrawal__isnull=True,
-        ).exclude(description__icontains="order #").values_list('category', flat=True).distinct()
+            is_payment=False,
+        ).values_list('category', flat=True).distinct()
         
         # Create clean list of unique categories with proper formatting
         # Convert UPPERCASE_WITH_UNDERSCORE to Title Case
@@ -652,8 +654,7 @@ class SalesExpensesList(ListView):
         # This ensures custom prices, partial payments, and payment status changes are reflected
         withdrawal_sales_from_sales = Sales.objects.filter(
             is_archived=False,
-        ).filter(
-            Q(withdrawal__isnull=False) | Q(description__icontains="order #")
+            withdrawal__isnull=False,
         )
 
         # Apply withdrawal-specific filters
@@ -804,9 +805,7 @@ class WithdrawalOrderDetailView(View):
                 # Get all sales entries for this order (case-insensitive search)
                 sales_entries_list = Sales.objects.filter(
                     is_archived=False,
-                ).filter(
-                    Q(withdrawal__order_group_id=order_group_id) |
-                    Q(description__icontains=f"order #{order_group_id}")
+                    withdrawal__order_group_id=order_group_id,
                 )
                 
                 total_sum = sales_entries_list.aggregate(total=Sum('amount'))['total']
@@ -855,9 +854,7 @@ class WithdrawalOrderDetailView(View):
                     if not partial_amount_added:
                         sales_entries = Sales.objects.filter(
                             is_archived=False,
-                        ).filter(
-                            Q(withdrawal__order_group_id=order_group_id) |
-                            Q(description__icontains=f"order #{order_group_id}")
+                            withdrawal__order_group_id=order_group_id,
                         ).aggregate(total=Sum('amount'))
                         if sales_entries['total']:
                             total_amount = sales_entries['total']
@@ -885,9 +882,7 @@ class WithdrawalOrderDetailView(View):
         if order_group_id:
             sales_payments = Sales.objects.filter(
                 is_archived=False,
-            ).filter(
-                Q(withdrawal__order_group_id=order_group_id) |
-                Q(description__icontains=f"order #{order_group_id}")
+                withdrawal__order_group_id=order_group_id,
             ).order_by('date')
             
             payment_count = 0
@@ -1021,9 +1016,10 @@ class WithdrawalOrderUpdatePaymentView(View):
                 amount=sales_amount,
                 date=timezone.now().date(),
                 description=description,
-                created_by_admin=auth_user
+                created_by_admin=auth_user,
+                is_payment=True,
+                withdrawal=withdrawals.first()
             )
-            # print(f"PAID Sales entry created: Amount=P{sales_amount}, Date={timezone.now().date()}")
             messages.success(request, success_msg)
         elif new_payment_status == 'PARTIAL':
             # Add partial amount to sales
@@ -1032,7 +1028,9 @@ class WithdrawalOrderUpdatePaymentView(View):
                 amount=sales_amount,
                 date=timezone.now().date(),
                 description=f"Partial payment for order #{order_group_id}",
-                created_by_admin=auth_user
+                created_by_admin=auth_user,
+                is_payment=True,
+                withdrawal=withdrawals.first()
             )
             # print(f"PARTIAL Sales entry created: Amount=P{sales_amount}, Date={timezone.now().date()}")
             messages.success(request, f"✅ Partial payment recorded. ₱{sales_amount:,.2f} added to sales.")

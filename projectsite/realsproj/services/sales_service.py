@@ -8,15 +8,15 @@ def get_manual_sales_queryset(filters=None):
     qs = Sales.objects.filter(
         is_archived=False,
         withdrawal__isnull=True,
-    ).exclude(description__icontains="order #")
+        is_payment=False,
+    )
     return _apply_common_filters(qs, filters)
 
 
 def get_withdrawal_sales_queryset(filters=None):
     qs = Sales.objects.filter(
         is_archived=False,
-    ).filter(
-        Q(withdrawal__isnull=False) | Q(description__icontains="order #")
+        withdrawal__isnull=False,
     )
     return _apply_common_filters(qs, filters)
 
