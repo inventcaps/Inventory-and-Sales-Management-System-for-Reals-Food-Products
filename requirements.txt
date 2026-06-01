@@ -28,6 +28,11 @@ schedule==1.2.2
 # PDF Generation for exports
 xhtml2pdf==0.2.16
 
+# Testing
+pytest==8.3.5
+pytest-django==4.10.0
+factory-boy==3.3.3
+
 # Windows Service (optional - for backup_service.py on Windows)
 # pywin32==308
 
