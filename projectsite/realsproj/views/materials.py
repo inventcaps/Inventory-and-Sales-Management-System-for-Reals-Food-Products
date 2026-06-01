@@ -542,21 +542,7 @@ class RawMaterialBatchDeleteView(LoginRequiredMixin, DeleteView):
         return super().dispatch(request, *args, **kwargs)
 
     def delete(self, request, *args, **kwargs):
-        batch = self.get_object()
-        material = batch.material
-        quantity = batch.quantity
-        
-        # Delete the batch first
         result = super().delete(request, *args, **kwargs)
-        
-        # Update the inventory total_stock
-        try:
-            inventory = RawMaterialInventory.objects.get(material=material)
-            inventory.total_stock = max(0, inventory.total_stock - quantity)
-            inventory.save()
-        except RawMaterialInventory.DoesNotExist:
-            pass
-        
         messages.success(request, "✅ Packaging batch deleted successfully.")
         return result
 
@@ -635,42 +621,6 @@ class RawMaterialBatchBulkRestoreView(View):
             logger.exception("Raw material batch bulk restore failed")
             return JsonResponse({'success': False, 'message': str(e)})
 
-# RawMaterialBatchBulkDeleteView
-class RawMaterialBatchBulkDeleteView(View):
-    def post(self, request):
-        import json
-        from collections import defaultdict
-        from decimal import Decimal
-        try:
-            batch_ids = json.loads(request.POST.get('batch_ids', '[]'))
-            if not batch_ids:
-                return JsonResponse({'success': False, 'message': 'No batches selected'})
-            
-            # Get batches before deletion to update inventory
-            batches = RawMaterialBatches.objects.filter(id__in=batch_ids, is_archived=True)
-            
-            # Group quantities by material for inventory update
-            material_quantities = defaultdict(Decimal)
-            for batch in batches:
-                material_quantities[batch.material_id] += batch.quantity
-            
-            # Delete selected batches
-            count, _ = batches.delete()
-            
-            # Update inventory for each affected material
-            for material_id, quantity in material_quantities.items():
-                try:
-                    inventory = RawMaterialInventory.objects.get(material_id=material_id)
-                    inventory.total_stock = max(0, inventory.total_stock - quantity)
-                    inventory.save()
-                except RawMaterialInventory.DoesNotExist:
-                    pass
-            
-            return JsonResponse({'success': True, 'count': count})
-        except Exception as e:
-            logger.exception("Raw material batch bulk delete failed")
-            return JsonResponse({'success': False, 'message': str(e)})
-
 # RawMaterialBatchArchiveOldView
 class RawMaterialBatchArchiveOldView(View):
     def post(self, request):
@@ -690,27 +640,8 @@ def rawmaterial_batch_bulk_delete(request):
         if not ids:
             return JsonResponse({'success': False, 'message': 'No batches selected'})
         
-        # Get batches before deletion to update inventory
-        batches = RawMaterialBatches.objects.filter(id__in=ids)
-        
-        # Group quantities by material for inventory update
-        from collections import defaultdict
-        from decimal import Decimal
-        material_quantities = defaultdict(Decimal)
-        for batch in batches:
-            material_quantities[batch.material_id] += batch.quantity
-        
-        # Delete the batches
-        deleted_count = batches.delete()[0]
-        
-        # Update inventory for each affected material
-        for material_id, quantity in material_quantities.items():
-            try:
-                inventory = RawMaterialInventory.objects.get(material_id=material_id)
-                inventory.total_stock = max(0, inventory.total_stock - quantity)
-                inventory.save()
-            except RawMaterialInventory.DoesNotExist:
-                pass
+        # Delete the batches (trigger handles inventory deduction)
+        deleted_count = RawMaterialBatches.objects.filter(id__in=ids).delete()[0]
         
         return JsonResponse({
             'success': True,
